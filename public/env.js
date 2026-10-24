@@ -4,9 +4,9 @@
 window.__env = {
   apiUrl: 'http://localhost:8080',
   firebase: {
-    apiKey: '',
-    authDomain: '',
-    projectId: '',
-    appId: '',
+    apiKey: 'AIzaSyC_YqxzZSf5KllPuoQRbk4gdt7GAkehBS0',
+    authDomain: 'mejor-vejez-app.firebaseapp.com',
+    projectId: 'mejor-vejez-app',
+    appId: '1:1068942960599:web:83b46a51071093c775cd92',
   },
 };

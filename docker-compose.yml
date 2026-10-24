@@ -33,6 +33,13 @@ services:
     # Dominio: pestaña Domains de Dokploy → servicio `mejor-vejez-web`,
     # puerto 80, host mejor-vejez-app.adndigital.cl, HTTPS con Let's Encrypt.
 
+# Sólo la red de Dokploy. `default` apunta a ella para que Compose NO cree la
+# red `<proyecto>_default`: el servidor se queda sin rangos de IP
+# ("all predefined address pools have been fully subnetted") si cada app crea
+# la suya.
 networks:
+  default:
+    name: dokploy-network
+    external: true
   dokploy-network:
     external: true
