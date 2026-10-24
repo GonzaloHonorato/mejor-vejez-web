@@ -1,0 +1,64 @@
+<div class="pagina">
+  <header class="cabecera">
+    <div class="contenedor cabecera__fila">
+      <span class="marca">
+        <span class="marca__isotipo" aria-hidden="true"></span>
+        Mejor Vejez
+      </span>
+    </div>
+  </header>
+
+  <main class="contenedor contenido">
+    <p class="rotulo">En construcción</p>
+    <h1>Estamos construyendo un espacio para vivir mejor cada etapa.</h1>
+    <p class="bajada">
+      Muy pronto encontrarás aquí información, servicios y compañía pensados para las
+      personas mayores y sus familias.
+    </p>
+
+    <section class="estado" aria-labelledby="estado-titulo" aria-live="polite">
+      <h2 id="estado-titulo" class="estado__titulo">Estado del servicio</h2>
+      <p class="estado__resumen" [attr.data-estado]="estado()">{{ resumen() }}</p>
+
+      <ul class="estado__lista">
+        <li class="estado__fila">
+          <span>API</span>
+          @switch (apiAlcanzable()) {
+            @case (true) { <span class="pastilla pastilla--ok">Disponible</span> }
+            @case (false) { <span class="pastilla pastilla--error">Sin conexión</span> }
+            @default { <span class="pastilla">Revisando</span> }
+          }
+        </li>
+        <li class="estado__fila">
+          <span>Base de datos</span>
+          @if (health(); as h) {
+            @if (h.database.status === 'UP') {
+              <span class="pastilla pastilla--ok">
+                Disponible
+                @if (h.database.latencyMs !== null) { · {{ h.database.latencyMs }} ms }
+              </span>
+            } @else {
+              <span class="pastilla pastilla--error">No disponible</span>
+            }
+          } @else {
+            <span class="pastilla">{{ apiAlcanzable() === false ? 'Desconocido' : 'Revisando' }}</span>
+          }
+        </li>
+      </ul>
+
+      <div class="estado__pie">
+        <p class="estado__meta">
+          @if (health(); as h) { Versión {{ h.version }} · }
+          @if (ultimaRevision(); as fecha) { Revisado a las {{ fecha | date: 'HH:mm:ss' }} }
+        </p>
+        <button type="button" class="boton" (click)="revisar()" [disabled]="revisando()">
+          {{ revisando() ? 'Revisando…' : 'Revisar de nuevo' }}
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="pie">
+    <div class="contenedor">mejor-vejez-app.adndigital.cl</div>
+  </footer>
+</div>

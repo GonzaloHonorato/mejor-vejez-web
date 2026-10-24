@@ -1,0 +1,38 @@
+# El front (Angular estático servido por nginx). Es una app de compose aparte
+# en Dokploy; le habla a la API por su dominio público.
+services:
+  mejor-vejez-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      # ── Obligatoria ──────────────────────────────────────────────────────
+      # URL PÚBLICA de la API, sin barra final. Es el navegador quien la
+      # llama, así que no sirve el nombre interno del servicio.
+      API_URL: ${API_URL:?falta API_URL}
+      # ── Firebase Auth (opcionales) ───────────────────────────────────────
+      # Consola de Firebase → Configuración del proyecto → Tus apps → SDK.
+      # No son secretas: identifican al proyecto, no autorizan nada. Vacías,
+      # la app funciona sin sesión.
+      # OJO: Compose sólo pasa al contenedor lo que está LISTADO acá.
+      FIREBASE_API_KEY: ${FIREBASE_API_KEY:-}
+      FIREBASE_AUTH_DOMAIN: ${FIREBASE_AUTH_DOMAIN:-}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
+      FIREBASE_APP_ID: ${FIREBASE_APP_ID:-}
+    expose:
+      - "80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - dokploy-network
+    # Dominio: pestaña Domains de Dokploy → servicio `mejor-vejez-web`,
+    # puerto 80, host mejor-vejez-app.adndigital.cl, HTTPS con Let's Encrypt.
+
+networks:
+  dokploy-network:
+    external: true
