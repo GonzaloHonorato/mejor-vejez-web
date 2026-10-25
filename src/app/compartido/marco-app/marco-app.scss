@@ -1,0 +1,261 @@
+// Marco de la app — opción C. Mobile-first (390px): encabezado compacto y
+// barra de pestañas inferior. Escritorio (≥ 768px): barra lateral oscura de
+// 248px y encabezado superior con la ruta y el usuario.
+// Sólo tokens semánticos (`var(--mv-...)`): ver src/estilos/_tema.scss.
+
+:host {
+  display: block;
+}
+
+.saltar {
+  position: absolute;
+  left: var(--mv-espacio-2);
+  top: -100px;
+  z-index: 10;
+  padding: var(--mv-espacio-3) var(--mv-espacio-4);
+  border-radius: var(--mv-radio-md);
+  background: var(--mv-color-superficie);
+  color: var(--mv-color-primario);
+  font-weight: var(--mv-texto-peso-negrita);
+
+  &:focus {
+    top: var(--mv-espacio-2);
+  }
+}
+
+.marco {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  border-top: 6px solid var(--mv-color-primario);
+  background: var(--mv-color-superficie);
+}
+
+.marca {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mv-espacio-3);
+  font-size: var(--mv-texto-grande);
+  font-weight: var(--mv-texto-peso-negrita);
+  color: var(--mv-color-texto);
+
+  &__isotipo {
+    flex: none;
+    width: 30px;
+    height: 30px;
+    border-radius: var(--mv-radio-sm);
+    background: var(--mv-color-primario);
+  }
+
+  &--invertida {
+    color: var(--mv-color-navegacion-activo-texto);
+
+    .marca__isotipo {
+      background: var(--mv-color-navegacion-activo-texto);
+    }
+  }
+}
+
+// ── Barra lateral (sólo escritorio) ─────────────────────────────────────
+.lateral {
+  display: none;
+}
+
+// ── Columna principal ───────────────────────────────────────────────────
+.principal {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mv-espacio-2) var(--mv-espacio-3);
+  min-height: 60px;
+  padding: var(--mv-espacio-2) var(--mv-espacio-4);
+  border-bottom: 1px solid var(--mv-color-borde);
+
+  &__ruta {
+    display: none;
+    margin: 0;
+    font-size: var(--mv-texto-pequeno);
+    color: var(--mv-color-secundario);
+  }
+
+  &__usuario {
+    display: flex;
+    align-items: center;
+    gap: var(--mv-espacio-3);
+    min-width: 0;
+  }
+
+  &__nombre {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: var(--mv-texto-pequeno);
+    font-weight: var(--mv-texto-peso-negrita);
+  }
+}
+
+.boton-salir {
+  flex: none;
+  min-height: 48px;
+  padding: 0 var(--mv-espacio-3);
+  border: 2px solid var(--mv-color-primario);
+  border-radius: var(--mv-radio-md);
+  background: var(--mv-color-superficie);
+  color: var(--mv-color-primario);
+  font-size: var(--mv-texto-pequeno);
+  font-weight: var(--mv-texto-peso-negrita);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--mv-color-primario-suave);
+  }
+}
+
+.contenido {
+  flex: 1;
+
+  &:focus {
+    outline: none;
+  }
+}
+
+.pie {
+  padding: var(--mv-espacio-4);
+  border-top: 1px solid var(--mv-color-borde);
+  font-size: var(--mv-texto-pequeno);
+  color: var(--mv-color-secundario);
+}
+
+// ── Pestañas inferiores (sólo móvil) ────────────────────────────────────
+.pestanas {
+  position: sticky;
+  bottom: 0;
+  background: var(--mv-color-superficie);
+  border-top: 1px solid var(--mv-color-borde);
+
+  &__lista {
+    display: flex;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__item {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.pestana {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--mv-espacio-1);
+  min-height: 72px;
+  font-size: var(--mv-texto-etiqueta);
+  color: var(--mv-color-secundario);
+  text-decoration: none;
+
+  &__icono {
+    width: 22px;
+    height: 22px;
+    border: 2px solid currentColor;
+    border-radius: var(--mv-radio-sm);
+  }
+
+  &--activa {
+    background: var(--mv-color-primario-suave);
+    color: var(--mv-color-primario);
+    font-weight: var(--mv-texto-peso-negrita);
+
+    .pestana__icono {
+      background: currentColor;
+    }
+  }
+
+  &--deshabilitada {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+// ── Escritorio ──────────────────────────────────────────────────────────
+@media (min-width: 768px) {
+  .marco {
+    flex-direction: row;
+    border-top: 0;
+  }
+
+  .lateral {
+    position: sticky;
+    top: 0;
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--mv-espacio-6);
+    width: 248px;
+    height: 100dvh;
+    padding: var(--mv-espacio-5);
+    background: var(--mv-color-navegacion-fondo);
+
+    &__lista {
+      display: flex;
+      flex-direction: column;
+      gap: var(--mv-espacio-1);
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    &__enlace {
+      display: flex;
+      align-items: center;
+      min-height: 48px;
+      padding: 0 var(--mv-espacio-3);
+      border-radius: var(--mv-radio-md);
+      color: var(--mv-color-navegacion-texto);
+      text-decoration: none;
+
+      &--activo {
+        background: var(--mv-color-navegacion-activo);
+        color: var(--mv-color-navegacion-activo-texto);
+        font-weight: var(--mv-texto-peso-negrita);
+      }
+
+      &--deshabilitado {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+    }
+  }
+
+  .cabecera {
+    min-height: 64px;
+    padding: var(--mv-espacio-2) var(--mv-espacio-8);
+
+    &__marca {
+      display: none;
+    }
+
+    &__ruta {
+      display: block;
+    }
+  }
+
+  .pie {
+    padding: var(--mv-espacio-4) var(--mv-espacio-8);
+  }
+
+  .pestanas {
+    display: none;
+  }
+}

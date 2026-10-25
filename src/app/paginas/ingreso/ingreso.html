@@ -1,0 +1,79 @@
+<div class="pagina">
+  <header class="cabecera">
+    <span class="marca">
+      <span class="marca__isotipo" aria-hidden="true"></span>
+      Mejor Vejez
+    </span>
+  </header>
+
+  <main class="contenido">
+    <section class="tarjeta" aria-labelledby="ingreso-titulo">
+      <div class="tarjeta__encabezado">
+        <h1 id="ingreso-titulo">Iniciar sesión</h1>
+        <p class="bajada">Accede con tu cuenta de Google o con tu correo.</p>
+      </div>
+
+      <div class="tarjeta__cuerpo">
+        @if (!habilitado) {
+          <p class="aviso" role="alert">El ingreso no está disponible por ahora.</p>
+        }
+
+        <button
+          type="button"
+          class="boton boton--contorno"
+          (click)="ingresarConGoogle()"
+          [disabled]="!habilitado || enviando()"
+        >
+          <span class="boton__icono" aria-hidden="true"></span>
+          Continuar con Google
+        </button>
+
+        <form class="formulario" [formGroup]="formulario" (ngSubmit)="ingresarConCorreo()" novalidate>
+          <div class="campo">
+            <label class="campo__etiqueta" for="ingreso-correo">Correo electrónico</label>
+            <input
+              id="ingreso-correo"
+              class="campo__control"
+              type="email"
+              autocomplete="email"
+              inputmode="email"
+              formControlName="correo"
+              [attr.aria-invalid]="error() ? true : null"
+              [attr.aria-describedby]="error() ? 'ingreso-error' : null"
+            />
+          </div>
+
+          <div class="campo">
+            <label class="campo__etiqueta" for="ingreso-clave">Contraseña</label>
+            <div class="campo__control campo__control--con-accion" [class.campo__control--error]="error()">
+              <input
+                id="ingreso-clave"
+                [type]="mostrarClave() ? 'text' : 'password'"
+                autocomplete="current-password"
+                formControlName="clave"
+                [attr.aria-invalid]="error() ? true : null"
+                [attr.aria-describedby]="error() ? 'ingreso-error' : null"
+              />
+              <button
+                type="button"
+                class="campo__accion"
+                (click)="mostrarClave.set(!mostrarClave())"
+                [attr.aria-pressed]="mostrarClave()"
+                aria-controls="ingreso-clave"
+              >
+                {{ mostrarClave() ? 'Ocultar' : 'Mostrar' }}
+              </button>
+            </div>
+            @if (error(); as mensaje) {
+              <p id="ingreso-error" class="error" role="alert">{{ mensaje }}</p>
+            }
+          </div>
+
+          <button type="submit" class="boton boton--primario" [disabled]="!habilitado || enviando()">
+            {{ enviando() ? 'Entrando…' : 'Entrar' }}
+          </button>
+        </form>
+      </div>
+    </section>
+  </main>
+</div>

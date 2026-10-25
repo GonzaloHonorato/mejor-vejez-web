@@ -1,23 +1,24 @@
 import { DatePipe } from '@angular/common';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 
-import { ApiHealth, HealthService } from '../../core/health/health.service';
+import { SaludApi, ServicioSalud } from '../../nucleo/salud/servicio-salud';
 
 type Estado = 'revisando' | 'ok' | 'degradado' | 'caido';
 
 const REVISAR_CADA_MS = 30_000;
 
 @Component({
-  selector: 'app-en-construccion',
-  imports: [DatePipe],
-  templateUrl: './en-construccion.html',
-  styleUrl: './en-construccion.scss',
+  selector: 'app-estado-servicio',
+  imports: [DatePipe, RouterLink],
+  templateUrl: './estado-servicio.html',
+  styleUrl: './estado-servicio.scss',
 })
-export class EnConstruccion implements OnInit {
-  private readonly healthService = inject(HealthService);
+export class EstadoServicio implements OnInit {
+  private readonly servicioSalud = inject(ServicioSalud);
   private readonly destroyRef = inject(DestroyRef);
 
-  protected readonly health = signal<ApiHealth | null>(null);
+  protected readonly salud = signal<SaludApi | null>(null);
   protected readonly apiAlcanzable = signal<boolean | null>(null);
   protected readonly revisando = signal(false);
   protected readonly ultimaRevision = signal<Date | null>(null);
@@ -26,7 +27,7 @@ export class EnConstruccion implements OnInit {
     const alcanzable = this.apiAlcanzable();
     if (alcanzable === null) return 'revisando';
     if (!alcanzable) return 'caido';
-    return this.health()?.status === 'UP' ? 'ok' : 'degradado';
+    return this.salud()?.estado === 'DISPONIBLE' ? 'ok' : 'degradado';
   });
 
   protected readonly resumen = computed(() => {
@@ -51,14 +52,14 @@ export class EnConstruccion implements OnInit {
   protected revisar(): void {
     if (this.revisando()) return;
     this.revisando.set(true);
-    this.healthService.check().subscribe({
-      next: (health) => {
-        this.health.set(health);
+    this.servicioSalud.consultar().subscribe({
+      next: (salud) => {
+        this.salud.set(salud);
         this.apiAlcanzable.set(true);
         this.terminar();
       },
       error: () => {
-        this.health.set(null);
+        this.salud.set(null);
         this.apiAlcanzable.set(false);
         this.terminar();
       },

@@ -1,26 +1,26 @@
-export interface FirebaseWebConfig {
+export interface ConfiguracionFirebase {
   apiKey: string;
   authDomain: string;
   projectId: string;
   appId: string;
 }
 
-export interface RuntimeConfig {
-  apiUrl: string;
-  firebase: FirebaseWebConfig;
+export interface ConfiguracionEjecucion {
+  urlApi: string;
+  firebase: ConfiguracionFirebase;
 }
 
 declare global {
   interface Window {
-    __env?: Partial<RuntimeConfig>;
+    __env?: Partial<ConfiguracionEjecucion>;
   }
 }
 
 /** Lee la configuración que inyecta `env.js` antes de que arranque Angular. */
-export function readRuntimeConfig(): RuntimeConfig {
+export function leerConfiguracionEjecucion(): ConfiguracionEjecucion {
   const env = window.__env ?? {};
   return {
-    apiUrl: (env.apiUrl ?? '').replace(/\/+$/, ''),
+    urlApi: (env.urlApi ?? '').replace(/\/+$/, ''),
     firebase: {
       apiKey: env.firebase?.apiKey ?? '',
       authDomain: env.firebase?.authDomain ?? '',
@@ -30,8 +30,10 @@ export function readRuntimeConfig(): RuntimeConfig {
   };
 }
 
-export const runtimeConfig = readRuntimeConfig();
+export const configuracionEjecucion = leerConfiguracionEjecucion();
 
-export function isFirebaseConfigured(config: FirebaseWebConfig = runtimeConfig.firebase): boolean {
+export function firebaseConfigurado(
+  config: ConfiguracionFirebase = configuracionEjecucion.firebase,
+): boolean {
   return Boolean(config.apiKey && config.authDomain && config.projectId);
 }

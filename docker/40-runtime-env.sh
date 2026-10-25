@@ -10,7 +10,7 @@ json_escape() {
 
 cat > /usr/share/nginx/html/env.js <<EOT
 window.__env = {
-  apiUrl: "$(json_escape "${API_URL:-}")",
+  urlApi: "$(json_escape "${API_URL:-}")",
   firebase: {
     apiKey: "$(json_escape "${FIREBASE_API_KEY:-}")",
     authDomain: "$(json_escape "${FIREBASE_AUTH_DOMAIN:-}")",
@@ -20,4 +20,4 @@ window.__env = {
 };
 EOT
 
-echo "env.js generado (apiUrl=${API_URL:-<vacío>})"
+echo "env.js generado (urlApi=${API_URL:-<vacío>})"

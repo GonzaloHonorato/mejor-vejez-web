@@ -1,68 +1,7 @@
-// Tokens de Mejor Vejez. Fuente de verdad visual: mejor-vejez-design/STYLE.md.
-// Público: personas mayores → texto grande, alto contraste, objetivos táctiles ≥ 48px.
-:root {
-  --mv-primario: #2e6b5e;
-  --mv-primario-hover: #24564b;
-  --mv-primario-suave: #e3eeea;
-  --mv-acento: #e08a3c;
-  --mv-acento-texto: #9a5410;
-  --mv-texto: #1b2421;
-  --mv-secundario: #4a5652;
-  --mv-borde: #d6deda;
-  --mv-fondo: #f7f5f0;
-  --mv-superficie: #ffffff;
-  --mv-ok: #2b7046;
-  --mv-ok-fondo: #e4f2e9;
-  --mv-error: #b3261e;
-  --mv-error-fondo: #fbe9e7;
-
-  --mv-1: 4px;
-  --mv-2: 8px;
-  --mv-3: 12px;
-  --mv-4: 16px;
-  --mv-5: 20px;
-  --mv-6: 24px;
-  --mv-8: 32px;
-  --mv-10: 40px;
-  --mv-12: 48px;
-
-  --mv-radio: 12px;
-  --mv-ancho-contenido: 1120px;
-  --mv-ancho-lectura: 640px;
-}
-
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-html {
-  font-size: 100%;
-}
-
-body {
-  margin: 0;
-  font-family: 'Atkinson Hyperlegible', system-ui, sans-serif;
-  font-size: 1.125rem; // 18px
-  line-height: 1.6;
-  color: var(--mv-texto);
-  background: var(--mv-fondo);
-  -webkit-font-smoothing: antialiased;
-}
-
-h1,
-h2,
-h3 {
-  line-height: 1.2;
-  font-weight: 700;
-}
-
-h1 {
-  font-size: clamp(2rem, 5vw, 3rem);
-}
-
-:focus-visible {
-  outline: 3px solid var(--mv-acento);
-  outline-offset: 2px;
-}
+// Punto de entrada de estilos globales. Capas (de abajo hacia arriba):
+// primitivos (valores crudos) → tema (tokens semánticos, el único archivo a
+// editar para cambiar de diseño) → base (reset usando solo tokens
+// semánticos). Nada de valores literales acá: ver `src/estilos/`.
+@use 'estilos/primitivos';
+@use 'estilos/tema';
+@use 'estilos/base';

@@ -9,15 +9,12 @@
   </header>
 
   <main class="contenedor contenido">
-    <p class="rotulo">En construcción</p>
-    <h1>Estamos construyendo un espacio para vivir mejor cada etapa.</h1>
-    <p class="bajada">
-      Muy pronto encontrarás aquí información, servicios y compañía pensados para las
-      personas mayores y sus familias.
-    </p>
+    <a class="volver" routerLink="/">Volver al panel</a>
+    <h1>Estado del servicio</h1>
+    <p class="bajada">Revisa si la aplicación y la base de datos están funcionando.</p>
 
     <section class="estado" aria-labelledby="estado-titulo" aria-live="polite">
-      <h2 id="estado-titulo" class="estado__titulo">Estado del servicio</h2>
+      <h2 id="estado-titulo" class="estado__titulo">Revisión actual</h2>
       <p class="estado__resumen" [attr.data-estado]="estado()">{{ resumen() }}</p>
 
       <ul class="estado__lista">
@@ -31,11 +28,11 @@
         </li>
         <li class="estado__fila">
           <span>Base de datos</span>
-          @if (health(); as h) {
-            @if (h.database.status === 'UP') {
+          @if (salud(); as s) {
+            @if (s.baseDatos.estado === 'DISPONIBLE') {
               <span class="pastilla pastilla--ok">
                 Disponible
-                @if (h.database.latencyMs !== null) { · {{ h.database.latencyMs }} ms }
+                @if (s.baseDatos.latenciaMs !== null) { · {{ s.baseDatos.latenciaMs }} ms }
               </span>
             } @else {
               <span class="pastilla pastilla--error">No disponible</span>
@@ -48,7 +45,7 @@
 
       <div class="estado__pie">
         <p class="estado__meta">
-          @if (health(); as h) { Versión {{ h.version }} · }
+          @if (salud(); as s) { Versión {{ s.version }} · }
           @if (ultimaRevision(); as fecha) { Revisado a las {{ fecha | date: 'HH:mm:ss' }} }
         </p>
         <button type="button" class="boton" (click)="revisar()" [disabled]="revisando()">

@@ -1,0 +1,234 @@
+// Ingreso — opción C. Mobile-first (390px): pantalla completa con bloque de
+// título tenue. Escritorio (≥ 768px): tarjeta centrada de 480px.
+// Sólo tokens semánticos (`var(--mv-...)`): ver src/estilos/_tema.scss.
+
+.pagina {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  border-top: 6px solid var(--mv-color-primario);
+  background: var(--mv-color-superficie);
+}
+
+.cabecera {
+  display: flex;
+  align-items: center;
+  min-height: 64px;
+  padding: 0 var(--mv-espacio-5);
+  background: var(--mv-color-superficie);
+  border-bottom: 1px solid var(--mv-color-borde);
+}
+
+.marca {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mv-espacio-3);
+  font-size: var(--mv-texto-titulo);
+  font-weight: var(--mv-texto-peso-negrita);
+  color: var(--mv-color-texto);
+
+  &__isotipo {
+    width: 30px;
+    height: 30px;
+    border-radius: var(--mv-radio-sm);
+    background: var(--mv-color-primario);
+  }
+}
+
+.contenido {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.tarjeta {
+  display: flex;
+  flex-direction: column;
+
+  &__encabezado {
+    padding: var(--mv-espacio-6) var(--mv-espacio-5);
+    background: var(--mv-color-fondo);
+  }
+
+  &__cuerpo {
+    display: flex;
+    flex-direction: column;
+    gap: var(--mv-espacio-4);
+    padding: var(--mv-espacio-5);
+  }
+}
+
+h1 {
+  margin: 0 0 var(--mv-espacio-2);
+}
+
+.bajada {
+  margin: 0;
+  color: var(--mv-color-secundario);
+}
+
+.aviso {
+  margin: 0;
+  padding: var(--mv-espacio-3);
+  border-radius: var(--mv-radio-sm);
+  background: var(--mv-color-alerta-fondo);
+  color: var(--mv-color-alerta-texto);
+  font-weight: var(--mv-texto-peso-negrita);
+}
+
+.formulario {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mv-espacio-4);
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mv-espacio-2);
+
+  &__etiqueta {
+    font-weight: var(--mv-texto-peso-negrita);
+  }
+
+  &__control {
+    width: 100%;
+    min-height: 56px;
+    padding: 0 var(--mv-espacio-4);
+    border: 2px solid var(--mv-color-secundario);
+    border-radius: var(--mv-radio-md);
+    background: var(--mv-color-superficie);
+    color: var(--mv-color-texto);
+    font: inherit;
+
+    &--con-accion {
+      display: flex;
+      align-items: center;
+      gap: var(--mv-espacio-2);
+      padding-right: var(--mv-espacio-1);
+
+      &:focus-within {
+        outline: 3px solid var(--mv-color-foco);
+        outline-offset: 2px;
+        box-shadow: 0 0 0 2px var(--mv-color-foco-contraste);
+      }
+
+      input {
+        flex: 1;
+        min-width: 0;
+        min-height: 52px;
+        border: 0;
+        padding: 0;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+
+        &:focus-visible {
+          outline: none;
+        }
+      }
+    }
+
+    &--error {
+      border-color: var(--mv-color-error);
+    }
+  }
+
+  &__accion {
+    min-height: 48px;
+    min-width: 48px;
+    padding: 0 var(--mv-espacio-3);
+    border: 0;
+    border-radius: var(--mv-radio-sm);
+    background: transparent;
+    color: var(--mv-color-primario);
+    font-size: var(--mv-texto-pequeno);
+    font-weight: var(--mv-texto-peso-negrita);
+    cursor: pointer;
+  }
+}
+
+.error {
+  margin: 0;
+  padding: var(--mv-espacio-2) var(--mv-espacio-3);
+  border-radius: var(--mv-radio-sm);
+  background: var(--mv-color-error-fondo);
+  color: var(--mv-color-error);
+  font-size: var(--mv-texto-pequeno);
+  font-weight: var(--mv-texto-peso-negrita);
+}
+
+.boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--mv-espacio-3);
+  width: 100%;
+  min-height: 56px;
+  padding: 0 var(--mv-espacio-6);
+  border-radius: var(--mv-radio-md);
+  font-weight: var(--mv-texto-peso-negrita);
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  &--contorno {
+    border: 2px solid var(--mv-color-texto);
+    background: var(--mv-color-superficie);
+    color: var(--mv-color-texto);
+  }
+
+  &--primario {
+    border: 0;
+    background: var(--mv-color-primario);
+    color: var(--mv-color-sobre-primario);
+    font-size: var(--mv-texto-grande);
+
+    &:hover:not(:disabled) {
+      background: var(--mv-color-primario-hover);
+    }
+  }
+
+  &__icono {
+    width: 22px;
+    height: 22px;
+    border-radius: var(--mv-radio-sm);
+    background: var(--mv-color-primario-suave);
+  }
+}
+
+@media (min-width: 768px) {
+  .pagina {
+    background: var(--mv-color-fondo);
+  }
+
+  .cabecera {
+    min-height: 72px;
+    padding: 0 var(--mv-espacio-12);
+  }
+
+  .contenido {
+    justify-content: center;
+    align-items: center;
+    padding: var(--mv-espacio-10) var(--mv-espacio-5);
+  }
+
+  .tarjeta {
+    width: 100%;
+    max-width: 480px;
+    padding: var(--mv-espacio-10);
+    gap: var(--mv-espacio-4);
+    background: var(--mv-color-superficie);
+    border: 2px solid var(--mv-color-borde);
+    border-radius: var(--mv-radio-md);
+
+    &__encabezado,
+    &__cuerpo {
+      padding: 0;
+      background: transparent;
+    }
+  }
+}

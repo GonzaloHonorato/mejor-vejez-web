@@ -3,18 +3,33 @@
 Front de **Mejor Vejez** — Angular 22 servido por nginx. Producción:
 `https://mejor-vejez-app.adndigital.cl`.
 
-Hoy muestra la página **en construcción** con el estado de la API (`GET /api/health`,
-cada 30 s). Diseño: `../mejor-vejez-design` (tokens en `src/styles.scss`).
+Diseño: `../mejor-vejez-design` (tokens en `src/estilos/`).
+
+## Rutas
+
+| Ruta | Acceso | Página |
+| --- | --- | --- |
+| `/ingreso` | pública | inicio de sesión con Google o correo y contraseña (Firebase Auth); `?volver=` vuelve a la ruta pedida |
+| `/estado` | pública | estado del servicio: API y base de datos (`GET /api/salud`, cada 30 s) |
+| `/` | con sesión (`guardAutenticado` → `/ingreso` si no hay) | **Inicio** (panel familiar) dentro del marco de la app; saluda con `GET /api/yo` |
+
+Cualquier otra ruta redirige a `/`.
 
 ## Estructura
 
 ```
 src/app/
-  core/config/runtime-config.ts   lee window.__env (env.js)
-  core/auth/auth.service.ts       Firebase Auth (Google y correo); signals user/ready
-  core/auth/auth.interceptor.ts   agrega Bearer <ID token> SÓLO a llamadas a la API
-  core/health/health.service.ts   GET /api/health
-  pages/en-construccion/          la página actual
+  nucleo/configuracion/configuracion-ejecucion.ts   lee window.__env (env.js)
+  nucleo/autenticacion/servicio-autenticacion.ts     Firebase Auth (Google y correo); señales usuario/listo
+  nucleo/autenticacion/interceptor-autenticacion.ts  agrega Bearer <ID token> SÓLO a llamadas al origen de la API
+  nucleo/autenticacion/guard-autenticado.ts          exige sesión; si no, redirige a /ingreso?volver=…
+  nucleo/salud/servicio-salud.ts                     GET /api/salud
+  nucleo/usuarios/servicio-yo.ts                     GET /api/yo (usuario de la sesión según la API)
+  compartido/marco-app/                              marco autenticado: barra lateral (escritorio) / pestañas (móvil), cerrar sesión
+  paginas/ingreso/                                   /ingreso
+  paginas/inicio/                                    / (panel familiar)
+  paginas/estado-servicio/                           /estado
+src/estilos/                                         capas de estilo (ver "Estilos y temas")
 ```
 
 ## Configuración en runtime
@@ -24,8 +39,66 @@ contenedor, `docker/40-runtime-env.sh` lo reescribe al arrancar con estas variab
 
 | Variable | Obligatoria | Uso |
 | --- | --- | --- |
-| `API_URL` | sí | URL pública de la API, sin barra final |
+| `API_URL` | sí | URL pública de la API, sin barra final (se expone al front como `window.__env.urlApi`) |
 | `FIREBASE_API_KEY` / `FIREBASE_AUTH_DOMAIN` / `FIREBASE_PROJECT_ID` / `FIREBASE_APP_ID` | no | config web de Firebase; vacías = sin sesión |
+
+## Estilos y temas
+
+Los estilos globales viven en `src/estilos/`, en capas:
+
+1. **`_primitivos.scss`** — paleta y escalas crudas (`--mv-p-*`): colores, espaciados,
+   radios, anchos de layout, familia tipográfica y escala de tamaños, sin ningún
+   significado.
+2. **`_tema.scss`** — tokens semánticos (`--mv-color-primario`, `--mv-color-texto`,
+   `--mv-color-fondo`, `--mv-color-exito`, `--mv-color-error`, `--mv-color-alerta`,
+   `--mv-color-foco`/`--mv-color-foco-contraste`, `--mv-color-navegacion-*`, `--mv-fuente-base`, `--mv-texto-*`, `--mv-espacio-*`,
+   `--mv-radio-*`, etc.), que referencian SOLO primitivos. **Es el único archivo a
+   editar para cambiar de diseño visual**: cambiar un valor acá cambia toda la app,
+   sin tocar un solo componente.
+3. **`_base.scss`** — reset y estilos de elementos base (`body`, `h1`–`h3`, enlaces,
+   botones, foco visible), usando solo los tokens semánticos del paso 2.
+
+`src/styles.scss` sólo hace `@use` de esas tres capas, en ese orden.
+
+**Regla para componentes:** el SCSS de cualquier componente usa *únicamente*
+`var(--mv-...)` semánticos — nunca colores literales (`#hex`, `rgb()`, `hsl()`,
+nombres de color) ni `font-family`/`font-size` literal. Esto lo garantiza
+`src/estilos/estilos-desacoplados.spec.ts` (Vitest), que recorre `src/app/**/*.scss`
+y falla si encuentra un valor visual literal.
+
+### Tema activo: Opción C
+
+El tema activo hoy es la **Opción C** (decisión del usuario, 2026-10-24; de las 5
+opciones evaluadas). Fuente de verdad visual: `mejor-vejez-design/mejor-vejez-layouts.fig`,
+página `10 · C · Interfaces núcleo`.
+
+- **Paleta:** azules (`#0B2545` texto/barra lateral, `#1D4E89` primario,
+  `#DCE6F2`/`#EEF3F9` superficies suaves, `#C9D3DF` bordes), pizarra `#3C4A5A`
+  (texto secundario), rojo `#A4262C`/`#FBE8E9` (error), ámbar `#8A5100`/
+  `#FFF1DB`/`#FFD9A0` (alerta) y verde `#1E6B3C`/`#E3F1E8` (éxito). Ver
+  `_primitivos.scss` para el detalle completo.
+- **Tipografía:** [Public Sans](https://fonts.google.com/specimen/Public+Sans)
+  (400 y 700), cargada desde Google Fonts en `src/index.html`. Escala 13–30px;
+  `--mv-texto-base` (cuerpo) queda fijo en **16px** como piso de accesibilidad —
+  nunca se baja de ahí aunque el diseño use 15px en algún texto secundario.
+- **Radios y bordes:** radios pequeños (`--mv-radio-md` = 6px, igual que los
+  `rounded={6}` del diseño) y bordes finos de 1px, como en el diseño.
+- **Tokens de navegación (para la Tarea 9):** se agregaron ya al tema
+  `--mv-color-navegacion-fondo/-texto/-activo/-activo-texto/-grupo-fondo/
+  -grupo-texto/-insignia`, tomados 1:1 de la barra lateral de "Panel familiar ·
+  Escritorio" de la fuente de verdad visual, para que la barra lateral oscura (escritorio) y la
+  barra inferior (móvil) de la Tarea 9 no tengan que inventar valores nuevos.
+- **Foco de teclado:** `--mv-color-foco` (azul `#1D4E89`, ≥ 3:1 sobre blanco y
+  sobre `#EEF3F9`) como contorno, más un anillo interior claro
+  (`--mv-color-foco-contraste`) para que se vea también sobre la barra lateral oscura.
+- `--mv-color-primario-hover` usa el azul variante de la barra lateral
+  (`#1D3A5F`) como estado "pressed"/hover del primario: el diseño no trae un
+  tono de hover explícito para el primario, y esa variante es la más cercana
+  en la paleta real.
+
+Cambiar de tema (incluido volver a probar otra de las 5 opciones) sigue
+significando editar solo `_primitivos.scss`/`_tema.scss` — ningún componente
+necesitó tocarse para aplicar la Opción C.
 
 ## Desarrollo
 

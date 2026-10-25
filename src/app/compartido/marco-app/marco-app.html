@@ -1,0 +1,80 @@
+<a class="saltar" href="#contenido-principal">Saltar al contenido</a>
+
+<div class="marco">
+  <aside class="lateral">
+    <span class="marca marca--invertida">
+      <span class="marca__isotipo" aria-hidden="true"></span>
+      Mejor Vejez
+    </span>
+    <nav aria-label="Navegación principal">
+      <ul class="lateral__lista">
+        @for (entrada of navegacion; track entrada.etiqueta) {
+          <li>
+            @if (entrada.ruta) {
+              <a
+                class="lateral__enlace"
+                [routerLink]="entrada.ruta"
+                routerLinkActive="lateral__enlace--activo"
+                ariaCurrentWhenActive="page"
+                [routerLinkActiveOptions]="{ exact: true }"
+                >{{ entrada.etiqueta }}</a
+              >
+            } @else {
+              <span class="lateral__enlace lateral__enlace--deshabilitado" aria-disabled="true">
+                {{ entrada.etiqueta }}<span class="oculto"> (próximamente)</span>
+              </span>
+            }
+          </li>
+        }
+      </ul>
+    </nav>
+  </aside>
+
+  <div class="principal">
+    <header class="cabecera">
+      <span class="marca cabecera__marca">
+        <span class="marca__isotipo" aria-hidden="true"></span>
+        Mejor Vejez
+      </span>
+      <p class="cabecera__ruta">Panel familiar</p>
+      <div class="cabecera__usuario">
+        @if (nombreUsuario()) {
+          <span class="cabecera__nombre">{{ nombreUsuario() }}</span>
+        }
+        <button type="button" class="boton-salir" (click)="cerrarSesion()">Cerrar sesión</button>
+      </div>
+    </header>
+
+    <main id="contenido-principal" class="contenido" tabindex="-1">
+      <router-outlet />
+    </main>
+
+    <footer class="pie">mejor-vejez-app.adndigital.cl</footer>
+  </div>
+
+  <nav class="pestanas" aria-label="Navegación principal">
+    <ul class="pestanas__lista">
+      @for (entrada of navegacion; track entrada.etiqueta) {
+        <li class="pestanas__item">
+          @if (entrada.ruta) {
+            <a
+              class="pestana"
+              [routerLink]="entrada.ruta"
+              routerLinkActive="pestana--activa"
+              ariaCurrentWhenActive="page"
+              [routerLinkActiveOptions]="{ exact: true }"
+            >
+              <span class="pestana__icono" aria-hidden="true"></span>
+              {{ entrada.etiquetaCorta }}
+            </a>
+          } @else {
+            <span class="pestana pestana--deshabilitada" aria-disabled="true">
+              <span class="pestana__icono" aria-hidden="true"></span>
+              {{ entrada.etiquetaCorta }}<span class="oculto"> (próximamente)</span>
+            </span>
+          }
+        </li>
+      }
+    </ul>
+  </nav>
+</div>

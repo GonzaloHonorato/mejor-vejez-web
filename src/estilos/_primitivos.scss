@@ -1,0 +1,73 @@
+// Primitivos: paleta y escalas CRUDAS. Sin significado semántico — nada acá
+// dice "cuál es el color de error", sólo "este es el azul 900". El archivo de
+// tema (`_tema.scss`) es el único que les da un rol.
+//
+// Paleta "Opción C" (tema activo). Fuente de verdad visual:
+// `mejor-vejez-design/mejor-vejez-layouts.fig`, página
+// `10 · C · Interfaces núcleo`. Frecuencia de uso real en las pantallas de
+// Ingreso y Panel familiar (escritorio + móvil).
+:root {
+  // Colores — azules (marca / primario / superficies)
+  --mv-p-azul-900: #0b2545; // texto principal / fondo de barra lateral
+  --mv-p-azul-900-variante: #1d3a5f; // variante de la barra lateral (bloque "grupo")
+  --mv-p-azul-700: #1d4e89; // primario / acciones
+  --mv-p-azul-200: #b9c8da; // texto sobre la variante de barra lateral
+  --mv-p-azul-100: #dce6f2; // superficie suave (sobre primario / fondos tenues)
+  --mv-p-azul-50: #eef3f9; // fondo suave de página
+
+  // Colores — pizarra (texto secundario) y neutros
+  --mv-p-pizarra-700: #3c4a5a;
+  --mv-p-gris-azulado-300: #c9d3df; // bordes
+  --mv-p-blanco: #ffffff;
+
+  // Colores — rojo (error)
+  --mv-p-rojo-700: #a4262c;
+  --mv-p-rojo-100: #fbe8e9;
+
+  // Colores — ámbar (alerta)
+  --mv-p-ambar-800: #8a5100; // texto de alerta
+  --mv-p-ambar-200: #ffd9a0; // alerta de alto contraste (insignias)
+  --mv-p-ambar-100: #fff1db; // fondo de alerta
+
+  // Colores — verde (éxito)
+  --mv-p-verde-700: #1e6b3c;
+  --mv-p-verde-100: #e3f1e8;
+
+  // Espaciados
+  --mv-p-espacio-1: 4px;
+  --mv-p-espacio-2: 8px;
+  --mv-p-espacio-3: 12px;
+  --mv-p-espacio-4: 16px;
+  --mv-p-espacio-5: 20px;
+  --mv-p-espacio-6: 24px;
+  --mv-p-espacio-8: 32px;
+  --mv-p-espacio-10: 40px;
+  --mv-p-espacio-12: 48px;
+
+  // Radios — pequeños y de borde fino, como en el diseño (rounded=6 / rounded=4)
+  --mv-p-radio-sm: 4px;
+  --mv-p-radio-md: 6px;
+  --mv-p-radio-completo: 999px;
+
+  // Anchos de layout
+  --mv-p-ancho-contenido: 1120px;
+  --mv-p-ancho-lectura: 640px;
+
+  // Tipografía — familia
+  --mv-p-fuente-legible: 'Public Sans', system-ui, sans-serif;
+
+  // Tipografía — escala de tamaños (de menor a mayor; -6 es fluido entre el
+  // título móvil y el de escritorio, 28px → 30px). Valores tomados 1:1 del
+  // diseño de la opción C (12–30px); el piso de accesibilidad (base
+  // nunca bajo 16px) se aplica en `_tema.scss` al elegir qué paso usa
+  // `--mv-texto-base`.
+  --mv-p-texto-1: 0.8125rem; // 13px — etiquetas (columnas, pestañas)
+  --mv-p-texto-2: 0.9375rem; // 15px — texto secundario/metadatos
+  --mv-p-texto-3: 1rem; // 16px — base (cuerpo)
+  --mv-p-texto-4: 1.125rem; // 18px — énfasis (marca, subtítulos de tarjeta)
+  --mv-p-texto-5: 1.375rem; // 22px — títulos de sección
+  --mv-p-texto-6: clamp(1.75rem, 5vw, 1.875rem); // 28px (móvil) → 30px (escritorio) — h1
+
+  // Tipografía — peso
+  --mv-p-peso-negrita: 700;
+}

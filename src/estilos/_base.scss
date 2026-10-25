@@ -1,0 +1,65 @@
+// Base: reset y estilos de elementos HTML base. Usa SOLO tokens semánticos
+// de `_tema.scss` — nunca primitivos ni valores literales.
+// Público: personas mayores → texto grande, alto contraste, objetivos
+// táctiles ≥ 48px.
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--mv-fuente-base);
+  font-size: var(--mv-texto-base); // 16px
+  line-height: 1.6;
+  color: var(--mv-color-texto);
+  background: var(--mv-color-fondo);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.2;
+  font-weight: var(--mv-texto-peso-negrita);
+}
+
+h1 {
+  font-size: var(--mv-texto-titulo-grande);
+}
+
+a {
+  color: var(--mv-color-primario);
+}
+
+button {
+  font: inherit;
+}
+
+// Doble anillo: el contorno oscuro se ve sobre fondos claros y el anillo
+// interior claro (que rellena el `outline-offset`) sobre la barra lateral
+// oscura.
+:focus-visible {
+  outline: 3px solid var(--mv-color-foco);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--mv-color-foco-contraste);
+}
+
+// Texto sólo para lectores de pantalla (p. ej. "(próximamente)" en la
+// navegación deshabilitada).
+.oculto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}

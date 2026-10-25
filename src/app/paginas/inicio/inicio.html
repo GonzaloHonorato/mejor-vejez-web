@@ -1,0 +1,35 @@
+<section class="saludo" aria-live="polite">
+  <p class="saludo__rotulo">Panel familiar</p>
+  @if (yo(); as usuario) {
+    <h1>Hola, {{ usuario.nombre }}</h1>
+  } @else {
+    <h1>Hola</h1>
+  }
+  @if (cargando()) {
+    <p class="saludo__bajada">Cargando tus datos…</p>
+  }
+</section>
+
+<div class="contenido">
+  @if (fallo(); as error) {
+    <section class="tarjeta tarjeta--suave" aria-labelledby="inicio-error-titulo">
+      <h2 id="inicio-error-titulo" class="tarjeta__titulo">Tus datos</h2>
+      @if (error.tipo === 'reintentable') {
+        <p class="tarjeta__texto" role="alert">No pudimos cargar tus datos.</p>
+        <button type="button" class="boton-secundario" (click)="cargar()">Reintentar</button>
+      } @else {
+        <p class="tarjeta__texto" role="alert">{{ error.mensaje }}</p>
+        @if (falloCerrarSesion()) {
+          <p class="tarjeta__texto" role="alert">No pudimos cerrar la sesión. Intenta de nuevo.</p>
+        }
+        <button type="button" class="boton-secundario" (click)="cerrarSesion()">Cerrar sesión</button>
+      }
+    </section>
+  }
+
+  <section class="tarjeta" aria-labelledby="inicio-estado-titulo">
+    <h2 id="inicio-estado-titulo" class="tarjeta__titulo">Estado del servicio</h2>
+    <p class="tarjeta__texto">Revisa si la aplicación y la base de datos están funcionando.</p>
+    <a class="boton-secundario" routerLink="/estado">Ver estado del servicio</a>
+  </section>
+</div>

@@ -1,0 +1,83 @@
+// Tema: tokens SEMÁNTICOS. Referencian SOLO primitivos — nunca un valor
+// crudo (#hex, px, etc.) directamente. Es el ÚNICO archivo a editar para
+// cambiar de diseño visual: los componentes no se tocan.
+//
+// Tema ACTIVO: Opción C (decisión del usuario, 2026-10-24).
+// Fuente de verdad visual: `mejor-vejez-design/mejor-vejez-layouts.fig`,
+// página `10 · C · Interfaces núcleo`.
+:root {
+  // Colores semánticos
+  --mv-color-primario: var(--mv-p-azul-700);
+  --mv-color-primario-hover: var(--mv-p-azul-900-variante);
+  --mv-color-primario-suave: var(--mv-p-azul-100);
+  --mv-color-sobre-primario: var(--mv-p-blanco);
+
+  --mv-color-alerta: var(--mv-p-ambar-200);
+  --mv-color-alerta-texto: var(--mv-p-ambar-800);
+  --mv-color-alerta-fondo: var(--mv-p-ambar-100);
+
+  // Foco de teclado: anillo oscuro (≥ 3:1 sobre blanco y sobre el fondo de
+  // página: #1D4E89 da ~8.6:1 y ~7.7:1) más un anillo interior claro para
+  // que también se vea sobre la barra lateral oscura.
+  --mv-color-foco: var(--mv-p-azul-700);
+  --mv-color-foco-contraste: var(--mv-p-blanco);
+
+  --mv-color-texto: var(--mv-p-azul-900);
+  --mv-color-secundario: var(--mv-p-pizarra-700);
+  --mv-color-borde: var(--mv-p-gris-azulado-300);
+  --mv-color-fondo: var(--mv-p-azul-50);
+  --mv-color-superficie: var(--mv-p-blanco);
+
+  --mv-color-exito: var(--mv-p-verde-700);
+  --mv-color-exito-fondo: var(--mv-p-verde-100);
+  --mv-color-error: var(--mv-p-rojo-700);
+  --mv-color-error-fondo: var(--mv-p-rojo-100);
+
+  // Colores — marco de navegación (Tarea 9: barra lateral oscura en
+  // escritorio, barra inferior en móvil). Se agregan ahora para que T9 no
+  // tenga que tocar primitivos/tema ni inventar valores: todos vienen 1:1
+  // de la barra lateral de "Panel familiar · Escritorio" de la fuente de
+  // verdad visual (ver arriba).
+  --mv-color-navegacion-fondo: var(--mv-p-azul-900);
+  --mv-color-navegacion-texto: var(--mv-p-azul-100);
+  --mv-color-navegacion-activo: var(--mv-color-primario);
+  --mv-color-navegacion-activo-texto: var(--mv-color-sobre-primario);
+  --mv-color-navegacion-grupo-fondo: var(--mv-p-azul-900-variante);
+  --mv-color-navegacion-grupo-texto: var(--mv-p-azul-200);
+  --mv-color-navegacion-insignia: var(--mv-p-ambar-200);
+
+  // Tipografía — familia y peso
+  --mv-fuente-base: var(--mv-p-fuente-legible);
+  --mv-texto-peso-negrita: var(--mv-p-peso-negrita);
+
+  // Tipografía — tamaños, nombrados por rol (no por escala numérica), para
+  // que cambiar de diseño no obligue a releer qué significaba cada número.
+  // `--mv-texto-base` es el piso de accesibilidad (16px): la opción C usa
+  // 15–16px de cuerpo, nunca se baja de 16px en la web.
+  --mv-texto-etiqueta: var(--mv-p-texto-1); // rótulos en mayúsculas
+  --mv-texto-pequeno: var(--mv-p-texto-2); // pastillas, metadatos, pie
+  --mv-texto-base: var(--mv-p-texto-3); // texto de cuerpo (= body), piso 16px
+  --mv-texto-grande: var(--mv-p-texto-4); // marca, bajada en escritorio
+  --mv-texto-titulo: var(--mv-p-texto-5); // títulos de sección (h2-like)
+  --mv-texto-titulo-grande: var(--mv-p-texto-6); // h1
+
+  // Espaciados (misma escala que los primitivos, con nombre semántico)
+  --mv-espacio-1: var(--mv-p-espacio-1);
+  --mv-espacio-2: var(--mv-p-espacio-2);
+  --mv-espacio-3: var(--mv-p-espacio-3);
+  --mv-espacio-4: var(--mv-p-espacio-4);
+  --mv-espacio-5: var(--mv-p-espacio-5);
+  --mv-espacio-6: var(--mv-p-espacio-6);
+  --mv-espacio-8: var(--mv-p-espacio-8);
+  --mv-espacio-10: var(--mv-p-espacio-10);
+  --mv-espacio-12: var(--mv-p-espacio-12);
+
+  // Radios
+  --mv-radio-sm: var(--mv-p-radio-sm); // isotipo, avisos, insignias
+  --mv-radio-md: var(--mv-p-radio-md);
+  --mv-radio-completo: var(--mv-p-radio-completo);
+
+  // Layout
+  --mv-ancho-contenido: var(--mv-p-ancho-contenido);
+  --mv-ancho-lectura: var(--mv-p-ancho-lectura);
+}

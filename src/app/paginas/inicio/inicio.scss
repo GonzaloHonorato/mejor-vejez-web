@@ -1,0 +1,99 @@
+// Inicio (Panel familiar en F0) — opción C. Mobile-first; escritorio ≥ 768px.
+// Sólo tokens semánticos (`var(--mv-...)`): ver src/estilos/_tema.scss.
+
+:host {
+  display: block;
+}
+
+.saludo {
+  padding: var(--mv-espacio-4);
+  background: var(--mv-color-fondo);
+
+  &__rotulo {
+    margin: 0 0 var(--mv-espacio-1);
+    color: var(--mv-color-secundario);
+  }
+
+  &__bajada {
+    margin: var(--mv-espacio-1) 0 0;
+    color: var(--mv-color-secundario);
+  }
+}
+
+h1 {
+  margin: 0;
+}
+
+.contenido {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mv-espacio-3);
+  padding: var(--mv-espacio-4);
+}
+
+.tarjeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--mv-espacio-2);
+  padding: var(--mv-espacio-4);
+  border: 2px solid var(--mv-color-borde);
+  border-radius: var(--mv-radio-md);
+  background: var(--mv-color-superficie);
+
+  &--suave {
+    border-color: transparent;
+    background: var(--mv-color-fondo);
+  }
+
+  &__titulo {
+    margin: 0;
+    font-size: var(--mv-texto-grande);
+  }
+
+  &__texto {
+    margin: 0;
+    color: var(--mv-color-secundario);
+  }
+}
+
+.boton-secundario {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 var(--mv-espacio-4);
+  border: 2px solid var(--mv-color-primario);
+  border-radius: var(--mv-radio-md);
+  background: var(--mv-color-superficie);
+  color: var(--mv-color-primario);
+  font-weight: var(--mv-texto-peso-negrita);
+  text-decoration: none;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--mv-color-primario-suave);
+  }
+}
+
+@media (min-width: 768px) {
+  .saludo {
+    padding: var(--mv-espacio-6) var(--mv-espacio-8);
+
+    &__bajada {
+      font-size: var(--mv-texto-base);
+    }
+  }
+
+  .contenido {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: var(--mv-espacio-4);
+    padding: var(--mv-espacio-5) var(--mv-espacio-8);
+  }
+
+  .tarjeta {
+    flex: 1 1 320px;
+    max-width: var(--mv-ancho-lectura);
+  }
+}
