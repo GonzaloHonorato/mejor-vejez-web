@@ -9,7 +9,14 @@ export interface RespuestaYo {
   idUsuario: number;
   nombre: string;
   email: string;
+  telefono: string | null;
   esAdministrador: boolean;
+}
+
+/** Cambios aceptados por `PATCH /api/yo`. */
+export interface SolicitudActualizarPerfil {
+  nombre: string;
+  telefono: string | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -18,5 +25,9 @@ export class ServicioYo {
 
   obtener(): Observable<RespuestaYo> {
     return this.http.get<RespuestaYo>(`${configuracionEjecucion.urlApi}/api/yo`);
+  }
+
+  actualizar(solicitud: SolicitudActualizarPerfil): Observable<RespuestaYo> {
+    return this.http.patch<RespuestaYo>(`${configuracionEjecucion.urlApi}/api/yo`, solicitud);
   }
 }

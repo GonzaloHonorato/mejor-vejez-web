@@ -6,8 +6,24 @@ import { Router, provideRouter } from '@angular/router';
 
 import { Inicio } from './inicio';
 import { ServicioAutenticacion } from '../../nucleo/autenticacion/servicio-autenticacion';
+import { RespuestaGrupo } from '../../nucleo/grupos/modelos-grupos';
+import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
 
-function configurar(cerrarSesion = vi.fn().mockResolvedValue(undefined)) {
+function grupo(idGrupo: number, nombreGrupo: string): RespuestaGrupo {
+  return {
+    idGrupo,
+    nombreGrupo,
+    notificaCoordinador: true,
+    idEstado: 1,
+    miRol: 'COORDINADOR',
+    fechaCreacion: '2026-01-01T00:00:00-03:00',
+  };
+}
+
+function configurar(
+  cerrarSesion = vi.fn().mockResolvedValue(undefined),
+  grupos: RespuestaGrupo[] = [grupo(1, 'Familia Soto')],
+) {
   TestBed.configureTestingModule({
     imports: [Inicio],
     providers: [
@@ -18,6 +34,7 @@ function configurar(cerrarSesion = vi.fn().mockResolvedValue(undefined)) {
         provide: ServicioAutenticacion,
         useValue: { habilitado: true, usuario: signal(null), listo: signal(true), cerrarSesion },
       },
+      { provide: ServicioGrupoActivo, useValue: { grupos: signal(grupos) } },
     ],
   });
   const fixture = TestBed.createComponent(Inicio);
@@ -88,5 +105,19 @@ describe('Inicio', () => {
     await fixture.whenStable();
 
     expect(elemento.textContent).toContain('Hola, Ana');
+  });
+
+  it('invitaACrearGrupoSinGrupos', async () => {
+    const { fixture, peticionYo } = configurar(undefined, []);
+
+    peticionYo.flush({ idUsuario: 1, nombre: 'Ana', email: 'ana@correo.cl', esAdministrador: false });
+    await fixture.whenStable();
+
+    const elemento = fixture.nativeElement as HTMLElement;
+    expect(elemento.textContent).toContain('Crea tu primer grupo familiar');
+    const enlace = Array.from(elemento.querySelectorAll('a')).find(
+      (a) => a.getAttribute('href') === '/grupos',
+    );
+    expect(enlace).toBeDefined();
   });
 });

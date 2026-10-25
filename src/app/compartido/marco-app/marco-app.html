@@ -8,7 +8,7 @@
     </span>
     <nav aria-label="Navegación principal">
       <ul class="lateral__lista">
-        @for (entrada of navegacion; track entrada.etiqueta) {
+        @for (entrada of navegacion(); track entrada.etiqueta) {
           <li>
             @if (entrada.ruta) {
               <a
@@ -16,7 +16,7 @@
                 [routerLink]="entrada.ruta"
                 routerLinkActive="lateral__enlace--activo"
                 ariaCurrentWhenActive="page"
-                [routerLinkActiveOptions]="{ exact: true }"
+                [routerLinkActiveOptions]="{ exact: entrada.coincidenciaExacta ?? true }"
                 >{{ entrada.etiqueta }}</a
               >
             } @else {
@@ -28,6 +28,7 @@
         }
       </ul>
     </nav>
+    <app-selector-grupo variante="lateral" />
   </aside>
 
   <div class="principal">
@@ -36,7 +37,8 @@
         <span class="marca__isotipo" aria-hidden="true"></span>
         Mejor Vejez
       </span>
-      <p class="cabecera__ruta">Panel familiar</p>
+      <p class="cabecera__ruta">{{ tituloRuta() }}</p>
+      <app-selector-grupo class="cabecera__grupo" variante="cabecera" />
       <div class="cabecera__usuario">
         @if (nombreUsuario()) {
           <span class="cabecera__nombre">{{ nombreUsuario() }}</span>
@@ -44,6 +46,10 @@
         <button type="button" class="boton-salir" (click)="cerrarSesion()">Cerrar sesión</button>
       </div>
     </header>
+
+    @if (error(); as mensaje) {
+      <p class="aviso-global" role="alert">{{ mensaje }}</p>
+    }
 
     <main id="contenido-principal" class="contenido" tabindex="-1">
       <router-outlet />
@@ -54,7 +60,7 @@
 
   <nav class="pestanas" aria-label="Navegación principal">
     <ul class="pestanas__lista">
-      @for (entrada of navegacion; track entrada.etiqueta) {
+      @for (entrada of navegacion(); track entrada.etiqueta) {
         <li class="pestanas__item">
           @if (entrada.ruta) {
             <a
@@ -62,7 +68,7 @@
               [routerLink]="entrada.ruta"
               routerLinkActive="pestana--activa"
               ariaCurrentWhenActive="page"
-              [routerLinkActiveOptions]="{ exact: true }"
+              [routerLinkActiveOptions]="{ exact: entrada.coincidenciaExacta ?? true }"
             >
               <span class="pestana__icono" aria-hidden="true"></span>
               {{ entrada.etiquetaCorta }}

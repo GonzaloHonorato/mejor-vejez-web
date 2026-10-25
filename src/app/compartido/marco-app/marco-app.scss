@@ -119,6 +119,15 @@
   }
 }
 
+.aviso-global {
+  margin: 0;
+  padding: var(--mv-espacio-2) var(--mv-espacio-4);
+  background: var(--mv-color-error-fondo);
+  color: var(--mv-color-error);
+  font-size: var(--mv-texto-pequeno);
+  font-weight: var(--mv-texto-peso-negrita);
+}
+
 .contenido {
   flex: 1;
 
@@ -249,6 +258,10 @@
     &__ruta {
       display: block;
     }
+  }
+
+  .cabecera__grupo {
+    display: none;
   }
 
   .pie {

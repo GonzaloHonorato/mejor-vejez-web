@@ -1,8 +1,9 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 
 import { ServicioAutenticacion } from '../../nucleo/autenticacion/servicio-autenticacion';
+import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
 import { RespuestaYo, ServicioYo } from '../../nucleo/usuarios/servicio-yo';
 
 /**
@@ -26,7 +27,9 @@ export class Inicio implements OnInit {
   private readonly servicioYo = inject(ServicioYo);
   private readonly auth = inject(ServicioAutenticacion);
   private readonly router = inject(Router);
+  private readonly grupoActivo = inject(ServicioGrupoActivo);
 
+  protected readonly sinGrupos = computed(() => this.grupoActivo.grupos().length === 0);
   protected readonly yo = signal<RespuestaYo | null>(null);
   protected readonly cargando = signal(false);
   protected readonly fallo = signal<Fallo | null>(null);

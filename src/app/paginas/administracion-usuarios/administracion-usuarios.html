@@ -1,0 +1,142 @@
+<div class="pagina">
+  <header class="cabecera">
+    <h1>Administración de usuarios</h1>
+  </header>
+
+  <div class="contenido">
+    @if (error(); as mensaje) {
+      <p class="error" role="alert">{{ mensaje }}</p>
+    }
+
+    <form class="buscador" [formGroup]="formularioBusqueda" (ngSubmit)="buscar()" novalidate>
+      <div class="campo">
+        <label class="campo__etiqueta" for="usuarios-buscar">Buscar por nombre o correo</label>
+        <input
+          id="usuarios-buscar"
+          class="campo__control"
+          type="search"
+          formControlName="texto"
+        />
+      </div>
+      <button type="submit" class="boton boton--contorno">Buscar</button>
+    </form>
+
+    <ul class="lista">
+      @for (usuario of usuarios(); track usuario.idUsuario) {
+        <li class="usuario">
+          <div class="usuario__principal">
+            <p class="usuario__nombre">{{ usuario.nombre }}</p>
+            <p class="usuario__correo">{{ usuario.email }}</p>
+          </div>
+
+          <div class="usuario__estado">
+            <label class="campo__etiqueta oculto" [attr.for]="'usuario-estado-' + usuario.idUsuario">
+              Estado de {{ usuario.nombre }}
+            </label>
+            <select
+              [id]="'usuario-estado-' + usuario.idUsuario"
+              class="campo__control"
+              [formControl]="controlEstado(usuario)"
+              (change)="cambiarEstado(usuario, controlEstado(usuario).value)"
+            >
+              @for (estado of estados(); track estado.idEstado) {
+                <option [ngValue]="estado.idEstado">{{ estado.descripcion }}</option>
+              }
+            </select>
+          </div>
+
+          <span class="insignia" [class.insignia--admin]="usuario.esAdministrador">
+            {{ usuario.esAdministrador ? 'Administrador' : 'Integrante' }}
+          </span>
+
+          <button type="button" class="boton boton--contorno usuario__editar" (click)="editar(usuario)">
+            Editar
+          </button>
+        </li>
+      } @empty {
+        <p>No hay usuarios para mostrar.</p>
+      }
+    </ul>
+
+    <nav class="paginacion" aria-label="Paginación de usuarios">
+      <button
+        type="button"
+        class="boton boton--contorno"
+        [disabled]="pagina() === 0"
+        (click)="paginaAnterior()"
+      >
+        Anterior
+      </button>
+      <span>Página {{ pagina() + 1 }}</span>
+      <button
+        type="button"
+        class="boton boton--contorno"
+        [disabled]="!hayMasPaginas()"
+        (click)="siguientePagina()"
+      >
+        Siguiente
+      </button>
+    </nav>
+
+    @if (editando(); as usuarioEditado) {
+      <section class="tarjeta" aria-labelledby="usuarios-editar-titulo">
+        <h2 id="usuarios-editar-titulo">Editar: {{ usuarioEditado.nombre }}</h2>
+
+        @if (errorEdicion(); as mensaje) {
+          <p class="error" role="alert">{{ mensaje }}</p>
+        }
+
+        <form [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
+          <div class="campo">
+            <label class="campo__etiqueta" for="usuario-nombre">Nombre</label>
+            <input
+              id="usuario-nombre"
+              class="campo__control"
+              type="text"
+              formControlName="nombre"
+              [attr.aria-invalid]="erroresCampos()['nombre'] ? true : null"
+              [attr.aria-describedby]="erroresCampos()['nombre'] ? 'usuario-nombre-error' : null"
+            />
+            @if (erroresCampos()['nombre']; as mensaje) {
+              <p id="usuario-nombre-error" class="error" role="alert">{{ mensaje }}</p>
+            }
+          </div>
+
+          <div class="campo">
+            <label class="campo__etiqueta" for="usuario-telefono">Teléfono</label>
+            <input
+              id="usuario-telefono"
+              class="campo__control"
+              type="tel"
+              formControlName="telefono"
+              [attr.aria-invalid]="erroresCampos()['telefono'] ? true : null"
+              [attr.aria-describedby]="erroresCampos()['telefono'] ? 'usuario-telefono-error' : null"
+            />
+            @if (erroresCampos()['telefono']; as mensaje) {
+              <p id="usuario-telefono-error" class="error" role="alert">{{ mensaje }}</p>
+            }
+          </div>
+
+          <label class="interruptor">
+            <input
+              id="usuario-administrador"
+              class="interruptor__control"
+              type="checkbox"
+              formControlName="esAdministrador"
+            />
+            <span class="interruptor__etiqueta">Administrador</span>
+          </label>
+
+          <div class="tarjeta__acciones">
+            <button type="button" class="boton boton--contorno" (click)="cancelarEdicion()">
+              Cancelar
+            </button>
+            <button type="submit" class="boton boton--primario" [disabled]="guardando()">
+              {{ guardando() ? 'Guardando…' : 'Guardar cambios' }}
+            </button>
+          </div>
+        </form>
+      </section>
+    }
+  </div>
+</div>

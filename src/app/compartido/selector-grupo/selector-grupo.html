@@ -1,0 +1,46 @@
+@if (variante() === 'lateral') {
+  <div class="lateral">
+    <p class="lateral__rotulo">Grupo</p>
+    <p class="lateral__nombre">{{ nombreActivo() }}</p>
+    @if (grupos().length > 0) {
+      <button
+        type="button"
+        class="lateral__cambiar"
+        (click)="alternarMenu()"
+        [attr.aria-expanded]="menuAbierto()"
+        aria-controls="selector-grupo-menu"
+      >
+        Cambiar<span class="oculto"> de grupo</span>
+      </button>
+    } @else {
+      <a class="lateral__cambiar" routerLink="/grupos">Crear grupo</a>
+    }
+    @if (menuAbierto()) {
+      <ul id="selector-grupo-menu" class="menu">
+        @for (grupo of grupos(); track grupo.idGrupo) {
+          <li>
+            <button
+              type="button"
+              class="menu__opcion"
+              [class.menu__opcion--activa]="grupo.idGrupo === activo()?.idGrupo"
+              [attr.aria-current]="grupo.idGrupo === activo()?.idGrupo ? 'true' : null"
+              (click)="elegir(grupo.idGrupo)"
+            >
+              {{ grupo.nombreGrupo }}
+            </button>
+          </li>
+        }
+        <li>
+          <a class="menu__opcion" routerLink="/grupos" (click)="menuAbierto.set(false)">Ver mis grupos</a>
+        </li>
+      </ul>
+    }
+  </div>
+} @else {
+  <div class="cabecera">
+    <span class="cabecera__nombre">{{ nombreActivo() }}</span>
+    <a class="cabecera__cambiar" routerLink="/grupos"
+      >{{ activo() ? 'Cambiar' : 'Crear grupo' }}@if (activo()) {<span class="oculto"> de grupo</span>}</a
+    >
+  </div>
+}

@@ -1,0 +1,64 @@
+<div class="pagina">
+  <header class="cabecera">
+    <h1>Mi perfil</h1>
+  </header>
+
+  <div class="contenido">
+    <section class="tarjeta" aria-labelledby="perfil-titulo">
+      <h2 id="perfil-titulo" class="oculto">Datos de mi cuenta</h2>
+
+      <div class="campo campo--lectura">
+        <span class="campo__etiqueta">Correo electrónico</span>
+        <p class="campo__valor">{{ yo()?.email }}</p>
+      </div>
+
+      @if (errorGeneral(); as mensaje) {
+        <p class="error" role="alert">{{ mensaje }}</p>
+      }
+
+      <form [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
+        <div class="campo">
+          <label class="campo__etiqueta" for="perfil-nombre">Nombre</label>
+          <input
+            id="perfil-nombre"
+            class="campo__control"
+            type="text"
+            autocomplete="name"
+            formControlName="nombre"
+            [attr.aria-invalid]="erroresCampos()['nombre'] ? true : null"
+            [attr.aria-describedby]="erroresCampos()['nombre'] ? 'perfil-nombre-error' : null"
+          />
+          @if (erroresCampos()['nombre']; as mensaje) {
+            <p id="perfil-nombre-error" class="error" role="alert">{{ mensaje }}</p>
+          }
+        </div>
+
+        <div class="campo">
+          <label class="campo__etiqueta" for="perfil-telefono">Teléfono</label>
+          <input
+            id="perfil-telefono"
+            class="campo__control"
+            type="tel"
+            autocomplete="tel"
+            formControlName="telefono"
+            [attr.aria-invalid]="erroresCampos()['telefono'] ? true : null"
+            [attr.aria-describedby]="erroresCampos()['telefono'] ? 'perfil-telefono-error' : null"
+          />
+          @if (erroresCampos()['telefono']; as mensaje) {
+            <p id="perfil-telefono-error" class="error" role="alert">{{ mensaje }}</p>
+          }
+        </div>
+
+        <p class="confirmacion" role="status">
+          @if (confirmacion()) {
+            Cambios guardados.
+          }
+        </p>
+
+        <button type="submit" class="boton boton--primario" [disabled]="guardando()">
+          {{ guardando() ? 'Guardando…' : 'Guardar cambios' }}
+        </button>
+      </form>
+    </section>
+  </div>
+</div>

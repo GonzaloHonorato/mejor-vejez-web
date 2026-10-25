@@ -1,0 +1,109 @@
+<div class="pagina">
+  <header class="cabecera">
+    <a class="enlace-volver" routerLink="/grupos">Volver a grupos</a>
+    <h1>{{ grupo()?.nombreGrupo ?? 'Integrantes' }}</h1>
+  </header>
+
+  <div class="contenido">
+    @if (error(); as mensaje) {
+      <p class="error" role="alert">{{ mensaje }}</p>
+    }
+
+    @if (esMiembroActivo()) {
+      <button type="button" class="boton boton--contorno" (click)="salir()">Salir del grupo</button>
+    }
+
+    <ul class="lista">
+      @for (integrante of integrantesOrdenados(); track integrante.idIntegrante) {
+        <li class="integrante" [class.integrante--inactivo]="!estaActivo(integrante)">
+          <div class="integrante__principal">
+            <p class="integrante__nombre">{{ integrante.nombre }}</p>
+            <p class="integrante__correo">{{ integrante.email }}</p>
+          </div>
+
+          <div class="integrante__rol">
+            @if (puedeAdministrar()) {
+              <select
+                class="campo__control"
+                [formControl]="controlRol(integrante)"
+                [attr.aria-label]="'Rol de ' + integrante.nombre"
+                (change)="cambiarRol(integrante, controlRol(integrante).value)"
+              >
+                @for (rol of roles(); track rol.idRol) {
+                  <option [ngValue]="rol.idRol">{{ rol.nombreRol | titlecase }}</option>
+                }
+              </select>
+            } @else {
+              <span>{{ integrante.nombreRol | titlecase }}</span>
+            }
+          </div>
+
+          <span class="insignia" [class.insignia--inactiva]="!estaActivo(integrante)">
+            {{ estaActivo(integrante) ? 'Activo' : 'Inactivo' }}
+          </span>
+
+          @if (puedeAdministrar()) {
+            <div class="integrante__acciones">
+              @if (estaActivo(integrante)) {
+                <button type="button" class="boton boton--contorno" (click)="desactivar(integrante)">
+                  Desactivar
+                </button>
+              } @else {
+                <button type="button" class="boton boton--contorno" (click)="reactivar(integrante)">
+                  Reactivar
+                </button>
+              }
+              <button type="button" class="boton boton--peligro" (click)="eliminar(integrante)">
+                Eliminar
+              </button>
+            </div>
+          }
+        </li>
+      }
+    </ul>
+
+    @if (puedeAdministrar()) {
+      <section class="tarjeta" aria-labelledby="integrantes-agregar-titulo">
+        <h2 id="integrantes-agregar-titulo">Agregar integrante</h2>
+
+        <form [formGroup]="formulario" (ngSubmit)="agregar()" novalidate>
+          <div class="campo">
+            <label class="campo__etiqueta" for="integrante-email">Correo</label>
+            <input
+              id="integrante-email"
+              class="campo__control"
+              type="email"
+              formControlName="email"
+              [attr.aria-invalid]="formulario.controls.email.invalid && formulario.controls.email.touched ? true : null"
+              [attr.aria-describedby]="
+                formulario.controls.email.invalid && formulario.controls.email.touched
+                  ? 'integrante-email-error'
+                  : null
+              "
+            />
+            @if (formulario.controls.email.invalid && formulario.controls.email.touched) {
+              <p id="integrante-email-error" class="error" role="alert">Ingresa un correo válido.</p>
+            }
+          </div>
+
+          <div class="campo">
+            <label class="campo__etiqueta" for="integrante-rol">Rol</label>
+            <select id="integrante-rol" class="campo__control" formControlName="idRol">
+              @for (rol of roles(); track rol.idRol) {
+                <option [ngValue]="rol.idRol">{{ rol.nombreRol | titlecase }}</option>
+              }
+            </select>
+          </div>
+
+          <button
+            type="submit"
+            class="boton boton--primario"
+            [disabled]="formulario.invalid || agregando()"
+          >
+            {{ agregando() ? 'Agregando…' : 'Agregar integrante' }}
+          </button>
+        </form>
+      </section>
+    }
+  </div>
+</div>

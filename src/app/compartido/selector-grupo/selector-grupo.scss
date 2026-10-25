@@ -1,0 +1,108 @@
+// Bloque "GRUPO" del marco — opción C (barra lateral de "Panel familiar ·
+// Escritorio" y encabezado de "Panel familiar · Móvil").
+// Sólo tokens semánticos (`var(--mv-...)`): ver src/estilos/_tema.scss.
+
+:host {
+  display: block;
+  min-width: 0;
+}
+
+p {
+  margin: 0;
+}
+
+// ── Barra lateral (escritorio) ──────────────────────────────────────────
+.lateral {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--mv-espacio-1);
+  padding: var(--mv-espacio-3);
+  border-radius: var(--mv-radio-md);
+  background: var(--mv-color-navegacion-grupo-fondo);
+
+  &__rotulo {
+    font-size: var(--mv-texto-etiqueta);
+    font-weight: var(--mv-texto-peso-negrita);
+    text-transform: uppercase;
+    color: var(--mv-color-navegacion-grupo-texto);
+  }
+
+  &__nombre {
+    font-weight: var(--mv-texto-peso-negrita);
+    color: var(--mv-color-navegacion-activo-texto);
+    overflow-wrap: anywhere;
+  }
+
+  &__cambiar {
+    display: inline-flex;
+    align-items: center;
+    min-height: 48px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--mv-color-navegacion-texto);
+    font-size: var(--mv-texto-pequeno);
+    font-weight: var(--mv-texto-peso-negrita);
+    text-decoration: underline;
+    cursor: pointer;
+  }
+}
+
+.menu {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  &__opcion {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 48px;
+    padding: 0 var(--mv-espacio-2);
+    border: 0;
+    border-radius: var(--mv-radio-sm);
+    background: transparent;
+    color: var(--mv-color-navegacion-texto);
+    font-size: var(--mv-texto-pequeno);
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+
+    &--activa {
+      background: var(--mv-color-navegacion-activo);
+      color: var(--mv-color-navegacion-activo-texto);
+      font-weight: var(--mv-texto-peso-negrita);
+    }
+  }
+}
+
+// ── Encabezado (móvil) ──────────────────────────────────────────────────
+.cabecera {
+  display: flex;
+  align-items: center;
+  gap: var(--mv-espacio-3);
+  min-width: 0;
+
+  &__nombre {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: var(--mv-texto-grande);
+    font-weight: var(--mv-texto-peso-negrita);
+    color: var(--mv-color-texto);
+  }
+
+  &__cambiar {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    min-height: 48px;
+    font-size: var(--mv-texto-pequeno);
+    font-weight: var(--mv-texto-peso-negrita);
+    color: var(--mv-color-primario);
+  }
+}

@@ -27,6 +27,16 @@
     </section>
   }
 
+  @if (sinGrupos()) {
+    <section class="tarjeta tarjeta--suave" aria-labelledby="inicio-sin-grupos-titulo">
+      <h2 id="inicio-sin-grupos-titulo" class="tarjeta__titulo">Crea tu primer grupo familiar</h2>
+      <p class="tarjeta__texto">
+        Todavía no perteneces a ningún grupo. Crea uno para empezar a coordinar con tu familia.
+      </p>
+      <a class="boton-secundario" routerLink="/grupos">Ir a Grupos</a>
+    </section>
+  }
+
   <section class="tarjeta" aria-labelledby="inicio-estado-titulo">
     <h2 id="inicio-estado-titulo" class="tarjeta__titulo">Estado del servicio</h2>
     <p class="tarjeta__texto">Revisa si la aplicación y la base de datos están funcionando.</p>
