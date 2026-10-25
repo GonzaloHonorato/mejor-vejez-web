@@ -34,7 +34,7 @@ const NAVEGACION_BASE: readonly EntradaNavegacion[] = [
   { etiqueta: 'Tareas', etiquetaCorta: 'Tareas' },
   { etiqueta: 'Alertas', etiquetaCorta: 'Alertas' },
   { etiqueta: 'Medicamentos', etiquetaCorta: 'Remedios' },
-  { etiqueta: 'Adultos mayores', etiquetaCorta: 'Personas' },
+  { etiqueta: 'Adultos mayores', etiquetaCorta: 'Personas', ruta: '/adultos', coincidenciaExacta: false },
   { etiqueta: 'Grupos', etiquetaCorta: 'Grupos', ruta: '/grupos', coincidenciaExacta: false },
   { etiqueta: 'Mi perfil', etiquetaCorta: 'Perfil', ruta: '/perfil', coincidenciaExacta: true },
 ];

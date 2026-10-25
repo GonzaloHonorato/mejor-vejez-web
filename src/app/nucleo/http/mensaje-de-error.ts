@@ -1,4 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import { AbstractControl } from '@angular/forms';
 
 const MENSAJE_SIN_CONEXION = 'No pudimos conectar con el servidor.';
 const MENSAJE_POR_DEFECTO = 'Ocurrió un error inesperado.';
@@ -55,4 +56,23 @@ export function erroresDeCampos(error: unknown): Record<string, string> {
     }
   }
   return resultado;
+}
+
+/**
+ * Mensaje a mostrar para un campo de formulario: el error de la API si ya
+ * llegó uno para ese campo, o si no un mensaje local cuando el control está
+ * tocado e inválido por `required`. Sin esto, `markAllAsTouched()` bloquea
+ * el envío del formulario sin mostrar ningún feedback a la persona usuaria.
+ */
+export function mensajeDeCampo(
+  control: AbstractControl,
+  erroresServidor: Record<string, string>,
+  campo: string,
+  mensajeRequerido: string,
+): string | null {
+  const deServidor = erroresServidor[campo];
+  if (deServidor) {
+    return deServidor;
+  }
+  return control.touched && control.hasError('required') ? mensajeRequerido : null;
 }

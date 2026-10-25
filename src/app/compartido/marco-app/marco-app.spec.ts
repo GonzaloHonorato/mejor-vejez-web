@@ -202,6 +202,17 @@ describe('MarcoApp', () => {
     expect(enlacePanel.classList.contains('lateral__enlace--activo')).toBe(false);
   });
 
+  it('adultosMayoresEstaHabilitado', async () => {
+    const { elemento } = await crearMarco();
+
+    const enlace = Array.from(elemento.querySelectorAll('a')).find((a) =>
+      a.textContent?.includes('Adultos mayores'),
+    );
+    expect(enlace).toBeDefined();
+    expect(enlace!.getAttribute('href')).toBe('/adultos');
+    expect(enlace!.textContent).not.toContain('próximamente');
+  });
+
   it('muestraAdministracionSoloAAdministradores', async () => {
     const colaborador = await crearMarco({ esAdministrador: false });
     expect(textosDeEnlaces(colaborador.elemento)).toContain('Grupos');

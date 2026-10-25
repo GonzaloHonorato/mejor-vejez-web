@@ -1,0 +1,137 @@
+<div class="pagina">
+  <header class="cabecera">
+    <h1>Adultos mayores</h1>
+  </header>
+
+  <div class="contenido">
+    @if (!activo()) {
+      <section class="tarjeta tarjeta--suave" aria-labelledby="adultos-sin-grupo-titulo">
+        <h2 id="adultos-sin-grupo-titulo" class="tarjeta__titulo">Primero crea o elige un grupo.</h2>
+        <a class="boton boton--contorno" routerLink="/grupos">Ir a grupos</a>
+      </section>
+    } @else {
+      @if (error(); as mensaje) {
+        <p class="error" role="alert">{{ mensaje }}</p>
+      }
+
+      <label class="interruptor">
+        <input
+          id="adultos-mostrar-inactivos"
+          class="interruptor__control"
+          type="checkbox"
+          [checked]="mostrarInactivos()"
+          (change)="alternarMostrarInactivos()"
+        />
+        <span class="interruptor__etiqueta">Mostrar inactivos</span>
+      </label>
+
+      @if (!cargando() && adultos().length === 0) {
+        <p class="vacio">Aún no hay adultos mayores registrados en este grupo.</p>
+      }
+
+      <ul class="lista">
+        @for (adulto of adultos(); track adulto.idAdultoMayor) {
+          <li class="tarjeta-adulto" [class.tarjeta-adulto--inactivo]="estaInactivo(adulto)">
+            <div class="tarjeta-adulto__principal">
+              <p class="tarjeta-adulto__nombre">
+                {{ adulto.nombreCompleto }}
+                @if (edad(adulto) !== null) {
+                  <span class="tarjeta-adulto__edad">· {{ edad(adulto) }} años</span>
+                }
+              </p>
+
+              @if (adulto.contactoPrincipal; as contacto) {
+                <p class="tarjeta-adulto__contacto">
+                  {{ contacto.nombreContacto }}
+                  @if (contacto.parentesco) {
+                    <span class="tarjeta-adulto__parentesco">({{ contacto.parentesco }})</span>
+                  }
+                  <a class="tarjeta-adulto__telefono" [href]="'tel:' + contacto.telefono">{{
+                    contacto.telefono
+                  }}</a>
+                </p>
+              } @else {
+                <p class="tarjeta-adulto__contacto tarjeta-adulto__contacto--vacio">
+                  Sin contacto principal
+                </p>
+              }
+            </div>
+
+            <div class="tarjeta-adulto__acciones">
+              @if (estaInactivo(adulto)) {
+                <span class="insignia insignia--inactiva">Inactivo</span>
+              }
+              <a class="enlace" [routerLink]="['/adultos', adulto.idAdultoMayor]">Ver ficha</a>
+            </div>
+          </li>
+        }
+      </ul>
+
+      @if (puedeAdministrar()) {
+        <section class="tarjeta" aria-labelledby="adultos-agregar-titulo">
+          <h2 id="adultos-agregar-titulo">Agregar adulto mayor</h2>
+          <p class="aviso">{{ avisoOperativo }}</p>
+
+          @if (errorGeneral(); as mensaje) {
+            <p class="error" role="alert">{{ mensaje }}</p>
+          }
+
+          <form [formGroup]="formulario" (ngSubmit)="crear()" novalidate>
+            <div class="campo">
+              <label class="campo__etiqueta" for="adulto-nombre">Nombre completo</label>
+              <input
+                id="adulto-nombre"
+                class="campo__control"
+                type="text"
+                formControlName="nombreCompleto"
+                [attr.aria-invalid]="mensajeCampoNombre() ? true : null"
+                [attr.aria-describedby]="mensajeCampoNombre() ? 'adulto-nombre-error' : null"
+              />
+              @if (mensajeCampoNombre(); as mensaje) {
+                <p id="adulto-nombre-error" class="error" role="alert">{{ mensaje }}</p>
+              }
+            </div>
+
+            <div class="campo">
+              <label class="campo__etiqueta" for="adulto-codigo">Código interno</label>
+              <input
+                id="adulto-codigo"
+                class="campo__control"
+                type="text"
+                formControlName="codigoInterno"
+                [attr.aria-invalid]="erroresCampos()['codigoInterno'] ? true : null"
+                [attr.aria-describedby]="
+                  erroresCampos()['codigoInterno'] ? 'adulto-codigo-error' : null
+                "
+              />
+              @if (erroresCampos()['codigoInterno']; as mensaje) {
+                <p id="adulto-codigo-error" class="error" role="alert">{{ mensaje }}</p>
+              }
+            </div>
+
+            <div class="campo">
+              <label class="campo__etiqueta" for="adulto-fecha-nacimiento">Fecha de nacimiento</label>
+              <input
+                id="adulto-fecha-nacimiento"
+                class="campo__control"
+                type="date"
+                formControlName="fechaNacimiento"
+                [attr.aria-invalid]="erroresCampos()['fechaNacimiento'] ? true : null"
+                [attr.aria-describedby]="
+                  erroresCampos()['fechaNacimiento'] ? 'adulto-fecha-nacimiento-error' : null
+                "
+              />
+              @if (erroresCampos()['fechaNacimiento']; as mensaje) {
+                <p id="adulto-fecha-nacimiento-error" class="error" role="alert">{{ mensaje }}</p>
+              }
+            </div>
+
+            <button type="submit" class="boton boton--primario" [disabled]="creando()">
+              {{ creando() ? 'Agregando…' : 'Agregar adulto mayor' }}
+            </button>
+          </form>
+        </section>
+      }
+    }
+  </div>
+</div>

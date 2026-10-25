@@ -46,6 +46,19 @@ export const routes: Routes = [
           import('./paginas/integrantes/integrantes').then((m) => m.Integrantes),
       },
       {
+        path: 'adultos',
+        title: 'Adultos mayores · Mejor Vejez',
+        data: { tituloPagina: 'Adultos mayores' },
+        loadComponent: () => import('./paginas/adultos/adultos').then((m) => m.Adultos),
+      },
+      {
+        path: 'adultos/:idAdulto',
+        title: 'Ficha del adulto mayor · Mejor Vejez',
+        data: { tituloPagina: 'Adulto mayor' },
+        loadComponent: () =>
+          import('./paginas/ficha-adulto/ficha-adulto').then((m) => m.FichaAdulto),
+      },
+      {
         path: 'administracion/usuarios',
         title: 'Administración de usuarios · Mejor Vejez',
         data: { tituloPagina: 'Administración' },
