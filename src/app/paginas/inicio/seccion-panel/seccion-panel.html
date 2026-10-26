@@ -1,0 +1,32 @@
+<section class="seccion-panel" [attr.aria-labelledby]="idTitulo()">
+  <h3 #tituloRef [id]="idTitulo()" tabindex="-1" class="seccion-panel__titulo">{{ titulo() }}</h3>
+
+  @switch (estado()) {
+    @case ('cargando') {
+      <p class="seccion-panel__mensaje" role="status">Cargando…</p>
+    }
+    @case ('error') {
+      <div class="seccion-panel__aviso" role="alert">
+        <p class="seccion-panel__mensaje">No se pudo cargar esta sección.</p>
+        <button type="button" class="boton boton--contorno" (click)="alReintentar()">
+          Reintentar
+        </button>
+      </div>
+    }
+    @case ('vacio') {
+      <p class="seccion-panel__mensaje" role="status">{{ mensajeVacio() }}</p>
+    }
+    @case ('datos') {
+      <ng-content></ng-content>
+    }
+  }
+
+  @if (desactualizada()) {
+    <div class="seccion-panel__aviso" role="alert">
+      <p class="seccion-panel__mensaje">No se pudo actualizar.</p>
+      <button type="button" class="boton boton--contorno" (click)="alReintentar()">
+        Reintentar
+      </button>
+    </div>
+  }
+</section>

@@ -37,6 +37,151 @@
     </section>
   }
 
+  @if (activo()) {
+    <section class="panel" aria-labelledby="panel-titulo">
+      <div class="panel__cabecera">
+        <h2 id="panel-titulo" class="panel__titulo">Tu panel</h2>
+        <div class="campo campo--filtro">
+          <label class="campo__etiqueta" for="panel-filtro-adulto">Adulto mayor</label>
+          <select
+            id="panel-filtro-adulto"
+            class="campo__control"
+            [formControl]="controlAdulto"
+            (change)="cambiarAdulto()"
+          >
+            <option [ngValue]="null">Todos</option>
+            @for (adulto of adultosSelector(); track adulto.idAdultoMayor) {
+              <option [ngValue]="adulto.idAdultoMayor">{{ adulto.nombreCompleto }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <app-seccion-panel
+        titulo="Tareas de hoy"
+        [estado]="seccionTareas.estado()"
+        mensajeVacio="No hay tareas para hoy ni atrasadas."
+        [desactualizada]="seccionTareas.desactualizada()"
+        (reintentar)="seccionTareas.reintentar()"
+      >
+        @if (seccionTareas.datos(); as datos) {
+          <ul class="resumen-conteos">
+            <li>Pendientes: {{ datos.pendientes }}</li>
+            <li>En curso: {{ datos.enCurso }}</li>
+            <li>Completadas: {{ datos.completadas }}</li>
+            <li>No realizadas: {{ datos.noRealizadas }}</li>
+            <li>Canceladas: {{ datos.canceladas }}</li>
+            <li>Atrasadas: {{ datos.atrasadas }}</li>
+          </ul>
+          @if (datos.tareasAtrasadas.length > 0) {
+            <ul class="lista-panel">
+              @for (tarea of datos.tareasAtrasadas; track tarea.idTarea) {
+                <li>
+                  <a [routerLink]="['/tareas', tarea.idTarea]">
+                    {{ tarea.titulo }} — {{ tarea.nombreAdulto }} — {{ formatearFecha(tarea.fechaHorario) }}
+                    {{ formatearHora(tarea.fechaHorario) }}
+                  </a>
+                </li>
+              }
+            </ul>
+          }
+        }
+      </app-seccion-panel>
+
+      <app-seccion-panel
+        titulo="Alertas de atraso"
+        [estado]="seccionAlertas.estado()"
+        mensajeVacio="No hay alertas de atraso."
+        [desactualizada]="seccionAlertas.desactualizada()"
+        (reintentar)="seccionAlertas.reintentar()"
+      >
+        @if (seccionAlertas.datos(); as datos) {
+          <p class="resumen-linea">
+            Abiertas: {{ datos.abiertas }} · Cerradas en 7 días: {{ datos.cerradasUltimos7Dias }}
+          </p>
+          @if (datos.recientes.length > 0) {
+            <ul class="lista-panel">
+              @for (alerta of datos.recientes; track alerta.idAlerta) {
+                <li>
+                  <a [routerLink]="['/alertas', alerta.idAlerta]">
+                    {{ etiquetaTipoAlerta[alerta.tipoAlerta] }} — {{ alerta.nombreAdulto }} —
+                    {{ formatearFecha(alerta.fechaDeteccion) }} {{ formatearHora(alerta.fechaDeteccion) }}
+                  </a>
+                </li>
+              }
+            </ul>
+          }
+        }
+      </app-seccion-panel>
+
+      <app-seccion-panel
+        titulo="Próximos horarios (24 h)"
+        [estado]="seccionHorarios.estado()"
+        mensajeVacio="No hay horarios en las próximas 24 horas."
+        [desactualizada]="seccionHorarios.desactualizada()"
+        (reintentar)="seccionHorarios.reintentar()"
+      >
+        @if (seccionHorarios.datos(); as datos) {
+          <ul class="lista-panel">
+            @for (tarea of datos.tareas; track tarea.idTarea) {
+              <li>
+                <a [routerLink]="['/tareas', tarea.idTarea]">
+                  {{ tarea.titulo }} — {{ tarea.nombreAdulto }} — {{ formatearFecha(tarea.fechaHorario) }}
+                  {{ formatearHora(tarea.fechaHorario) }}
+                </a>
+              </li>
+            }
+          </ul>
+        }
+      </app-seccion-panel>
+
+      <app-seccion-panel
+        titulo="Citas (14 días)"
+        [estado]="seccionCitas.estado()"
+        mensajeVacio="No hay citas en los próximos 14 días."
+        [desactualizada]="seccionCitas.desactualizada()"
+        (reintentar)="seccionCitas.reintentar()"
+      >
+        @if (seccionCitas.datos(); as datos) {
+          <ul class="lista-panel">
+            @for (tarea of datos.citas; track tarea.idTarea) {
+              <li>
+                <a [routerLink]="['/tareas', tarea.idTarea]">
+                  {{ tarea.titulo }} — {{ tarea.nombreAdulto }} — {{ formatearFecha(tarea.fechaHorario) }}
+                  {{ formatearHora(tarea.fechaHorario) }}
+                  @if (tarea.cita; as cita) {
+                    · {{ cita.nombreMedico }} · {{ cita.lugarAtencion }}
+                  }
+                </a>
+              </li>
+            }
+          </ul>
+        }
+      </app-seccion-panel>
+
+      <app-seccion-panel
+        titulo="Alertas preventivas"
+        [estado]="seccionPreventivas.estado()"
+        mensajeVacio="No hay alertas preventivas abiertas."
+        [desactualizada]="seccionPreventivas.desactualizada()"
+        (reintentar)="seccionPreventivas.reintentar()"
+      >
+        @if (seccionPreventivas.datos(); as datos) {
+          <ul class="lista-panel">
+            @for (alerta of datos.alertas; track alerta.idAlerta) {
+              <li>
+                <a [routerLink]="['/alertas', alerta.idAlerta]">
+                  {{ etiquetaTipoAlerta[alerta.tipoAlerta] }} — {{ alerta.nombreAdulto }} —
+                  {{ formatearFecha(alerta.fechaProgramada) }}
+                </a>
+              </li>
+            }
+          </ul>
+        }
+      </app-seccion-panel>
+    </section>
+  }
+
   <section class="tarjeta" aria-labelledby="inicio-estado-titulo">
     <h2 id="inicio-estado-titulo" class="tarjeta__titulo">Estado del servicio</h2>
     <p class="tarjeta__texto">Revisa si la aplicación y la base de datos están funcionando.</p>
