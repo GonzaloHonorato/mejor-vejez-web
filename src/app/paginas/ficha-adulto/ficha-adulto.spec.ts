@@ -145,11 +145,20 @@ describe('FichaAdulto', () => {
     expect(servicioAdultos.obtener).toHaveBeenCalledWith(1, 1);
     expect(elemento.textContent).toContain('Rosa González');
     expect(elemento.textContent).toContain('AM-001');
-    expect(elemento.textContent).toContain('1950-05-10');
+    expect(elemento.textContent).toContain('10-05-1950');
     expect(elemento.textContent).toContain('años');
     expect(elemento.textContent).toContain('Activo');
     expect(elemento.textContent).toContain('Alergia a la penicilina.');
     expect(elemento.textContent).toContain('Vive sola.');
+  });
+
+  it('enlazaALosPlanesDeMedicamentosDelAdulto', async () => {
+    const { elemento } = await configurar({});
+
+    const enlace = Array.from(elemento.querySelectorAll('a')).find((a) =>
+      a.textContent?.includes('Ver planes de medicamentos'),
+    );
+    expect(enlace?.getAttribute('href')).toBe('/planes?idAdulto=1');
   });
 
   it('colaboradorNoVeAccionesDeAdministracion', async () => {

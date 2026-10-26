@@ -1,0 +1,90 @@
+<fieldset class="horario" (focusout)="tocar()">
+  <legend>Horario</legend>
+  <p class="nota">Hora de Chile (America/Santiago)</p>
+
+  <div class="modos">
+    <label class="opcion">
+      <input type="radio" [name]="prefijo + '-modo'" value="HORAS_FIJAS" [formControl]="modo" />
+      <span>Horas fijas</span>
+    </label>
+    <label class="opcion">
+      <input type="radio" [name]="prefijo + '-modo'" value="INTERVALO" [formControl]="modo" />
+      <span>Intervalo</span>
+    </label>
+  </div>
+
+  @if (modoActual() === 'HORAS_FIJAS') {
+    <ul class="horas">
+      @for (control of horas.controls; track control; let i = $index) {
+        <li class="fila">
+          <label class="etiqueta" [for]="prefijo + '-hora-' + i">Hora {{ i + 1 }}</label>
+          <input
+            [id]="prefijo + '-hora-' + i"
+            class="control"
+            type="time"
+            [formControl]="control"
+            [attr.aria-describedby]="errorVisible() ? prefijo + '-error' : null"
+          />
+          <button
+            type="button"
+            class="boton"
+            [attr.aria-label]="'Quitar hora ' + (i + 1)"
+            [disabled]="deshabilitado() || horas.length === 1"
+            (click)="quitarHora(i)"
+          >
+            Quitar
+          </button>
+        </li>
+      }
+    </ul>
+    <button type="button" class="boton" [disabled]="deshabilitado()" (click)="agregarHora()">
+      Agregar hora
+    </button>
+  } @else {
+    <div class="intervalo" [formGroup]="intervalo">
+      <div class="campo">
+        <label class="etiqueta" [for]="prefijo + '-inicio'">Inicio</label>
+        <input
+          [id]="prefijo + '-inicio'"
+          class="control"
+          type="time"
+          formControlName="inicio"
+          [attr.aria-describedby]="errorVisible() ? prefijo + '-error' : null"
+        />
+      </div>
+      <div class="campo">
+        <label class="etiqueta" [for]="prefijo + '-fin'">Fin</label>
+        <input
+          [id]="prefijo + '-fin'"
+          class="control"
+          type="time"
+          formControlName="fin"
+          [attr.aria-describedby]="errorVisible() ? prefijo + '-error' : null"
+        />
+      </div>
+      <div class="campo">
+        <label class="etiqueta" [for]="prefijo + '-frecuencia'">Cada N horas</label>
+        <input
+          [id]="prefijo + '-frecuencia'"
+          class="control"
+          type="number"
+          inputmode="numeric"
+          min="1"
+          max="24"
+          step="1"
+          formControlName="frecuencia"
+          [attr.aria-describedby]="errorVisible() ? prefijo + '-error' : null"
+        />
+      </div>
+    </div>
+  }
+
+  <p class="previstas" role="status">
+    @if (horasPrevistas().length > 0) {
+      Se administrará a las: {{ horasPrevistas().join(' · ') }}
+    }
+  </p>
+  @if (errorVisible(); as mensaje) {
+    <p [id]="prefijo + '-error'" class="error" role="alert">{{ mensaje }}</p>
+  }
+</fieldset>

@@ -1,0 +1,163 @@
+<div class="pagina">
+  <header class="cabecera">
+    <h1>Medicamentos</h1>
+  </header>
+
+  <div class="contenido">
+    @if (!activo()) {
+      <section class="tarjeta tarjeta--suave" aria-labelledby="planes-sin-grupo-titulo">
+        <h2 id="planes-sin-grupo-titulo" class="tarjeta__titulo">Primero crea o elige un grupo.</h2>
+        <a class="boton boton--contorno" routerLink="/grupos">Ir a grupos</a>
+      </section>
+    } @else {
+      @if (error(); as mensaje) {
+        <p class="error" role="alert">{{ mensaje }}</p>
+      }
+
+      <div class="filtros">
+        <div class="campo campo--filtro">
+          <label class="campo__etiqueta" for="planes-filtro-adulto">Adulto mayor</label>
+          <select
+            id="planes-filtro-adulto"
+            class="campo__control"
+            [formControl]="controlFiltroAdulto"
+            (change)="cambiarFiltroAdulto()"
+          >
+            <option [ngValue]="null">Todos</option>
+            @for (adulto of adultosFiltro(); track adulto.idAdultoMayor) {
+              <option [ngValue]="adulto.idAdultoMayor">
+                {{ adulto.nombreCompleto }}{{ estaAdultoInactivo(adulto) ? ' (inactivo)' : '' }}
+              </option>
+            }
+          </select>
+        </div>
+
+        <label class="interruptor">
+          <input
+            id="planes-mostrar-inactivos"
+            class="interruptor__control"
+            type="checkbox"
+            [checked]="mostrarInactivos()"
+            (change)="alternarMostrarInactivos()"
+          />
+          <span class="interruptor__etiqueta">Mostrar inactivos</span>
+        </label>
+      </div>
+
+      @if (!cargando() && planes().length === 0) {
+        <p class="vacio">Aún no hay planes de medicamentos en este grupo.</p>
+      }
+
+      <ul class="lista">
+        @for (plan of planes(); track plan.idPlan) {
+          <li class="tarjeta-plan" [class.tarjeta-plan--inactivo]="estaInactivo(plan)">
+            <div class="tarjeta-plan__principal">
+              <p class="tarjeta-plan__nombre">{{ plan.nombrePlan }}</p>
+              <p class="tarjeta-plan__adulto">{{ plan.nombreAdulto }}</p>
+              <p class="tarjeta-plan__vigencia">
+                Vigente desde {{ formatearFecha(plan.vigenteDesde) }}
+                @if (plan.vigenteHasta) {
+                  hasta {{ formatearFecha(plan.vigenteHasta) }}
+                }
+              </p>
+              <p class="tarjeta-plan__medicamentos">
+                {{ plan.medicamentosActivos }} medicamento{{ plan.medicamentosActivos === 1 ? '' : 's' }} activo{{
+                  plan.medicamentosActivos === 1 ? '' : 's'
+                }}
+              </p>
+            </div>
+
+            <div class="tarjeta-plan__acciones">
+              @if (estaInactivo(plan)) {
+                <span class="insignia insignia--inactiva">Inactivo</span>
+              }
+              <a class="enlace" [routerLink]="['/planes', plan.idPlan]">Ver plan</a>
+            </div>
+          </li>
+        }
+      </ul>
+
+      @if (puedeAdministrar()) {
+        <section class="tarjeta" aria-labelledby="planes-nuevo-titulo">
+          <h2 id="planes-nuevo-titulo">Nuevo plan</h2>
+
+          @if (errorGeneral(); as mensaje) {
+            <p class="error" role="alert">{{ mensaje }}</p>
+          }
+
+          <form [formGroup]="formulario" (ngSubmit)="crear()" novalidate>
+            <div class="campo">
+              <label class="campo__etiqueta" for="plan-adulto">Adulto mayor</label>
+              <select
+                id="plan-adulto"
+                class="campo__control"
+                formControlName="idAdultoMayor"
+                [attr.aria-invalid]="mensajeCampoAdulto() ? true : null"
+                [attr.aria-describedby]="mensajeCampoAdulto() ? 'plan-adulto-error' : null"
+              >
+                <option [ngValue]="null">Selecciona un adulto mayor</option>
+                @for (adulto of adultosActivos(); track adulto.idAdultoMayor) {
+                  <option [ngValue]="adulto.idAdultoMayor">{{ adulto.nombreCompleto }}</option>
+                }
+              </select>
+              @if (mensajeCampoAdulto(); as mensaje) {
+                <p id="plan-adulto-error" class="error" role="alert">{{ mensaje }}</p>
+              }
+            </div>
+
+            <div class="campo">
+              <label class="campo__etiqueta" for="plan-nombre">Nombre del plan</label>
+              <input
+                id="plan-nombre"
+                class="campo__control"
+                type="text"
+                formControlName="nombrePlan"
+                [attr.aria-invalid]="mensajeCampoNombre() ? true : null"
+                [attr.aria-describedby]="mensajeCampoNombre() ? 'plan-nombre-error' : null"
+              />
+              @if (mensajeCampoNombre(); as mensaje) {
+                <p id="plan-nombre-error" class="error" role="alert">{{ mensaje }}</p>
+              }
+            </div>
+
+            <div class="campo">
+              <label class="campo__etiqueta" for="plan-vigente-desde">Vigente desde</label>
+              <input
+                id="plan-vigente-desde"
+                class="campo__control"
+                type="date"
+                formControlName="vigenteDesde"
+                [attr.aria-invalid]="mensajeCampoVigenteDesde() ? true : null"
+                [attr.aria-describedby]="mensajeCampoVigenteDesde() ? 'plan-vigente-desde-error' : null"
+              />
+              @if (mensajeCampoVigenteDesde(); as mensaje) {
+                <p id="plan-vigente-desde-error" class="error" role="alert">{{ mensaje }}</p>
+              }
+            </div>
+
+            <div class="campo">
+              <label class="campo__etiqueta" for="plan-vigente-hasta">Vigente hasta (opcional)</label>
+              <input
+                id="plan-vigente-hasta"
+                class="campo__control"
+                type="date"
+                formControlName="vigenteHasta"
+                [attr.aria-invalid]="erroresCampos()['vigenteHasta'] ? true : null"
+                [attr.aria-describedby]="
+                  erroresCampos()['vigenteHasta'] ? 'plan-vigente-hasta-error' : null
+                "
+              />
+              @if (erroresCampos()['vigenteHasta']; as mensaje) {
+                <p id="plan-vigente-hasta-error" class="error" role="alert">{{ mensaje }}</p>
+              }
+            </div>
+
+            <button type="submit" class="boton boton--primario" [disabled]="creando()">
+              {{ creando() ? 'Creando…' : 'Crear plan' }}
+            </button>
+          </form>
+        </section>
+      }
+    }
+  </div>
+</div>

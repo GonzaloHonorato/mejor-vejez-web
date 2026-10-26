@@ -213,6 +213,17 @@ describe('MarcoApp', () => {
     expect(enlace!.textContent).not.toContain('próximamente');
   });
 
+  it('medicamentosEstaHabilitado', async () => {
+    const { elemento } = await crearMarco();
+
+    const enlace = Array.from(elemento.querySelectorAll('a')).find((a) =>
+      a.textContent?.includes('Medicamentos'),
+    );
+    expect(enlace).toBeDefined();
+    expect(enlace!.getAttribute('href')).toBe('/planes');
+    expect(enlace!.textContent).not.toContain('próximamente');
+  });
+
   it('muestraAdministracionSoloAAdministradores', async () => {
     const colaborador = await crearMarco({ esAdministrador: false });
     expect(textosDeEnlaces(colaborador.elemento)).toContain('Grupos');

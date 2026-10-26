@@ -9,6 +9,7 @@ import { RespuestaAdultoMayor } from '../../nucleo/adultos/modelos-adultos';
 import { AVISO_OPERATIVO, puedeAdministrarGrupo } from '../../nucleo/adultos/permisos-adultos';
 import { ServicioAdultos } from '../../nucleo/adultos/servicio-adultos';
 import { ServicioCatalogos } from '../../nucleo/catalogos/servicio-catalogos';
+import { formatearFecha } from '../../nucleo/fechas';
 import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
 import { erroresDeCampos, mensajeDeCampo, mensajeDeError } from '../../nucleo/http/mensaje-de-error';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
@@ -40,6 +41,7 @@ export class FichaAdulto implements OnInit {
   protected readonly grupoActivo = inject(ServicioGrupoActivo);
   protected readonly activo = this.grupoActivo.activo;
   protected readonly avisoOperativo = AVISO_OPERATIVO;
+  protected readonly formatearFecha = formatearFecha;
 
   private readonly idAdulto = Number(this.ruta.snapshot.paramMap.get('idAdulto'));
 

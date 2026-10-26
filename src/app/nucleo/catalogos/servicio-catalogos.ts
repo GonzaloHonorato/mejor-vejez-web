@@ -12,6 +12,17 @@ export interface RespuestaEstadoCatalogo {
   orden: number;
 }
 
+/** Un valor de un catálogo de opciones de negocio, tal como lo expone `GET /api/catalogos/opciones`. */
+export interface RespuestaOpcionCatalogo {
+  idOpcion: number;
+  codigo: string;
+  descripcion: string;
+  orden: number;
+}
+
+/** Tipos de catálogo de negocio soportados por `GET /api/catalogos/opciones`. */
+export type TipoCatalogo = 'PRESENTACION_MEDICAMENTO' | 'UNIDAD_DOSIS' | 'DIA_SEMANA';
+
 /** Acceso a los catálogos de referencia (`/api/catalogos`). */
 @Injectable({ providedIn: 'root' })
 export class ServicioCatalogos {
@@ -22,6 +33,13 @@ export class ServicioCatalogos {
   estados(tabla: string, campo: string): Observable<RespuestaEstadoCatalogo[]> {
     return this.http.get<RespuestaEstadoCatalogo[]>(`${this.urlBase}/estados`, {
       params: { tabla, campo },
+    });
+  }
+
+  /** Opciones activas de un catálogo de negocio, p.ej. `opciones('DIA_SEMANA')`. */
+  opciones(tipo: TipoCatalogo): Observable<RespuestaOpcionCatalogo[]> {
+    return this.http.get<RespuestaOpcionCatalogo[]>(`${this.urlBase}/opciones`, {
+      params: { tipo },
     });
   }
 }

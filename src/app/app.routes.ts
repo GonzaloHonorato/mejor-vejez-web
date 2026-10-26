@@ -46,6 +46,18 @@ export const routes: Routes = [
           import('./paginas/integrantes/integrantes').then((m) => m.Integrantes),
       },
       {
+        path: 'planes',
+        title: 'Medicamentos · Mejor Vejez',
+        data: { tituloPagina: 'Medicamentos' },
+        loadComponent: () => import('./paginas/planes/planes').then((m) => m.Planes),
+      },
+      {
+        path: 'planes/:idPlan',
+        title: 'Plan de medicamentos · Mejor Vejez',
+        data: { tituloPagina: 'Plan de medicamentos' },
+        loadComponent: () => import('./paginas/plan/plan').then((m) => m.Plan),
+      },
+      {
         path: 'adultos',
         title: 'Adultos mayores · Mejor Vejez',
         data: { tituloPagina: 'Adultos mayores' },

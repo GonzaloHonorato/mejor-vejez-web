@@ -1,0 +1,134 @@
+<div class="buscador" (keydown.enter)="alPresionarEnter($event)">
+  <div class="campo">
+    <label class="etiqueta" for="buscador-medicamento-texto">Medicamento</label>
+    <input
+      id="buscador-medicamento-texto"
+      class="control"
+      type="search"
+      autocomplete="off"
+      placeholder="Escribe al menos 2 letras"
+      [formControl]="texto"
+      aria-controls="buscador-medicamento-resultados"
+    />
+  </div>
+
+  <p class="oculto" role="status">
+    @if (buscando()) {
+      Buscando…
+    } @else if (buscado() !== null) {
+      {{ resultados().length }} resultado(s)
+    }
+  </p>
+
+  @if (error(); as mensaje) {
+    <p class="error" role="alert">{{ mensaje }}</p>
+  }
+
+  <ul id="buscador-medicamento-resultados" class="resultados">
+    @for (medicamento of resultados(); track medicamento.idMedicamento) {
+      <li>
+        <button type="button" class="resultado" (click)="elegir(medicamento)">
+          <span class="resultado__nombre">{{ medicamento.nombre }}</span>
+          <span class="resultado__detalle">
+            @if (medicamento.concentracion) {
+              <span>{{ medicamento.concentracion }}</span>
+            }
+            @if (descripcionPresentacion(medicamento.idPresentacion); as presentacion) {
+              <span>{{ presentacion }}</span>
+            }
+            @if (medicamento.usadoEnGrupo) {
+              <span class="insignia">Usado en este grupo</span>
+            }
+          </span>
+        </button>
+      </li>
+    }
+  </ul>
+
+  @if (buscado() !== null && !agregando()) {
+    <button type="button" class="boton" (click)="abrirAlta()">
+      Agregar «{{ buscado() }}» al catálogo
+    </button>
+  }
+
+  @if (agregando()) {
+    <div class="nuevo" [formGroup]="nuevo" role="group" aria-labelledby="medicamento-nuevo-titulo">
+      <p id="medicamento-nuevo-titulo" class="titulo">Agregar al catálogo</p>
+
+      <div class="campo">
+        <label class="etiqueta" for="medicamento-nuevo-nombre">Nombre</label>
+        <input
+          id="medicamento-nuevo-nombre"
+          class="control"
+          type="text"
+          formControlName="nombre"
+          [attr.aria-invalid]="mensajeCampo('nombre', 'Ingresa el nombre') ? true : null"
+          [attr.aria-describedby]="
+            mensajeCampo('nombre', 'Ingresa el nombre') ? 'medicamento-nuevo-nombre-error' : null
+          "
+        />
+        @if (mensajeCampo('nombre', 'Ingresa el nombre'); as mensaje) {
+          <p id="medicamento-nuevo-nombre-error" class="error" role="alert">{{ mensaje }}</p>
+        }
+      </div>
+
+      <div class="campo">
+        <label class="etiqueta" for="medicamento-nuevo-principio">Principio activo</label>
+        <input
+          id="medicamento-nuevo-principio"
+          class="control"
+          type="text"
+          formControlName="principioActivo"
+        />
+      </div>
+
+      <div class="campo">
+        <label class="etiqueta" for="medicamento-nuevo-presentacion">Presentación</label>
+        <select
+          id="medicamento-nuevo-presentacion"
+          class="control"
+          formControlName="idPresentacion"
+          [attr.aria-invalid]="
+            mensajeCampo('idPresentacion', 'Elige la presentación') ? true : null
+          "
+          [attr.aria-describedby]="
+            mensajeCampo('idPresentacion', 'Elige la presentación')
+              ? 'medicamento-nuevo-presentacion-error'
+              : null
+          "
+        >
+          <option [ngValue]="null">Selecciona…</option>
+          @for (opcion of presentaciones(); track opcion.idOpcion) {
+            <option [ngValue]="opcion.idOpcion">{{ opcion.descripcion }}</option>
+          }
+        </select>
+        @if (mensajeCampo('idPresentacion', 'Elige la presentación'); as mensaje) {
+          <p id="medicamento-nuevo-presentacion-error" class="error" role="alert">{{ mensaje }}</p>
+        }
+      </div>
+
+      <div class="campo">
+        <label class="etiqueta" for="medicamento-nuevo-concentracion">Concentración</label>
+        <input
+          id="medicamento-nuevo-concentracion"
+          class="control"
+          type="text"
+          placeholder="Ej.: 500 mg"
+          formControlName="concentracion"
+        />
+      </div>
+
+      <div class="acciones">
+        <button
+          type="button"
+          class="boton boton--primario"
+          [disabled]="guardando()"
+          (click)="crear()"
+        >
+          {{ guardando() ? 'Agregando…' : 'Agregar al catálogo' }}
+        </button>
+        <button type="button" class="boton" (click)="cerrarAlta()">Cancelar</button>
+      </div>
+    </div>
+  }
+</div>

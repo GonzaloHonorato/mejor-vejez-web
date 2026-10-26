@@ -38,7 +38,7 @@
                 <dt>Fecha de nacimiento</dt>
                 <dd>
                   @if (datosAdulto.fechaNacimiento) {
-                    {{ datosAdulto.fechaNacimiento }} · {{ edad(datosAdulto) }} años
+                    {{ formatearFecha(datosAdulto.fechaNacimiento) }} · {{ edad(datosAdulto) }} años
                   } @else {
                     Sin fecha de nacimiento
                   }
@@ -217,6 +217,16 @@
           @if (confirmacionEdicion()) {
             Cambios guardados.
           }
+        </p>
+
+        <p>
+          <a
+            class="enlace-volver"
+            [routerLink]="['/planes']"
+            [queryParams]="{ idAdulto: datosAdulto.idAdultoMayor }"
+          >
+            Ver planes de medicamentos
+          </a>
         </p>
 
         <app-contactos-adulto

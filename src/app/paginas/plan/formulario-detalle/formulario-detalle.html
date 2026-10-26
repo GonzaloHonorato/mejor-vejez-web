@@ -1,0 +1,263 @@
+<section class="tarjeta" aria-labelledby="detalle-titulo">
+  <h2 id="detalle-titulo">{{ detalle() ? 'Editar medicamento' : 'Agregar medicamento' }}</h2>
+  <p class="aviso">{{ aviso }}</p>
+
+  <form class="detalle" [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
+    @if (nombreMedicamento(); as nombre) {
+      <div class="elegido">
+        <p class="elegido__nombre"><span class="etiqueta">Medicamento:</span> {{ nombre }}</p>
+        <button type="button" class="boton" (click)="cambiarMedicamento()">
+          Cambiar medicamento
+        </button>
+      </div>
+    } @else {
+      <app-buscador-medicamento
+        [idGrupo]="idGrupo()"
+        [presentaciones]="presentaciones()"
+        (elegido)="elegirMedicamento($event)"
+      />
+      <ng-container *ngTemplateOutlet="campoError; context: { campo: 'idMedicamento' }" />
+    }
+
+    <ng-template #campoError let-campo="campo">
+      @if (mensaje(campo); as m) {
+        <p [id]="'detalle-' + campo + '-error'" class="error" role="alert">{{ m }}</p>
+      }
+    </ng-template>
+
+    <div class="fila">
+      <div class="campo">
+        <label class="etiqueta" for="detalle-presentacion">Presentación</label>
+        <select
+          id="detalle-presentacion"
+          class="control"
+          formControlName="idPresentacion"
+          [attr.aria-describedby]="
+            mensaje('idPresentacion') ? 'detalle-idPresentacion-error' : null
+          "
+        >
+          <option [ngValue]="null">Selecciona…</option>
+          @for (opcion of presentaciones(); track opcion.idOpcion) {
+            <option [ngValue]="opcion.idOpcion">{{ opcion.descripcion }}</option>
+          }
+        </select>
+        <ng-container *ngTemplateOutlet="campoError; context: { campo: 'idPresentacion' }" />
+      </div>
+      <div class="campo">
+        <label class="etiqueta" for="detalle-concentracion">Concentración</label>
+        <input
+          id="detalle-concentracion"
+          class="control"
+          type="text"
+          formControlName="concentracion"
+        />
+        <ng-container *ngTemplateOutlet="campoError; context: { campo: 'concentracion' }" />
+      </div>
+    </div>
+
+    <div class="fila">
+      <div class="campo">
+        <label class="etiqueta" for="detalle-dosis">Dosis</label>
+        <input
+          id="detalle-dosis"
+          class="control"
+          type="number"
+          inputmode="decimal"
+          step="0.001"
+          min="0.001"
+          formControlName="dosisCantidad"
+          [attr.aria-describedby]="mensaje('dosisCantidad') ? 'detalle-dosisCantidad-error' : null"
+        />
+        <ng-container *ngTemplateOutlet="campoError; context: { campo: 'dosisCantidad' }" />
+      </div>
+      <div class="campo">
+        <label class="etiqueta" for="detalle-unidad">Unidad</label>
+        <select
+          id="detalle-unidad"
+          class="control"
+          formControlName="idUnidadDosis"
+          [attr.aria-describedby]="mensaje('idUnidadDosis') ? 'detalle-idUnidadDosis-error' : null"
+        >
+          <option [ngValue]="null">Selecciona…</option>
+          @for (opcion of unidades(); track opcion.idOpcion) {
+            <option [ngValue]="opcion.idOpcion">{{ opcion.descripcion }}</option>
+          }
+        </select>
+        <ng-container *ngTemplateOutlet="campoError; context: { campo: 'idUnidadDosis' }" />
+      </div>
+    </div>
+
+    <fieldset class="grupo" [attr.aria-describedby]="errorDias() ? 'detalle-dias-error' : null">
+      <legend>Días</legend>
+      <label class="casilla casilla--todos">
+        <input type="checkbox" [checked]="todosLosDias()" (change)="alternarTodos($event)" />
+        <span>Todos los días</span>
+      </label>
+      <div class="dias">
+        @for (dia of dias(); track dia.idOpcion) {
+          <label class="casilla">
+            <input
+              type="checkbox"
+              [checked]="diasElegidos().has(dia.idOpcion)"
+              (change)="alternarDia(dia.idOpcion, $event)"
+            />
+            <span>{{ dia.descripcion }}</span>
+          </label>
+        }
+      </div>
+      @if (errorDias(); as m) {
+        <p id="detalle-dias-error" class="error" role="alert">{{ m }}</p>
+      }
+    </fieldset>
+
+    <app-selector-horario formControlName="horario" [mostrarError]="intentoEnviar()" />
+    @if (erroresServidor()['horario']; as m) {
+      <p class="error" role="alert">{{ m }}</p>
+    }
+
+    <div class="fila">
+      <div class="campo">
+        <label class="etiqueta" for="detalle-desde">Desde</label>
+        <input
+          id="detalle-desde"
+          class="control"
+          type="date"
+          formControlName="fechaInicio"
+          [attr.aria-describedby]="mensaje('fechaInicio') ? 'detalle-fechaInicio-error' : null"
+        />
+        <ng-container *ngTemplateOutlet="campoError; context: { campo: 'fechaInicio' }" />
+      </div>
+      <div class="campo">
+        <label class="etiqueta" for="detalle-hasta">Hasta</label>
+        <input
+          id="detalle-hasta"
+          class="control"
+          type="date"
+          formControlName="fechaFin"
+          [attr.aria-describedby]="mensaje('fechaFin') ? 'detalle-fechaFin-error' : null"
+        />
+        <ng-container *ngTemplateOutlet="campoError; context: { campo: 'fechaFin' }" />
+      </div>
+    </div>
+
+    <div class="fila">
+      <div class="campo">
+        <label class="etiqueta" for="detalle-cantidad-inicial"
+          >Cantidad inicial{{ enUnidad() }}</label
+        >
+        <input
+          id="detalle-cantidad-inicial"
+          class="control"
+          type="number"
+          inputmode="decimal"
+          step="0.001"
+          min="0"
+          formControlName="cantidadInicial"
+          [attr.aria-describedby]="
+            mensaje('cantidadInicial') ? 'detalle-cantidadInicial-error' : null
+          "
+        />
+        <ng-container *ngTemplateOutlet="campoError; context: { campo: 'cantidadInicial' }" />
+      </div>
+      <div class="campo">
+        <label class="etiqueta" for="detalle-cantidad-disponible"
+          >Cantidad disponible{{ enUnidad() }}</label
+        >
+        <input
+          id="detalle-cantidad-disponible"
+          class="control"
+          type="number"
+          inputmode="decimal"
+          step="0.001"
+          min="0"
+          formControlName="cantidadDisponible"
+          [attr.aria-describedby]="
+            mensaje('cantidadDisponible') ? 'detalle-cantidadDisponible-error' : null
+          "
+        />
+        <ng-container *ngTemplateOutlet="campoError; context: { campo: 'cantidadDisponible' }" />
+      </div>
+    </div>
+
+    <fieldset class="grupo">
+      <legend>Fecha estimada de término</legend>
+      <label class="casilla">
+        <input type="radio" value="AUTOMATICO" formControlName="modoCalculoTermino" />
+        <span>Calcular automáticamente</span>
+      </label>
+      <label class="casilla">
+        <input type="radio" value="MANUAL" formControlName="modoCalculoTermino" />
+        <span>Indicar manualmente</span>
+      </label>
+      @if (modoTermino() === 'MANUAL') {
+        <div class="campo">
+          <label class="etiqueta" for="detalle-fecha-termino">Fecha estimada de término</label>
+          <input
+            id="detalle-fecha-termino"
+            class="control"
+            type="date"
+            formControlName="fechaEstimadaTermino"
+            [attr.aria-describedby]="
+              mensaje('fechaEstimadaTermino') ? 'detalle-fechaEstimadaTermino-error' : null
+            "
+          />
+          <ng-container
+            *ngTemplateOutlet="campoError; context: { campo: 'fechaEstimadaTermino' }"
+          />
+        </div>
+      }
+    </fieldset>
+
+    <div class="campo">
+      <label class="etiqueta" for="detalle-responsable">Responsable</label>
+      @if (responsableAnteriorInvalido()) {
+        <p id="detalle-responsable-anterior" class="error" role="status">
+          {{ mensajeResponsableAnterior }}
+        </p>
+      }
+      <select
+        id="detalle-responsable"
+        class="control"
+        formControlName="idResponsablePredeterminado"
+        [attr.aria-describedby]="
+          responsableAnteriorInvalido()
+            ? 'detalle-responsable-anterior'
+            : mensaje('idResponsablePredeterminado')
+              ? 'detalle-idResponsablePredeterminado-error'
+              : null
+        "
+      >
+        <option [ngValue]="null">Sin responsable</option>
+        @for (integrante of integrantes(); track integrante.idUsuario) {
+          <option [ngValue]="integrante.idUsuario">{{ integrante.nombre }}</option>
+        }
+      </select>
+      <ng-container
+        *ngTemplateOutlet="campoError; context: { campo: 'idResponsablePredeterminado' }"
+      />
+    </div>
+
+    <div class="campo">
+      <label class="etiqueta" for="detalle-instrucciones">Instrucciones</label>
+      <textarea
+        id="detalle-instrucciones"
+        class="control control--area"
+        rows="3"
+        formControlName="instrucciones"
+        [attr.aria-describedby]="mensaje('instrucciones') ? 'detalle-instrucciones-error' : null"
+      ></textarea>
+      <ng-container *ngTemplateOutlet="campoError; context: { campo: 'instrucciones' }" />
+    </div>
+
+    @if (error(); as m) {
+      <p class="error" role="alert">{{ m }}</p>
+    }
+
+    <div class="acciones">
+      <button type="submit" class="boton boton--primario" [disabled]="guardando()">
+        {{ guardando() ? 'Guardando…' : 'Guardar medicamento' }}
+      </button>
+      <button type="button" class="boton" (click)="cancelar()">Cancelar</button>
+    </div>
+  </form>
+</section>
