@@ -67,6 +67,18 @@ export const routes: Routes = [
         loadComponent: () => import('./paginas/tarea/tarea').then((m) => m.Tarea),
       },
       {
+        path: 'alertas',
+        title: 'Alertas · Mejor Vejez',
+        data: { tituloPagina: 'Alertas' },
+        loadComponent: () => import('./paginas/alertas/alertas').then((m) => m.Alertas),
+      },
+      {
+        path: 'alertas/:idAlerta',
+        title: 'Alerta · Mejor Vejez',
+        data: { tituloPagina: 'Alerta' },
+        loadComponent: () => import('./paginas/alerta/alerta').then((m) => m.Alerta),
+      },
+      {
         path: 'planes',
         title: 'Medicamentos · Mejor Vejez',
         data: { tituloPagina: 'Medicamentos' },

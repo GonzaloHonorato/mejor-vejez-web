@@ -224,6 +224,17 @@ describe('MarcoApp', () => {
     expect(enlace!.textContent).not.toContain('próximamente');
   });
 
+  it('menuAlertasHabilitado', async () => {
+    const { elemento } = await crearMarco();
+
+    const enlace = Array.from(elemento.querySelectorAll('a')).find((a) =>
+      a.textContent?.includes('Alertas'),
+    );
+    expect(enlace).toBeDefined();
+    expect(enlace!.getAttribute('href')).toBe('/alertas');
+    expect(enlace!.textContent).not.toContain('próximamente');
+  });
+
   it('medicamentosEstaHabilitado', async () => {
     const { elemento } = await crearMarco();
 

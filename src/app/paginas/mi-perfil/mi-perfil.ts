@@ -3,11 +3,12 @@ import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angula
 
 import { erroresDeCampos, mensajeDeError } from '../../nucleo/http/mensaje-de-error';
 import { RespuestaYo, ServicioYo } from '../../nucleo/usuarios/servicio-yo';
+import { CanalesNotificacion } from './canales-notificacion/canales-notificacion';
 
-/** Página "Mi perfil": correo de solo lectura, nombre y teléfono editables. */
+/** Página "Mi perfil": correo de solo lectura, nombre y teléfono editables, y canales de notificación (Tarea 12). */
 @Component({
   selector: 'app-mi-perfil',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, CanalesNotificacion],
   templateUrl: './mi-perfil.html',
   styleUrl: './mi-perfil.scss',
 })

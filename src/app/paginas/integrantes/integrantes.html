@@ -13,6 +13,24 @@
       <button type="button" class="boton boton--contorno" (click)="salir()">Salir del grupo</button>
     }
 
+    @if (grupoCargado()) {
+      @if (puedeAdministrar()) {
+        <label class="interruptor">
+          <input
+            id="integrantes-notifica-coordinador"
+            class="interruptor__control"
+            type="checkbox"
+            [checked]="grupo()?.notificaCoordinador"
+            [disabled]="cambiandoNotificaCoordinador()"
+            (change)="alternarNotificarCoordinador($event)"
+          />
+          <span class="interruptor__etiqueta">Notificar las alertas al coordinador</span>
+        </label>
+      } @else {
+        <p>Notificar las alertas al coordinador: {{ grupo()?.notificaCoordinador ? 'Sí' : 'No' }}</p>
+      }
+    }
+
     <ul class="lista">
       @for (integrante of integrantesOrdenados(); track integrante.idIntegrante) {
         <li class="integrante" [class.integrante--inactivo]="!estaActivo(integrante)">

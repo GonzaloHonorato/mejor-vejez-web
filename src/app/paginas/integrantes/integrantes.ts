@@ -54,6 +54,8 @@ export class Integrantes implements OnInit {
   protected readonly esAdministrador = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly agregando = signal(false);
+  /** Interruptor "Notificar las alertas al coordinador" (regla 7 del plan). */
+  protected readonly cambiandoNotificaCoordinador = signal(false);
 
   /** Activos primero; estable dentro de cada grupo (JS garantiza sort estable). */
   protected readonly integrantesOrdenados = computed<RespuestaIntegrante[]>(() =>
@@ -200,6 +202,41 @@ export class Integrantes implements OnInit {
       },
       error: (error: unknown) => this.error.set(mensajeDeError(error)),
     });
+  }
+
+  /**
+   * Cambia "Notificar las alertas al coordinador" (sólo coordinador o
+   * administrador, `puedeAdministrar()`). Envía el nombre actual del grupo
+   * porque `PATCH /api/grupos/{idGrupo}` exige ambos campos, y refresca
+   * `ServicioGrupoActivo` para que el resto de la app vea el cambio.
+   */
+  protected alternarNotificarCoordinador(evento: Event): void {
+    const grupo = this.grupo();
+    if (!grupo || this.cambiandoNotificaCoordinador()) return;
+
+    this.error.set(null);
+    this.cambiandoNotificaCoordinador.set(true);
+    this.servicioGrupos
+      .actualizar(this.idGrupo, {
+        nombreGrupo: grupo.nombreGrupo,
+        notificaCoordinador: !grupo.notificaCoordinador,
+      })
+      .subscribe({
+        next: async (grupoActualizado) => {
+          this.grupo.set(grupoActualizado);
+          this.cambiandoNotificaCoordinador.set(false);
+          await this.grupoActivo.cargar();
+        },
+        error: (error: unknown) => {
+          this.cambiandoNotificaCoordinador.set(false);
+          this.error.set(mensajeDeError(error));
+          // El clic ya cambió el `checked` del DOM nativo, pero `grupo()` no
+          // cambió: sin esto, Angular no repinta (el binding `[checked]` no
+          // vio una expresión distinta) y el interruptor queda mostrando el
+          // valor nuevo que NO se guardó (corrección M2).
+          (evento.target as HTMLInputElement).checked = grupo.notificaCoordinador;
+        },
+      });
   }
 
   private cargarIntegrantes(): void {

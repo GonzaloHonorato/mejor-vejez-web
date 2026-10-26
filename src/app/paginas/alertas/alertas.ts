@@ -1,0 +1,211 @@
+import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
+
+import { ETIQUETA_TIPO_ALERTA } from '../../nucleo/alertas/alertas';
+import { RespuestaAlerta, TipoAlerta } from '../../nucleo/alertas/modelos-alertas';
+import { ServicioAlertas } from '../../nucleo/alertas/servicio-alertas';
+import { RespuestaEstadoCatalogo, ServicioCatalogos } from '../../nucleo/catalogos/servicio-catalogos';
+import { formatearFecha, formatearHora } from '../../nucleo/fechas';
+import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
+import { mensajeDeError } from '../../nucleo/http/mensaje-de-error';
+
+const TAMANO_PAGINA = 20;
+
+/** Pestaña de la bandeja: refleja el código de `ALERTA_CUIDADO.ESTADO` (regla 18 del plan). */
+type PestanaAlertas = 'ABIERTA' | 'CERRADA';
+
+/**
+ * Página "Alertas" (`/alertas`): bandeja de alertas de cuidado del grupo
+ * activo, con pestañas "Abiertas"/"Cerradas" (por defecto Abiertas) y un
+ * filtro por tipo. Sigue el mismo patrón de `paginas/tareas`/`paginas/adultos`:
+ * un `effect()` con contador de generación recarga (o limpia) la lista cada
+ * vez que el grupo activo, la pestaña o el filtro cambian, descartando
+ * respuestas tardías de una combinación ya obsoleta.
+ *
+ * El `idEstado` de cada pestaña sale del catálogo `ALERTA_CUIDADO`/`ESTADO`
+ * (códigos `ABIERTA`/`CERRADA`, `ServicioCatalogos`): mientras no llega, el
+ * efecto espera (se vuelve a correr solo cuando el catálogo resuelve, porque
+ * lee un `computed` derivado de él).
+ */
+@Component({
+  selector: 'app-alertas',
+  imports: [ReactiveFormsModule, RouterLink],
+  templateUrl: './alertas.html',
+  styleUrl: './alertas.scss',
+})
+export class Alertas implements OnInit {
+  private readonly servicioAlertas = inject(ServicioAlertas);
+  private readonly servicioCatalogos = inject(ServicioCatalogos);
+  private readonly fb = inject(NonNullableFormBuilder);
+
+  protected readonly grupoActivo = inject(ServicioGrupoActivo);
+  protected readonly activo = this.grupoActivo.activo;
+  protected readonly etiquetaTipoAlerta = ETIQUETA_TIPO_ALERTA;
+  protected readonly tiposAlerta = Object.keys(ETIQUETA_TIPO_ALERTA) as TipoAlerta[];
+  protected readonly formatearFecha = formatearFecha;
+  protected readonly formatearHora = formatearHora;
+
+  protected readonly pestana = signal<PestanaAlertas>('ABIERTA');
+  protected readonly tipoFiltro = signal<TipoAlerta | null>(null);
+  protected readonly controlFiltroTipo = this.fb.control<TipoAlerta | ''>('');
+
+  protected readonly elementos = signal<RespuestaAlerta[]>([]);
+  protected readonly total = signal(0);
+  protected readonly pagina = signal(0);
+  protected readonly cargando = signal(false);
+  protected readonly cargandoMas = signal(false);
+  protected readonly error = signal<string | null>(null);
+  /** Error de `ALERTA_CUIDADO/ESTADO` por sí solo: el efecto de grupo/pestaña/filtro NUNCA lo limpia (corrección I3). */
+  protected readonly errorCatalogo = signal<string | null>(null);
+
+  protected readonly estados = signal<RespuestaEstadoCatalogo[]>([]);
+  private readonly idEstadoAbierta = computed(
+    () => this.estados().find((estado) => estado.codigo === 'ABIERTA')?.idEstado ?? null,
+  );
+  private readonly idEstadoCerrada = computed(
+    () => this.estados().find((estado) => estado.codigo === 'CERRADA')?.idEstado ?? null,
+  );
+
+  protected readonly hayMas = computed(() => this.elementos().length < this.total());
+
+  /** El error visible de la bandeja: el de la lista, o si no el del catálogo (corrección I3). */
+  protected readonly errorVisible = computed(() => this.error() ?? this.errorCatalogo());
+
+  /** Descarta respuestas de `cargar()`/`cargarMas()` obsoletas (grupo, pestaña o filtro ya cambiaron de nuevo). */
+  private generacionCarga = 0;
+
+  constructor() {
+    effect(() => {
+      const grupo = this.activo();
+      const pestana = this.pestana();
+      const tipo = this.tipoFiltro();
+      const idEstado = pestana === 'ABIERTA' ? this.idEstadoAbierta() : this.idEstadoCerrada();
+
+      this.error.set(null);
+      // Nunca se muestran alertas de la combinación anterior mientras carga la nueva.
+      this.elementos.set([]);
+      this.total.set(0);
+      this.pagina.set(0);
+
+      if (!grupo) {
+        this.cargando.set(false);
+        return;
+      }
+      if (idEstado === null) {
+        // El catálogo ALERTA_CUIDADO/ESTADO todavía no llegó. Si ya falló
+        // antes (`errorCatalogo`), no hay nada que esperar: se deja de
+        // "cargar" para que se vea el error en vez de una página en blanco
+        // (corrección I3, escenario del cambio de grupo). Si no falló, es la
+        // primera carga: se espera a que el catálogo resuelva (el efecto lo
+        // lee y se vuelve a correr solo).
+        this.cargando.set(this.errorCatalogo() === null);
+        return;
+      }
+      this.cargar(grupo.idGrupo, idEstado, tipo);
+    });
+  }
+
+  ngOnInit(): void {
+    this.cargarCatalogo();
+  }
+
+  protected elegirPestana(pestana: PestanaAlertas): void {
+    if (this.pestana() === pestana) return;
+    this.pestana.set(pestana);
+  }
+
+  protected cambiarFiltroTipo(): void {
+    const valor = this.controlFiltroTipo.value;
+    this.tipoFiltro.set(valor === '' ? null : valor);
+  }
+
+  protected mensajeVacio(): string {
+    return this.pestana() === 'ABIERTA' ? 'No hay alertas abiertas.' : 'No hay alertas cerradas.';
+  }
+
+  protected cargarMas(): void {
+    const grupo = this.activo();
+    const idEstado = this.idEstadoActual();
+    if (!grupo || idEstado === null || this.cargandoMas()) return;
+
+    // Misma generación que la carga en curso: si el grupo/pestaña/filtro
+    // cambian mientras pide la página siguiente, esta respuesta se descarta.
+    const generacion = this.generacionCarga;
+    const siguientePagina = this.pagina() + 1;
+    this.cargandoMas.set(true);
+    this.servicioAlertas
+      .listar(grupo.idGrupo, {
+        idEstado,
+        tipoAlerta: this.tipoFiltro() ?? undefined,
+        pagina: siguientePagina,
+        tamano: TAMANO_PAGINA,
+      })
+      .subscribe({
+        next: (respuesta) => {
+          this.cargandoMas.set(false);
+          if (generacion !== this.generacionCarga) return;
+          this.elementos.update((actuales) => [...actuales, ...respuesta.elementos]);
+          this.total.set(respuesta.total);
+          this.pagina.set(respuesta.pagina);
+        },
+        error: (error: unknown) => {
+          this.cargandoMas.set(false);
+          if (generacion !== this.generacionCarga) return;
+          this.error.set(mensajeDeError(error));
+        },
+      });
+  }
+
+  protected reintentar(): void {
+    const idEstado = this.idEstadoActual();
+    if (idEstado === null) {
+      // Sin catálogo no hay idEstado que enviar: hay que volver a pedirlo
+      // primero (corrección I3, antes "Reintentar" no hacía nada).
+      this.cargarCatalogo();
+      return;
+    }
+    const grupo = this.activo();
+    if (!grupo) return;
+    this.cargar(grupo.idGrupo, idEstado, this.tipoFiltro());
+  }
+
+  private idEstadoActual(): number | null {
+    return this.pestana() === 'ABIERTA' ? this.idEstadoAbierta() : this.idEstadoCerrada();
+  }
+
+  private cargarCatalogo(): void {
+    this.errorCatalogo.set(null);
+    this.cargando.set(true);
+    this.servicioCatalogos.estados('ALERTA_CUIDADO', 'ESTADO').subscribe({
+      next: (estados) => this.estados.set(estados),
+      error: (error: unknown) => {
+        // Sin el catálogo no hay idEstado que enviar: se informa en su
+        // propia señal, que el efecto de grupo/pestaña/filtro no limpia.
+        this.cargando.set(false);
+        this.errorCatalogo.set(mensajeDeError(error, 'No pudimos cargar los estados de alertas.'));
+      },
+    });
+  }
+
+  private cargar(idGrupo: number, idEstado: number, tipo: TipoAlerta | null): void {
+    const generacion = ++this.generacionCarga;
+    this.cargando.set(true);
+    this.servicioAlertas
+      .listar(idGrupo, { idEstado, tipoAlerta: tipo ?? undefined, pagina: 0, tamano: TAMANO_PAGINA })
+      .subscribe({
+        next: (respuesta) => {
+          if (generacion !== this.generacionCarga) return;
+          this.elementos.set(respuesta.elementos);
+          this.total.set(respuesta.total);
+          this.pagina.set(respuesta.pagina);
+          this.cargando.set(false);
+        },
+        error: (error: unknown) => {
+          if (generacion !== this.generacionCarga) return;
+          this.error.set(mensajeDeError(error));
+          this.cargando.set(false);
+        },
+      });
+  }
+}

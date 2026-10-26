@@ -1,0 +1,79 @@
+<section class="tarjeta" aria-labelledby="canales-titulo">
+  <h2 id="canales-titulo">Canales de notificación</h2>
+
+  @if (errorGeneral(); as mensaje) {
+    <p class="error" role="alert">{{ mensaje }}</p>
+  }
+
+  @if (cargaFallida()) {
+    <button type="button" class="boton boton--contorno" (click)="reintentar()">Reintentar</button>
+  } @else if (!cargando()) {
+    <form [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
+      <div class="campo">
+        <label class="campo__etiqueta" for="canales-correo">Correo</label>
+        <input
+          id="canales-correo"
+          class="campo__control"
+          type="email"
+          autocomplete="email"
+          formControlName="correoDestino"
+          [attr.aria-invalid]="mensajeCampoCorreo() ? true : null"
+          [attr.aria-describedby]="mensajeCampoCorreo() ? 'canales-correo-error' : null"
+        />
+        @if (mensajeCampoCorreo(); as mensajeCorreo) {
+          <p id="canales-correo-error" class="error" role="alert">{{ mensajeCorreo }}</p>
+        }
+      </div>
+
+      <label class="interruptor">
+        <input
+          id="canales-correo-habilitado"
+          class="interruptor__control"
+          type="checkbox"
+          aria-label="Correo habilitado"
+          formControlName="correoHabilitado"
+        />
+        <span class="interruptor__etiqueta">Habilitado</span>
+      </label>
+
+      <div class="campo">
+        <label class="campo__etiqueta" for="canales-whatsapp">WhatsApp</label>
+        <input
+          id="canales-whatsapp"
+          class="campo__control"
+          type="tel"
+          autocomplete="tel"
+          placeholder="+56912345678"
+          formControlName="whatsappDestino"
+        />
+      </div>
+
+      <label class="interruptor">
+        <input
+          id="canales-whatsapp-habilitado"
+          class="interruptor__control"
+          type="checkbox"
+          aria-label="WhatsApp habilitado"
+          formControlName="whatsappHabilitado"
+        />
+        <span class="interruptor__etiqueta">Habilitado</span>
+      </label>
+
+      @if (!whatsappDisponible()) {
+        <p class="aviso" role="status">
+          WhatsApp aún no envía mensajes: por ahora las alertas llegan por correo.
+        </p>
+      }
+
+      <p class="confirmacion" role="status">
+        @if (confirmacion()) {
+          Cambios guardados.
+        }
+      </p>
+
+      <button type="submit" class="boton boton--primario" [disabled]="guardando()">
+        {{ guardando() ? 'Guardando…' : 'Guardar cambios' }}
+      </button>
+    </form>
+  }
+</section>

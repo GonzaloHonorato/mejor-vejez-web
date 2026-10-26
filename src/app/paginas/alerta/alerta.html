@@ -1,0 +1,148 @@
+<div class="pagina">
+  <header class="cabecera">
+    <a class="enlace-volver" routerLink="/alertas">Volver a alertas</a>
+    <h1>{{ titulo() }}</h1>
+  </header>
+
+  <div class="contenido">
+    @if (!activo()) {
+      <section class="tarjeta tarjeta--suave" aria-labelledby="alerta-sin-grupo-titulo">
+        <h2 id="alerta-sin-grupo-titulo" class="tarjeta__titulo">Primero crea o elige un grupo.</h2>
+        <a class="boton boton--contorno" routerLink="/grupos">Ir a grupos</a>
+      </section>
+    } @else if (noEncontrado()) {
+      <section class="tarjeta tarjeta--suave" aria-labelledby="alerta-no-encontrada-titulo">
+        <h2 id="alerta-no-encontrada-titulo" class="tarjeta__titulo">La alerta no existe.</h2>
+        <a class="boton boton--contorno" routerLink="/alertas">Ir a alertas</a>
+      </section>
+    } @else {
+      @if (error(); as mensaje) {
+        <p class="error" role="alert">{{ mensaje }}</p>
+      }
+
+      @if (detalle(); as datos) {
+        <section class="tarjeta" aria-labelledby="alerta-datos-titulo">
+          <h2 id="alerta-datos-titulo">Datos</h2>
+          <dl class="lista-datos">
+            <div class="lista-datos__fila">
+              <dt>Tipo</dt>
+              <dd>{{ etiquetaTipoAlerta[datos.alerta.tipoAlerta] }}</dd>
+            </div>
+            <div class="lista-datos__fila">
+              <dt>Estado</dt>
+              <dd>
+                <span
+                  class="insignia"
+                  [class.insignia--aviso]="esEstadoAlertaAbierta(datos.alerta.idEstado)"
+                  >{{ descripcionEstadoAlerta(datos.alerta.idEstado) }}</span
+                >
+              </dd>
+            </div>
+            <div class="lista-datos__fila">
+              <dt>Adulto mayor</dt>
+              <dd>{{ datos.alerta.nombreAdulto }}</dd>
+            </div>
+            <div class="lista-datos__fila">
+              <dt>Fecha programada</dt>
+              <dd>{{ fechaHora(datos.alerta.fechaProgramada) }}</dd>
+            </div>
+          </dl>
+
+          <p>{{ datos.alerta.mensajeAlerta }}</p>
+
+          @if (datos.alerta.idTarea !== null) {
+            <p>
+              <a class="enlace" [routerLink]="['/tareas', datos.alerta.idTarea]">{{
+                datos.alerta.tituloTarea
+              }}</a>
+              @if (datos.alerta.idEstadoTarea !== null) {
+                <span class="insignia insignia--neutro">{{
+                  descripcionEstadoTarea(datos.alerta.idEstadoTarea)
+                }}</span>
+              }
+            </p>
+          }
+
+          @if (datos.alerta.tipoAlerta === 'REPOSICION_MEDICAMENTO' && datos.alerta.nombreMedicamento) {
+            <p>Medicamento: {{ datos.alerta.nombreMedicamento }}</p>
+          }
+        </section>
+
+        <section class="tarjeta" aria-labelledby="alerta-intentos-titulo">
+          <h2 id="alerta-intentos-titulo">Intentos de notificación</h2>
+          @if (datos.intentos.length === 0) {
+            <p class="vacio" role="status">Sin intentos de notificación registrados.</p>
+          }
+          <ul class="lista-simple">
+            @for (intento of datos.intentos; track intento.idIntento) {
+              <li class="tarjeta-item" data-prueba="intento-item">
+                <p class="tarjeta-item__titulo">{{ intento.nombreDestinatario }} · {{ intento.canal }}</p>
+                <p class="tarjeta-item__detalle">
+                  Intento {{ intento.numeroIntento }} ·
+                  <span
+                    class="insignia"
+                    [class.insignia--error]="esEstadoEnvioFallido(intento.idEstadoEnvio)"
+                    >{{ descripcionEstadoEnvio(intento.idEstadoEnvio) }}</span
+                  >
+                  · {{ fechaHora(intento.fechaIntento) }}
+                </p>
+                @if (intento.detalleError) {
+                  <p class="tarjeta-item__detalle">{{ intento.detalleError }}</p>
+                }
+              </li>
+            }
+          </ul>
+        </section>
+
+        @if (datos.alerta.revisor) {
+          <section class="tarjeta" aria-labelledby="alerta-revision-titulo">
+            <h2 id="alerta-revision-titulo">Alerta cerrada</h2>
+            <p>
+              {{ datos.alerta.revisor.nombre }}
+              @if (datos.alerta.fechaRevision) {
+                · {{ fechaHora(datos.alerta.fechaRevision) }}
+              }
+            </p>
+            @if (datos.alerta.observacionCierre) {
+              <p>{{ datos.alerta.observacionCierre }}</p>
+            }
+          </section>
+        }
+
+        @if (puedeCerrar()) {
+          <section class="tarjeta" aria-labelledby="alerta-cierre-titulo">
+            <h2 id="alerta-cierre-titulo">Cerrar alerta</h2>
+            <form [formGroup]="formularioCierre" (ngSubmit)="cerrar()" novalidate>
+              <div class="campo">
+                <label class="campo__etiqueta" for="alerta-cierre-observacion">Observación</label>
+                <textarea
+                  id="alerta-cierre-observacion"
+                  class="campo__control campo__control--area"
+                  [attr.maxlength]="maximoCaracteresObservacion"
+                  formControlName="observacion"
+                ></textarea>
+                <p class="contador">{{ contadorObservacion() }}</p>
+              </div>
+
+              @if (errorCierre(); as mensaje) {
+                <p class="error" role="alert">{{ mensaje }}</p>
+              }
+
+              <button
+                type="submit"
+                class="boton boton--primario"
+                [disabled]="cerrando() || !observacionEsValida()"
+              >
+                {{ cerrando() ? 'Cerrando…' : 'Cerrar alerta' }}
+              </button>
+            </form>
+          </section>
+        }
+
+        @if (confirmacionCierre(); as mensaje) {
+          <p class="confirmacion" role="status">{{ mensaje }}</p>
+        }
+      }
+    }
+  </div>
+</div>

@@ -14,11 +14,11 @@ const ROLES: RespuestaRol[] = [
   { idRol: 2, nombreRol: 'COLABORADOR', descripcion: 'Colabora con el grupo' },
 ];
 
-function grupo(miRol: string | null): RespuestaGrupo {
+function grupo(miRol: string | null, notificaCoordinador = true): RespuestaGrupo {
   return {
     idGrupo: 5,
     nombreGrupo: 'Familia Rojas',
-    notificaCoordinador: true,
+    notificaCoordinador,
     idEstado: 1,
     miRol,
     fechaCreacion: '2026-01-01T00:00:00-03:00',
@@ -49,9 +49,10 @@ async function configurar(opciones: {
   miRol: string | null;
   esAdministrador?: boolean;
   integrantesIniciales?: RespuestaIntegrante[];
+  notificaCoordinador?: boolean;
 }) {
   const servicioGrupos = {
-    obtener: vi.fn(() => of(grupo(opciones.miRol))),
+    obtener: vi.fn(() => of(grupo(opciones.miRol, opciones.notificaCoordinador ?? true))),
     roles: vi.fn(() => of(ROLES)),
     integrantes: vi.fn(() => of(opciones.integrantesIniciales ?? [])),
     incorporar: vi.fn(),
@@ -60,6 +61,7 @@ async function configurar(opciones: {
     reactivar: vi.fn(),
     salir: vi.fn(),
     eliminar: vi.fn(),
+    actualizar: vi.fn(),
   };
   const grupoActivo = { cargar: vi.fn(async () => {}) };
   TestBed.configureTestingModule({
@@ -123,6 +125,65 @@ describe('Integrantes', () => {
     expect(botonConTexto(filas[0] as HTMLElement, 'Desactivar')).toBeTruthy();
     expect(botonConTexto(filas[0] as HTMLElement, 'Eliminar')).toBeTruthy();
     expect(botonConTexto(elemento, 'Salir del grupo')).toBeTruthy();
+  });
+
+  it('coordinadorCambiaNotificarCoordinador', async () => {
+    const { fixture, elemento, servicioGrupos, grupoActivo } = await configurar({
+      miRol: 'COORDINADOR',
+      notificaCoordinador: false,
+    });
+    servicioGrupos.actualizar.mockReturnValue(
+      of({ ...grupo('COORDINADOR', true) }),
+    );
+
+    const interruptor = elemento.querySelector<HTMLInputElement>('#integrantes-notifica-coordinador')!;
+    expect(interruptor.checked).toBe(false);
+
+    interruptor.click();
+    await fixture.whenStable();
+
+    expect(servicioGrupos.actualizar).toHaveBeenCalledWith(5, {
+      nombreGrupo: 'Familia Rojas',
+      notificaCoordinador: true,
+    });
+    expect(grupoActivo.cargar).toHaveBeenCalled();
+  });
+
+  it('cambiarNotificarCoordinadorConFallaRevierteElInterruptor', async () => {
+    const { fixture, elemento, servicioGrupos } = await configurar({
+      miRol: 'COORDINADOR',
+      notificaCoordinador: false,
+    });
+    servicioGrupos.actualizar.mockReturnValue(
+      throwError(
+        () =>
+          new HttpErrorResponse({
+            status: 500,
+            error: { detail: 'No pudimos guardar el cambio.' },
+          }),
+      ),
+    );
+
+    const interruptor = elemento.querySelector<HTMLInputElement>('#integrantes-notifica-coordinador')!;
+    expect(interruptor.checked).toBe(false);
+
+    interruptor.click();
+    await fixture.whenStable();
+
+    expect(interruptor.checked).toBe(false);
+    expect(elemento.querySelector('[role="alert"]')?.textContent).toContain(
+      'No pudimos guardar el cambio.',
+    );
+  });
+
+  it('colaboradorVeSoloLectura', async () => {
+    const { elemento } = await configurar({ miRol: 'COLABORADOR', notificaCoordinador: true });
+
+    expect(elemento.querySelector('#integrantes-notifica-coordinador')).toBeFalsy();
+    const lectura = Array.from(elemento.querySelectorAll('p')).find((parrafo) =>
+      parrafo.textContent?.includes('Notificar las alertas al coordinador'),
+    );
+    expect(lectura?.textContent).toContain('Sí');
   });
 
   it('colaboradorSoloVeLaLista', async () => {

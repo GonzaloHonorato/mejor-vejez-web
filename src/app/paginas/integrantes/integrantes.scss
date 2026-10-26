@@ -34,6 +34,19 @@ h1 {
   padding: var(--mv-espacio-4);
 }
 
+.interruptor {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mv-espacio-3);
+  min-height: var(--mv-espacio-12);
+
+  &__control {
+    flex: none;
+    width: var(--mv-espacio-6);
+    height: var(--mv-espacio-6);
+  }
+}
+
 .lista {
   display: flex;
   flex-direction: column;

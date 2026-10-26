@@ -5,6 +5,17 @@ import { provideRouter } from '@angular/router';
 
 import { MiPerfil } from './mi-perfil';
 
+const CANALES = {
+  canales: [{ canal: 'CORREO', destino: 'ana@correo.cl', habilitado: true, predeterminado: true }],
+  whatsappDisponible: false,
+};
+
+function flushCanales(http: HttpTestingController): void {
+  http
+    .expectOne((req) => req.method === 'GET' && req.url.endsWith('/api/yo/canales'))
+    .flush(CANALES);
+}
+
 async function configurarConFalloDeCarga() {
   TestBed.configureTestingModule({
     imports: [MiPerfil],
@@ -16,6 +27,7 @@ async function configurarConFalloDeCarga() {
   http
     .expectOne((req) => req.method === 'GET' && req.url.endsWith('/api/yo'))
     .flush({ title: 'Error', detail: 'No pudimos cargar tu perfil' }, { status: 500, statusText: 'Error' });
+  flushCanales(http);
   await fixture.whenStable();
   return { fixture, http, elemento: fixture.nativeElement as HTMLElement };
 }
@@ -37,6 +49,7 @@ async function configurar() {
   const http = TestBed.inject(HttpTestingController);
   fixture.detectChanges();
   http.expectOne((req) => req.method === 'GET' && req.url.endsWith('/api/yo')).flush(YO);
+  flushCanales(http);
   await fixture.whenStable();
   return { fixture, http, elemento: fixture.nativeElement as HTMLElement };
 }
