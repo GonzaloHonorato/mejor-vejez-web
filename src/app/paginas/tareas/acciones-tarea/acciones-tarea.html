@@ -1,0 +1,48 @@
+<div class="acciones-tarea">
+  @if (error(); as mensaje) {
+    <p class="error" role="alert">{{ mensaje }}</p>
+  }
+
+  @if (accionPidiendoObservacion(); as accion) {
+    <div class="observacion">
+      <label class="campo__etiqueta" [attr.for]="'observacion-' + tarea().idTarea">
+        {{ etiquetaObservacion(accion) }}
+      </label>
+      <textarea
+        [id]="'observacion-' + tarea().idTarea"
+        class="campo__control campo__control--area"
+        [formControl]="controlObservacion"
+        [attr.maxlength]="largoMaximoObservacion(accion)"
+        [attr.aria-invalid]="mensajeCampoObservacion(accion) ? true : null"
+        [attr.aria-describedby]="
+          mensajeCampoObservacion(accion) ? 'observacion-error-' + tarea().idTarea : null
+        "
+      ></textarea>
+      @if (mensajeCampoObservacion(accion); as mensaje) {
+        <p [id]="'observacion-error-' + tarea().idTarea" class="error" role="alert">{{ mensaje }}</p>
+      }
+      <div class="acciones-tarea__botones">
+        <button type="button" class="boton boton--primario" [disabled]="enviando()" (click)="confirmar()">
+          Confirmar
+        </button>
+        <button type="button" class="boton boton--contorno" [disabled]="enviando()" (click)="volver()">
+          Volver
+        </button>
+      </div>
+    </div>
+  } @else {
+    <div class="acciones-tarea__botones">
+      @for (accion of acciones(); track accion) {
+        <button
+          type="button"
+          class="boton boton--contorno"
+          [disabled]="enviando()"
+          [attr.aria-label]="ariaLabelAccion(accion)"
+          (click)="elegir(accion)"
+        >
+          {{ etiquetaAccion[accion] }}
+        </button>
+      }
+    </div>
+  }
+</div>

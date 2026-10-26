@@ -1,0 +1,213 @@
+<div class="pagina">
+  <header class="cabecera">
+    <a class="enlace-volver" routerLink="/tareas">Volver a tareas</a>
+    <h1>{{ detalle()?.tarea.titulo ?? 'Tarea' }}</h1>
+  </header>
+
+  <div class="contenido">
+    @if (noEncontrado()) {
+      <section class="tarjeta tarjeta--suave" aria-labelledby="tarea-no-encontrada-titulo">
+        <h2 id="tarea-no-encontrada-titulo" class="tarjeta__titulo">
+          La tarea no existe o no pertenece al grupo activo.
+        </h2>
+        <a class="boton boton--contorno" routerLink="/tareas">Ir a tareas</a>
+      </section>
+    } @else {
+      @if (error(); as mensaje) {
+        <p class="error" role="alert">{{ mensaje }}</p>
+      }
+
+      @if (detalle(); as datos) {
+        <section class="tarjeta" aria-labelledby="tarea-datos-titulo">
+          <h2 id="tarea-datos-titulo">Datos</h2>
+          <dl class="lista-datos">
+            <div class="lista-datos__fila">
+              <dt>Adulto mayor</dt>
+              <dd>{{ datos.tarea.nombreAdulto }}</dd>
+            </div>
+            <div class="lista-datos__fila">
+              <dt>Fecha y hora</dt>
+              <dd>{{ fechaHora(datos.tarea.fechaHorario) }}</dd>
+            </div>
+            <div class="lista-datos__fila">
+              <dt>Estado</dt>
+              <dd>
+                <span class="insignia">{{ descripcionEstado(datos.tarea.idEstado) }}</span>
+                @if (datos.tarea.atrasada) {
+                  <span class="insignia insignia--alerta">Atrasada</span>
+                }
+              </dd>
+            </div>
+            <div class="lista-datos__fila">
+              <dt>Responsable</dt>
+              <dd>{{ datos.tarea.responsable?.nombre ?? 'Sin asignar' }}</dd>
+            </div>
+          </dl>
+
+          @if (datos.tarea.descripcion) {
+            <p>{{ datos.tarea.descripcion }}</p>
+          }
+
+          @if (datos.tarea.compra.length > 0) {
+            <section aria-labelledby="tarea-compra-titulo">
+              <h3 id="tarea-compra-titulo">Medicamentos</h3>
+              <ul class="lista-simple">
+                @for (linea of datos.tarea.compra; track linea.idDetalleCompra) {
+                  <li>
+                    <p class="tarjeta-item__titulo">
+                      {{ linea.nombreMedicamento }} — {{ linea.cantidadSolicitada }}
+                      {{ descripcionUnidad(linea.idUnidadCantidad) }}
+                    </p>
+                    @if (linea.dosisIndicada) {
+                      <p class="tarjeta-item__detalle">Dosis indicada: {{ linea.dosisIndicada }}</p>
+                    }
+                    @if (linea.observaciones) {
+                      <p class="tarjeta-item__detalle">{{ linea.observaciones }}</p>
+                    }
+                  </li>
+                }
+              </ul>
+            </section>
+          }
+
+          @if (datos.tarea.cita; as cita) {
+            <section aria-labelledby="tarea-cita-titulo">
+              <h3 id="tarea-cita-titulo">Cita</h3>
+              <p>{{ cita.nombreMedico }} — {{ cita.lugarAtencion }}</p>
+              @if (cita.observaciones) {
+                <p>{{ cita.observaciones }}</p>
+              }
+            </section>
+          }
+
+          @if (codigoActual() === 'CANCELADA') {
+            <section aria-labelledby="tarea-cancelacion-titulo">
+              <h3 id="tarea-cancelacion-titulo">Motivo de cancelación</h3>
+              <p>{{ datos.tarea.motivoCancelacion }}</p>
+            </section>
+          } @else if (datos.tarea.nombreConfirmador) {
+            <section aria-labelledby="tarea-confirmacion-titulo">
+              <h3 id="tarea-confirmacion-titulo">Confirmación</h3>
+              <p>
+                {{ datos.tarea.nombreConfirmador }}
+                @if (datos.tarea.fechaConfirmacion) {
+                  · {{ fechaHora(datos.tarea.fechaConfirmacion) }}
+                }
+              </p>
+              @if (datos.tarea.observacionCierre) {
+                <p>{{ datos.tarea.observacionCierre }}</p>
+              }
+            </section>
+          }
+
+          @if (activo()) {
+            <app-acciones-tarea
+              [tarea]="datos.tarea"
+              [idGrupo]="activo()!.idGrupo"
+              [estados]="estados()"
+              [quien]="quien()"
+              (actualizada)="recargar()"
+            />
+          }
+        </section>
+
+        <section class="tarjeta" aria-labelledby="tarea-historial-titulo">
+          <h2 id="tarea-historial-titulo">Historial de estados</h2>
+          @if (datos.historial.length === 0) {
+            <p class="vacio" role="status">Sin historial.</p>
+          }
+          <ul class="lista-simple">
+            @for (item of datos.historial; track $index) {
+              <li class="tarjeta-item" data-prueba="historial-item">
+                <p class="tarjeta-item__titulo">{{ etiquetaTransicion(item) }}</p>
+                <p class="tarjeta-item__detalle">
+                  {{ item.nombreUsuario }} · {{ fechaHora(item.fechaCambio) }}
+                </p>
+                @if (item.observacion) {
+                  <p class="tarjeta-item__detalle">{{ item.observacion }}</p>
+                }
+              </li>
+            }
+          </ul>
+        </section>
+
+        <section class="tarjeta" aria-labelledby="tarea-asignaciones-titulo">
+          <h2 id="tarea-asignaciones-titulo">Asignaciones</h2>
+          @if (datos.asignaciones.length === 0) {
+            <p class="vacio" role="status">Sin asignaciones.</p>
+          }
+          <ul class="lista-simple">
+            @for (asignacion of datos.asignaciones; track asignacion.idAsignacion) {
+              <li class="tarjeta-item" data-prueba="asignacion-item">
+                <p class="tarjeta-item__titulo">{{ asignacion.nombreAsignado }}</p>
+                <p class="tarjeta-item__detalle">
+                  Asignado por {{ asignacion.nombreAsignador }} · desde
+                  {{ fechaHora(asignacion.fechaAsignacion) }}
+                  @if (asignacion.fechaTermino) {
+                    · hasta {{ fechaHora(asignacion.fechaTermino) }}
+                  }
+                </p>
+                <p class="tarjeta-item__detalle">
+                  <span class="insignia">{{ descripcionEstadoAsignacion(asignacion.idEstado) }}</span>
+                </p>
+                @if (asignacion.motivo) {
+                  <p class="tarjeta-item__detalle">{{ asignacion.motivo }}</p>
+                }
+              </li>
+            }
+          </ul>
+        </section>
+
+        @if (puedeReasignar()) {
+          <section class="tarjeta" aria-labelledby="tarea-reasignar-titulo">
+            <h2 id="tarea-reasignar-titulo">Reasignar</h2>
+            <form [formGroup]="formularioReasignar" (ngSubmit)="reasignar()" novalidate>
+              <div class="campo">
+                <label class="campo__etiqueta" for="tarea-reasignar-integrante">Nuevo responsable</label>
+                <select
+                  id="tarea-reasignar-integrante"
+                  class="campo__control"
+                  formControlName="idUsuario"
+                  [attr.aria-invalid]="mensajeReasignar() ? true : null"
+                  [attr.aria-describedby]="
+                    mensajeReasignar() ? 'tarea-reasignar-integrante-error' : null
+                  "
+                >
+                  <option [ngValue]="null">Selecciona…</option>
+                  @for (integrante of integrantesParaReasignar(); track integrante.idUsuario) {
+                    <option [ngValue]="integrante.idUsuario">{{ integrante.nombre }}</option>
+                  }
+                </select>
+                @if (mensajeReasignar(); as mensaje) {
+                  <p id="tarea-reasignar-integrante-error" class="error" role="alert">{{ mensaje }}</p>
+                }
+              </div>
+
+              <div class="campo">
+                <label class="campo__etiqueta" for="tarea-reasignar-motivo">Motivo (opcional)</label>
+                <textarea
+                  id="tarea-reasignar-motivo"
+                  class="campo__control campo__control--area"
+                  maxlength="500"
+                  formControlName="motivo"
+                ></textarea>
+              </div>
+
+              @if (errorReasignar(); as mensaje) {
+                <p class="error" role="alert">{{ mensaje }}</p>
+              }
+
+              <button type="submit" class="boton boton--primario" [disabled]="reasignando()">
+                {{ reasignando() ? 'Reasignando…' : 'Reasignar' }}
+              </button>
+            </form>
+          </section>
+        }
+
+        @if (confirmacionReasignar(); as mensaje) {
+          <p class="confirmacion" role="status">{{ mensaje }}</p>
+        }
+      }
+    }
+  </div>
+</div>

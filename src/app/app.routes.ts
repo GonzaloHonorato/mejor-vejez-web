@@ -46,6 +46,27 @@ export const routes: Routes = [
           import('./paginas/integrantes/integrantes').then((m) => m.Integrantes),
       },
       {
+        path: 'tareas',
+        title: 'Tareas · Mejor Vejez',
+        data: { tituloPagina: 'Tareas' },
+        loadComponent: () => import('./paginas/tareas/tareas').then((m) => m.Tareas),
+      },
+      {
+        // IMPORTANTE: 'tareas/nueva' debe quedar ANTES de 'tareas/:idTarea'
+        // (Tarea 11): si no, el router la confundiría con un idTarea
+        // literal "nueva".
+        path: 'tareas/nueva',
+        title: 'Nueva tarea · Mejor Vejez',
+        data: { tituloPagina: 'Nueva tarea' },
+        loadComponent: () => import('./paginas/nueva-tarea/nueva-tarea').then((m) => m.NuevaTarea),
+      },
+      {
+        path: 'tareas/:idTarea',
+        title: 'Tarea · Mejor Vejez',
+        data: { tituloPagina: 'Tarea' },
+        loadComponent: () => import('./paginas/tarea/tarea').then((m) => m.Tarea),
+      },
+      {
         path: 'planes',
         title: 'Medicamentos · Mejor Vejez',
         data: { tituloPagina: 'Medicamentos' },

@@ -1,0 +1,216 @@
+// Tareas — opción C. Sólo var(--mv-...): ver src/estilos/_tema.scss.
+
+:host {
+  display: block;
+}
+
+.pagina {
+  display: flex;
+  flex-direction: column;
+}
+
+.cabecera {
+  padding: var(--mv-espacio-4);
+  background: var(--mv-color-fondo);
+}
+
+h1 {
+  margin: 0;
+}
+
+.contenido {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mv-espacio-4);
+  padding: var(--mv-espacio-4);
+}
+
+.tarjeta {
+  padding: var(--mv-espacio-4);
+  border: 2px solid var(--mv-color-borde);
+  border-radius: var(--mv-radio-md);
+  background: var(--mv-color-superficie);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--mv-espacio-4);
+  max-width: var(--mv-ancho-lectura);
+
+  &--suave {
+    border-color: transparent;
+    background: var(--mv-color-fondo);
+  }
+
+  &__titulo {
+    margin: 0;
+    font-size: var(--mv-texto-grande);
+  }
+}
+
+.nota {
+  margin: 0;
+  font-size: var(--mv-texto-pequeno);
+  color: var(--mv-color-secundario);
+}
+
+.navegador-fecha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mv-espacio-3);
+}
+
+.titulo-dia {
+  margin: 0;
+  font-size: var(--mv-texto-titulo);
+}
+
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mv-espacio-4);
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mv-espacio-2);
+
+  &__etiqueta {
+    font-weight: var(--mv-texto-peso-negrita);
+  }
+
+  &__control {
+    min-height: var(--mv-espacio-12);
+    padding: 0 var(--mv-espacio-4);
+    border: 2px solid var(--mv-color-secundario);
+    border-radius: var(--mv-radio-md);
+    background: var(--mv-color-superficie);
+    color: var(--mv-color-texto);
+    font: inherit;
+  }
+}
+
+.oculto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.interruptor {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mv-espacio-3);
+  min-height: var(--mv-espacio-12);
+  cursor: pointer;
+
+  &__control {
+    flex: none;
+    width: var(--mv-espacio-6);
+    height: var(--mv-espacio-6);
+    cursor: pointer;
+  }
+
+  &__etiqueta {
+    font-weight: var(--mv-texto-peso-negrita);
+  }
+}
+
+.vacio {
+  margin: 0;
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mv-espacio-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tarjeta-tarea {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mv-espacio-3);
+  padding: var(--mv-espacio-4);
+  border: 2px solid var(--mv-color-borde);
+  border-radius: var(--mv-radio-md);
+  background: var(--mv-color-superficie);
+
+  &__principal {
+    display: flex;
+    flex-direction: column;
+    gap: var(--mv-espacio-1);
+  }
+
+  &__hora,
+  &__titulo {
+    margin: 0;
+    font-weight: var(--mv-texto-peso-negrita);
+  }
+
+  &__adulto,
+  &__responsable {
+    margin: 0;
+    font-size: var(--mv-texto-pequeno);
+  }
+
+  &__insignias {
+    margin: 0;
+    display: flex;
+    gap: var(--mv-espacio-2);
+  }
+}
+
+.insignia {
+  padding: var(--mv-espacio-1) var(--mv-espacio-3);
+  border-radius: var(--mv-radio-completo);
+  background: var(--mv-color-exito-fondo);
+  color: var(--mv-color-exito);
+  font-size: var(--mv-texto-pequeno);
+  font-weight: var(--mv-texto-peso-negrita);
+
+  &--atrasada {
+    background: var(--mv-color-alerta-fondo);
+    color: var(--mv-color-alerta-texto);
+  }
+}
+
+.enlace {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--mv-espacio-12);
+  color: var(--mv-color-primario);
+  font-weight: var(--mv-texto-peso-negrita);
+}
+
+.error {
+  margin: 0;
+  padding: var(--mv-espacio-2) var(--mv-espacio-3);
+  border-radius: var(--mv-radio-sm);
+  background: var(--mv-color-error-fondo);
+  color: var(--mv-color-error);
+  font-size: var(--mv-texto-pequeno);
+  font-weight: var(--mv-texto-peso-negrita);
+}
+
+.boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--mv-espacio-12);
+  padding: 0 var(--mv-espacio-4);
+  border-radius: var(--mv-radio-md);
+  font-weight: var(--mv-texto-peso-negrita);
+  cursor: pointer;
+  text-decoration: none;
+
+  &--contorno {
+    border: 2px solid var(--mv-color-primario);
+    background: var(--mv-color-superficie);
+    color: var(--mv-color-primario);
+  }
+}

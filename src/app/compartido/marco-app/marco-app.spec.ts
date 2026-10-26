@@ -213,6 +213,17 @@ describe('MarcoApp', () => {
     expect(enlace!.textContent).not.toContain('próximamente');
   });
 
+  it('tareasEstaHabilitado', async () => {
+    const { elemento } = await crearMarco();
+
+    const enlace = Array.from(elemento.querySelectorAll('a')).find((a) =>
+      a.textContent?.includes('Tareas'),
+    );
+    expect(enlace).toBeDefined();
+    expect(enlace!.getAttribute('href')).toBe('/tareas');
+    expect(enlace!.textContent).not.toContain('próximamente');
+  });
+
   it('medicamentosEstaHabilitado', async () => {
     const { elemento } = await crearMarco();
 

@@ -1,0 +1,294 @@
+<div class="pagina">
+  <header class="cabecera">
+    <h1>Nueva tarea</h1>
+  </header>
+
+  <div class="contenido">
+    @if (!activo()) {
+      <section class="tarjeta tarjeta--suave" aria-labelledby="nueva-tarea-sin-grupo-titulo">
+        <h2 id="nueva-tarea-sin-grupo-titulo" class="tarjeta__titulo">
+          Primero crea o elige un grupo.
+        </h2>
+        <a class="boton boton--contorno" routerLink="/grupos">Ir a grupos</a>
+      </section>
+    } @else if (!puedeAdministrar()) {
+      <p role="status">Solo el coordinador puede crear tareas.</p>
+    } @else {
+      <form class="formulario tarjeta" [formGroup]="formulario" (ngSubmit)="enviar()" novalidate>
+        <fieldset class="grupo">
+          <legend>Tipo de tarea</legend>
+          <label class="casilla">
+            <input type="radio" value="COMPRA_RETIRO_MEDICAMENTOS" formControlName="tipoTarea" />
+            <span>Compra o retiro de medicamentos</span>
+          </label>
+          <label class="casilla">
+            <input type="radio" value="CITAS_CONTROLES_MEDICOS" formControlName="tipoTarea" />
+            <span>Cita o control médico</span>
+          </label>
+        </fieldset>
+
+        <div class="campo">
+          <label class="etiqueta" for="nueva-tarea-adulto">Adulto mayor</label>
+          <select
+            id="nueva-tarea-adulto"
+            class="control"
+            formControlName="idAdultoMayor"
+            [attr.aria-describedby]="mensaje('idAdultoMayor') ? 'nueva-tarea-adulto-error' : null"
+          >
+            <option [ngValue]="null">Selecciona…</option>
+            @for (adulto of adultos(); track adulto.idAdultoMayor) {
+              <option [ngValue]="adulto.idAdultoMayor">{{ adulto.nombreCompleto }}</option>
+            }
+          </select>
+          @if (mensaje('idAdultoMayor'); as m) {
+            <p id="nueva-tarea-adulto-error" class="error" role="alert">{{ m }}</p>
+          }
+        </div>
+
+        <div class="campo">
+          <label class="etiqueta" for="nueva-tarea-titulo">Título</label>
+          <input
+            id="nueva-tarea-titulo"
+            class="control"
+            type="text"
+            maxlength="200"
+            formControlName="titulo"
+            [attr.aria-describedby]="mensaje('titulo') ? 'nueva-tarea-titulo-error' : null"
+          />
+          @if (mensaje('titulo'); as m) {
+            <p id="nueva-tarea-titulo-error" class="error" role="alert">{{ m }}</p>
+          }
+        </div>
+
+        <div class="campo">
+          <label class="etiqueta" for="nueva-tarea-descripcion">Descripción</label>
+          <textarea
+            id="nueva-tarea-descripcion"
+            class="control control--area"
+            rows="3"
+            maxlength="1000"
+            formControlName="descripcion"
+          ></textarea>
+        </div>
+
+        <div class="fila">
+          <div class="campo">
+            <label class="etiqueta" for="nueva-tarea-fecha">Fecha</label>
+            <input
+              id="nueva-tarea-fecha"
+              class="control"
+              type="date"
+              formControlName="fecha"
+              [attr.aria-describedby]="mensaje('fecha') ? 'nueva-tarea-fecha-error' : null"
+            />
+            @if (mensaje('fecha'); as m) {
+              <p id="nueva-tarea-fecha-error" class="error" role="alert">{{ m }}</p>
+            }
+          </div>
+          <div class="campo">
+            <label class="etiqueta" for="nueva-tarea-hora">Hora</label>
+            <input
+              id="nueva-tarea-hora"
+              class="control"
+              type="time"
+              formControlName="hora"
+              [attr.aria-describedby]="mensaje('hora') ? 'nueva-tarea-hora-error' : null"
+            />
+            @if (mensaje('hora'); as m) {
+              <p id="nueva-tarea-hora-error" class="error" role="alert">{{ m }}</p>
+            }
+          </div>
+        </div>
+
+        <div class="campo">
+          <label class="etiqueta" for="nueva-tarea-responsable">Responsable</label>
+          <select id="nueva-tarea-responsable" class="control" formControlName="idResponsable">
+            <option [ngValue]="null">Sin responsable</option>
+            @for (integrante of integrantesActivos(); track integrante.idUsuario) {
+              <option [ngValue]="integrante.idUsuario">{{ integrante.nombre }}</option>
+            }
+          </select>
+        </div>
+
+        @if (formulario.controls.tipoTarea.value === 'COMPRA_RETIRO_MEDICAMENTOS') {
+          <fieldset class="grupo">
+            <legend>Medicamentos</legend>
+            @for (linea of compra.controls; track linea; let i = $index) {
+              <div class="compra-linea" [formGroup]="linea">
+                @if (linea.controls.nombreMedicamento.value; as nombre) {
+                  <div class="elegido">
+                    <p class="elegido__nombre">
+                      <span class="etiqueta">Medicamento:</span> {{ nombre }}
+                    </p>
+                    <button type="button" class="boton" (click)="cambiarMedicamento(i)">
+                      Cambiar medicamento
+                    </button>
+                  </div>
+                } @else {
+                  <app-buscador-medicamento
+                    [idGrupo]="activo()!.idGrupo"
+                    [presentaciones]="presentaciones()"
+                    (elegido)="elegirMedicamento(i, $event)"
+                  />
+                  @if (mensajeLinea(i, 'idMedicamento'); as m) {
+                    <p class="error" role="alert">{{ m }}</p>
+                  }
+                }
+
+                <div class="fila">
+                  <div class="campo">
+                    <label class="etiqueta" [for]="'nueva-tarea-compra-' + i + '-presentacion'"
+                      >Presentación</label
+                    >
+                    <select
+                      [id]="'nueva-tarea-compra-' + i + '-presentacion'"
+                      class="control"
+                      formControlName="idPresentacion"
+                    >
+                      <option [ngValue]="null">Selecciona…</option>
+                      @for (opcion of presentaciones(); track opcion.idOpcion) {
+                        <option [ngValue]="opcion.idOpcion">{{ opcion.descripcion }}</option>
+                      }
+                    </select>
+                    @if (mensajeLinea(i, 'idPresentacion'); as m) {
+                      <p class="error" role="alert">{{ m }}</p>
+                    }
+                  </div>
+                  <div class="campo">
+                    <label class="etiqueta" [for]="'nueva-tarea-compra-' + i + '-cantidad'"
+                      >Cantidad</label
+                    >
+                    <input
+                      [id]="'nueva-tarea-compra-' + i + '-cantidad'"
+                      class="control"
+                      type="number"
+                      inputmode="decimal"
+                      step="0.001"
+                      min="0.001"
+                      formControlName="cantidadSolicitada"
+                    />
+                    @if (mensajeLinea(i, 'cantidadSolicitada'); as m) {
+                      <p class="error" role="alert">{{ m }}</p>
+                    }
+                  </div>
+                  <div class="campo">
+                    <label class="etiqueta" [for]="'nueva-tarea-compra-' + i + '-unidad'"
+                      >Unidad</label
+                    >
+                    <select
+                      [id]="'nueva-tarea-compra-' + i + '-unidad'"
+                      class="control"
+                      formControlName="idUnidadCantidad"
+                    >
+                      <option [ngValue]="null">Selecciona…</option>
+                      @for (opcion of unidades(); track opcion.idOpcion) {
+                        <option [ngValue]="opcion.idOpcion">{{ opcion.descripcion }}</option>
+                      }
+                    </select>
+                    @if (mensajeLinea(i, 'idUnidadCantidad'); as m) {
+                      <p class="error" role="alert">{{ m }}</p>
+                    }
+                  </div>
+                </div>
+
+                <div class="campo">
+                  <label class="etiqueta" [for]="'nueva-tarea-compra-' + i + '-dosis'"
+                    >Dosis indicada</label
+                  >
+                  <input
+                    [id]="'nueva-tarea-compra-' + i + '-dosis'"
+                    class="control"
+                    type="text"
+                    maxlength="200"
+                    formControlName="dosisIndicada"
+                  />
+                </div>
+
+                <div class="campo">
+                  <label class="etiqueta" [for]="'nueva-tarea-compra-' + i + '-observaciones'"
+                    >Observaciones</label
+                  >
+                  <textarea
+                    [id]="'nueva-tarea-compra-' + i + '-observaciones'"
+                    class="control control--area"
+                    rows="2"
+                    maxlength="500"
+                    formControlName="observaciones"
+                  ></textarea>
+                </div>
+
+                <button
+                  type="button"
+                  class="boton"
+                  [attr.aria-label]="'Quitar medicamento ' + (i + 1)"
+                  [disabled]="compra.length === 1"
+                  (click)="quitarLinea(i)"
+                >
+                  Quitar
+                </button>
+              </div>
+            }
+          </fieldset>
+          <button type="button" class="boton" (click)="agregarLinea()">Agregar medicamento</button>
+        } @else {
+          <fieldset class="grupo" [formGroup]="cita">
+            <legend>Cita o control médico</legend>
+            <div class="campo">
+              <label class="etiqueta" for="nueva-tarea-cita-medico">Médico</label>
+              <input
+                id="nueva-tarea-cita-medico"
+                class="control"
+                type="text"
+                maxlength="180"
+                formControlName="nombreMedico"
+                [attr.aria-describedby]="
+                  mensajeCita('nombreMedico') ? 'nueva-tarea-cita-medico-error' : null
+                "
+              />
+              @if (mensajeCita('nombreMedico'); as m) {
+                <p id="nueva-tarea-cita-medico-error" class="error" role="alert">{{ m }}</p>
+              }
+            </div>
+            <div class="campo">
+              <label class="etiqueta" for="nueva-tarea-cita-lugar">Lugar</label>
+              <input
+                id="nueva-tarea-cita-lugar"
+                class="control"
+                type="text"
+                maxlength="250"
+                formControlName="lugarAtencion"
+                [attr.aria-describedby]="
+                  mensajeCita('lugarAtencion') ? 'nueva-tarea-cita-lugar-error' : null
+                "
+              />
+              @if (mensajeCita('lugarAtencion'); as m) {
+                <p id="nueva-tarea-cita-lugar-error" class="error" role="alert">{{ m }}</p>
+              }
+            </div>
+            <div class="campo">
+              <label class="etiqueta" for="nueva-tarea-cita-observaciones">Observaciones</label>
+              <textarea
+                id="nueva-tarea-cita-observaciones"
+                class="control control--area"
+                rows="2"
+                maxlength="1000"
+                formControlName="observaciones"
+              ></textarea>
+            </div>
+          </fieldset>
+        }
+
+        @if (error(); as m) {
+          <p class="error" role="alert">{{ m }}</p>
+        }
+
+        <div class="acciones">
+          <button type="submit" class="boton boton--primario" [disabled]="guardando()">
+            {{ guardando() ? 'Guardando…' : 'Crear tarea' }}
+          </button>
+          <button type="button" class="boton" (click)="cancelar()">Cancelar</button>
+        </div>
+      </form>
+    }
+  </div>
+</div>

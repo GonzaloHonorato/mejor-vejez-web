@@ -1,0 +1,211 @@
+// Detalle de la tarea — opción C. Sólo var(--mv-...).
+
+:host {
+  display: block;
+}
+
+.pagina {
+  display: flex;
+  flex-direction: column;
+}
+
+.cabecera {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mv-espacio-2);
+  padding: var(--mv-espacio-4);
+  background: var(--mv-color-fondo);
+}
+
+.enlace-volver {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--mv-espacio-12);
+  color: var(--mv-color-primario);
+  font-weight: var(--mv-texto-peso-negrita);
+}
+
+h1 {
+  margin: 0;
+}
+
+.contenido {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mv-espacio-4);
+  padding: var(--mv-espacio-4);
+}
+
+.tarjeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--mv-espacio-3);
+  padding: var(--mv-espacio-4);
+  border: 2px solid var(--mv-color-borde);
+  border-radius: var(--mv-radio-md);
+  background: var(--mv-color-superficie);
+  max-width: var(--mv-ancho-lectura);
+
+  &--suave {
+    border-color: transparent;
+    background: var(--mv-color-fondo);
+  }
+
+  &__titulo {
+    margin: 0;
+    font-size: var(--mv-texto-grande);
+  }
+}
+
+.lista-datos {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mv-espacio-2);
+  margin: 0;
+
+  &__fila {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: var(--mv-espacio-2);
+
+    dt {
+      font-weight: var(--mv-texto-peso-negrita);
+    }
+
+    dd {
+      margin: 0;
+      color: var(--mv-color-secundario);
+    }
+  }
+}
+
+.lista-simple {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mv-espacio-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tarjeta-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mv-espacio-1);
+  padding: var(--mv-espacio-3);
+  border: 2px solid var(--mv-color-borde);
+  border-radius: var(--mv-radio-md);
+  background: var(--mv-color-fondo);
+
+  &__titulo {
+    margin: 0;
+    font-weight: var(--mv-texto-peso-negrita);
+  }
+
+  &__detalle {
+    margin: 0;
+    font-size: var(--mv-texto-pequeno);
+    color: var(--mv-color-secundario);
+  }
+}
+
+.vacio {
+  margin: 0;
+}
+
+.insignia {
+  padding: var(--mv-espacio-1) var(--mv-espacio-3);
+  border-radius: var(--mv-radio-completo);
+  background: var(--mv-color-exito-fondo);
+  color: var(--mv-color-exito);
+  font-size: var(--mv-texto-pequeno);
+  font-weight: var(--mv-texto-peso-negrita);
+
+  &--alerta {
+    background: var(--mv-color-alerta-fondo);
+    color: var(--mv-color-alerta-texto);
+  }
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mv-espacio-2);
+
+  &__etiqueta {
+    font-weight: var(--mv-texto-peso-negrita);
+  }
+
+  &__control {
+    min-height: var(--mv-espacio-12);
+    padding: 0 var(--mv-espacio-4);
+    border: 2px solid var(--mv-color-secundario);
+    border-radius: var(--mv-radio-md);
+    background: var(--mv-color-superficie);
+    font: inherit;
+
+    &--area {
+      min-height: calc(var(--mv-espacio-12) * 2);
+      padding: var(--mv-espacio-3) var(--mv-espacio-4);
+      resize: vertical;
+    }
+  }
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mv-espacio-4);
+  width: 100%;
+}
+
+.error {
+  margin: 0;
+  padding: var(--mv-espacio-2) var(--mv-espacio-3);
+  border-radius: var(--mv-radio-sm);
+  background: var(--mv-color-error-fondo);
+  color: var(--mv-color-error);
+  font-size: var(--mv-texto-pequeno);
+  font-weight: var(--mv-texto-peso-negrita);
+}
+
+.confirmacion {
+  margin: 0;
+  color: var(--mv-color-exito);
+  font-weight: var(--mv-texto-peso-negrita);
+}
+
+.boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--mv-espacio-12);
+  padding: 0 var(--mv-espacio-4);
+  border-radius: var(--mv-radio-md);
+  font-weight: var(--mv-texto-peso-negrita);
+  cursor: pointer;
+  text-decoration: none;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  &--contorno {
+    border: 2px solid var(--mv-color-primario);
+    background: var(--mv-color-superficie);
+    color: var(--mv-color-primario);
+  }
+
+  &--primario {
+    border: 0;
+    background: var(--mv-color-primario);
+    color: var(--mv-color-sobre-primario);
+
+    &:hover:not(:disabled) {
+      background: var(--mv-color-primario-hover);
+    }
+  }
+}

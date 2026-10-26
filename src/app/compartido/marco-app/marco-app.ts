@@ -31,7 +31,7 @@ interface EntradaNavegacion {
 
 const NAVEGACION_BASE: readonly EntradaNavegacion[] = [
   { etiqueta: 'Panel familiar', etiquetaCorta: 'Panel', ruta: '/', coincidenciaExacta: true },
-  { etiqueta: 'Tareas', etiquetaCorta: 'Tareas' },
+  { etiqueta: 'Tareas', etiquetaCorta: 'Tareas', ruta: '/tareas', coincidenciaExacta: false },
   { etiqueta: 'Alertas', etiquetaCorta: 'Alertas' },
   { etiqueta: 'Medicamentos', etiquetaCorta: 'Remedios', ruta: '/planes', coincidenciaExacta: false },
   { etiqueta: 'Adultos mayores', etiquetaCorta: 'Personas', ruta: '/adultos', coincidenciaExacta: false },

@@ -1,0 +1,110 @@
+<div class="pagina">
+  <header class="cabecera">
+    <h1>Tareas</h1>
+  </header>
+
+  <div class="contenido">
+    @if (!activo()) {
+      <section class="tarjeta tarjeta--suave" aria-labelledby="tareas-sin-grupo-titulo">
+        <h2 id="tareas-sin-grupo-titulo" class="tarjeta__titulo">Primero crea o elige un grupo.</h2>
+        <a class="boton boton--contorno" routerLink="/grupos">Ir a grupos</a>
+      </section>
+    } @else {
+      <p class="nota">
+        Las tareas de medicamentos se generan automáticamente con hasta 7 días de anticipación.
+      </p>
+
+      <div class="navegador-fecha">
+        <button type="button" class="boton boton--contorno" (click)="anterior()">Anterior</button>
+        <button type="button" class="boton boton--contorno" (click)="hoy()">Hoy</button>
+        <button type="button" class="boton boton--contorno" (click)="siguiente()">Siguiente</button>
+        <label class="oculto" for="tareas-fecha">Elegir fecha</label>
+        <input
+          id="tareas-fecha"
+          class="campo__control"
+          type="date"
+          [formControl]="controlFecha"
+          (change)="cambiarFechaDesdeInput()"
+        />
+      </div>
+
+      <h2 class="titulo-dia">{{ tituloDia() }}</h2>
+
+      @if (error(); as mensaje) {
+        <p class="error" role="alert">{{ mensaje }}</p>
+      }
+
+      <div class="filtros">
+        <div class="campo campo--filtro">
+          <label class="campo__etiqueta" for="tareas-filtro-adulto">Adulto mayor</label>
+          <select
+            id="tareas-filtro-adulto"
+            class="campo__control"
+            [formControl]="controlFiltroAdulto"
+            (change)="cambiarFiltroAdulto()"
+          >
+            <option [ngValue]="null">Todos</option>
+            @for (adulto of adultosFiltro(); track adulto.idAdultoMayor) {
+              <option [ngValue]="adulto.idAdultoMayor">{{ adulto.nombreCompleto }}</option>
+            }
+          </select>
+        </div>
+
+        <label class="interruptor">
+          <input
+            id="tareas-solo-mias"
+            class="interruptor__control"
+            type="checkbox"
+            [checked]="soloMisTareas()"
+            (change)="alternarSoloMisTareas()"
+          />
+          <span class="interruptor__etiqueta">Solo mis tareas</span>
+        </label>
+      </div>
+
+      @if (puedeAdministrar()) {
+        <p>
+          <a class="enlace" routerLink="/tareas/nueva">Nueva tarea</a>
+        </p>
+      }
+
+      @if (!cargando() && !error() && tareas().length === 0) {
+        <p class="vacio" role="status">No hay tareas para este día.</p>
+      }
+
+      <ul class="lista">
+        @for (tarea of tareas(); track tarea.idTarea) {
+          <li class="tarjeta-tarea">
+            <div class="tarjeta-tarea__principal">
+              <p class="tarjeta-tarea__hora">{{ formatearHora(tarea.fechaHorario) }}</p>
+              <p class="tarjeta-tarea__titulo">{{ tarea.titulo }}</p>
+              <p class="tarjeta-tarea__adulto">{{ tarea.nombreAdulto }}</p>
+              <p class="tarjeta-tarea__responsable">{{ responsable(tarea) }}</p>
+              <p class="tarjeta-tarea__insignias">
+                <span class="insignia">{{ descripcionEstado(tarea) }}</span>
+                @if (tarea.atrasada) {
+                  <span class="insignia insignia--atrasada">Atrasada</span>
+                }
+              </p>
+            </div>
+
+            <app-acciones-tarea
+              [tarea]="tarea"
+              [idGrupo]="activo()!.idGrupo"
+              [estados]="estados()"
+              [quien]="quien()"
+              (actualizada)="actualizarTarea($event)"
+            />
+
+            <a
+              class="enlace"
+              [routerLink]="['/tareas', tarea.idTarea]"
+              [attr.aria-label]="'Ver detalle: ' + tarea.titulo + ', ' + formatearHora(tarea.fechaHorario)"
+              >Ver detalle</a
+            >
+          </li>
+        }
+      </ul>
+    }
+  </div>
+</div>
