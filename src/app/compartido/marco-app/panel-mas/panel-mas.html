@@ -1,6 +1,13 @@
 <div class="panel-mas__fondo" aria-hidden="true" (click)="cerrar.emit()"></div>
 
-<div id="panel-mas" class="panel-mas__hoja" role="dialog" aria-label="Más opciones">
+<div
+  id="panel-mas"
+  class="panel-mas__hoja"
+  role="dialog"
+  aria-modal="true"
+  aria-label="Más opciones"
+  (keydown)="atraparFoco($event)"
+>
   <div class="panel-mas__encabezado">
     <span class="panel-mas__titulo">Más opciones</span>
     <button type="button" class="panel-mas__cerrar" (click)="cerrar.emit()">

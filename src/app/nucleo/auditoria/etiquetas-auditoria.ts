@@ -110,7 +110,9 @@ function frasePorDefecto(codigo: string): string {
 }
 
 function etiquetaDe(mapa: Readonly<Record<string, string>>, codigo: string): string {
-  return Object.prototype.hasOwnProperty.call(mapa, codigo) ? mapa[codigo] : frasePorDefecto(codigo);
+  return Object.prototype.hasOwnProperty.call(mapa, codigo)
+    ? mapa[codigo]
+    : frasePorDefecto(codigo);
 }
 
 export function etiquetaAccion(codigo: string): string {

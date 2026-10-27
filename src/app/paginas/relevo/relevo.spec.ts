@@ -1,11 +1,15 @@
-import { HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { Observable, of, throwError } from 'rxjs';
 
 import { Relevo } from './relevo';
-import { RespuestaEstadoCatalogo, ServicioCatalogos } from '../../nucleo/catalogos/servicio-catalogos';
+import {
+  RespuestaEstadoCatalogo,
+  ServicioCatalogos,
+} from '../../nucleo/catalogos/servicio-catalogos';
 import { RespuestaGrupo } from '../../nucleo/grupos/modelos-grupos';
 import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
 import { RespuestaDetalleRelevo, RespuestaRelevo } from '../../nucleo/relevos/modelos-relevos';
@@ -61,8 +65,18 @@ function relevo(datos: Partial<RespuestaRelevo> = {}): RespuestaRelevo {
     totalTareas: 1,
     totalAlertas: 1,
     detalles: [
-      elementoDetalle({ idDetalle: 1, tipoElemento: 'TAREA', idReferencia: 10, resumen: 'Resumen tarea' }),
-      elementoDetalle({ idDetalle: 2, tipoElemento: 'ALERTA', idReferencia: 20, resumen: 'Resumen alerta' }),
+      elementoDetalle({
+        idDetalle: 1,
+        tipoElemento: 'TAREA',
+        idReferencia: 10,
+        resumen: 'Resumen tarea',
+      }),
+      elementoDetalle({
+        idDetalle: 2,
+        tipoElemento: 'ALERTA',
+        idReferencia: 20,
+        resumen: 'Resumen alerta',
+      }),
     ],
     ...datos,
   };
@@ -93,6 +107,9 @@ async function configurar(opciones: Opciones = {}) {
     imports: [Relevo],
     providers: [
       provideRouter([]),
+      // ServicioTareas real contra HttpTestingController: se verifica el PUT de HU-06 tal cual.
+      provideHttpClient(),
+      provideHttpClientTesting(),
       {
         provide: ActivatedRoute,
         useValue: { snapshot: { paramMap: convertToParamMap({ idRelevo: '9' }) } },
@@ -122,6 +139,7 @@ async function configurar(opciones: Opciones = {}) {
     fixture,
     activo,
     servicioRelevos,
+    http: TestBed.inject(HttpTestingController),
     elemento: fixture.nativeElement as HTMLElement,
   };
 }
@@ -131,6 +149,46 @@ function botonConTexto(elemento: HTMLElement, texto: string): HTMLButtonElement 
     boton.textContent?.includes(texto),
   );
 }
+
+function tareaDetalle(idDetalle: number, idReferencia: number, resumen: string) {
+  return elementoDetalle({ idDetalle, tipoElemento: 'TAREA', idReferencia, resumen });
+}
+
+/** Relevo con 3 tareas pendientes (10, 11, 12) y una alerta. */
+function relevoConTresTareas(datos: Partial<RespuestaRelevo> = {}): RespuestaRelevo {
+  return relevo({
+    totalTareas: 3,
+    detalles: [
+      tareaDetalle(1, 10, 'Tarea uno'),
+      tareaDetalle(2, 11, 'Tarea dos'),
+      tareaDetalle(3, 12, 'Tarea tres'),
+      elementoDetalle({
+        idDetalle: 4,
+        tipoElemento: 'ALERTA',
+        idReferencia: 20,
+        resumen: 'Alerta',
+      }),
+    ],
+    ...datos,
+  });
+}
+
+function filaDeTarea(elemento: HTMLElement, resumen: string): HTMLElement {
+  const fila = Array.from(elemento.querySelectorAll<HTMLElement>('.tarjeta-item')).find((li) =>
+    li.textContent?.includes(resumen),
+  );
+  if (!fila) throw new Error(`Sin fila "${resumen}"`);
+  return fila;
+}
+
+function urlAsignacion(idTarea: number): (req: { method: string; url: string }) => boolean {
+  return (req) =>
+    req.method === 'PUT' && req.url.endsWith(`/api/grupos/1/tareas/${idTarea}/asignacion`);
+}
+
+const ERROR_422 = { status: 422, statusText: 'Unprocessable Entity' };
+
+const MOTIVO_ESPERADO = 'Relevo del 02-11-2026 08:00';
 
 describe('Relevo', () => {
   it('detalleMuestraResumenConEnlacesYAvisoDeFoto', async () => {
@@ -223,6 +281,199 @@ describe('Relevo', () => {
         throwError(() => new HttpErrorResponse({ status: 500, error: {} })) as never,
     });
     expect(elementoError.querySelector('[role="alert"]')).toBeTruthy();
-    expect(elementoError.textContent).not.toContain('Sin tareas ni alertas pendientes en este resumen.');
+    expect(elementoError.textContent).not.toContain(
+      'Sin tareas ni alertas pendientes en este resumen.',
+    );
+  });
+  describe('reasignar tareas (HU-11 → HU-06)', () => {
+    afterEach(() => TestBed.inject(HttpTestingController).verify());
+
+    it('coordinadorVeReasignarPorTarea', async () => {
+      const { elemento } = await configurar({ activo: grupo(1, 'COORDINADOR'), idUsuario: 999 });
+
+      const fila = filaDeTarea(elemento, 'Resumen tarea');
+      expect(botonConTexto(fila, 'Reasignar a Beto Díaz')).toBeTruthy();
+      // Las alertas no se reasignan.
+      expect(botonConTexto(filaDeTarea(elemento, 'Resumen alerta'), 'Reasignar')).toBeFalsy();
+      expect(elemento.textContent).toContain(
+        'Reasignar usa la misma operación de Tareas (HU-06) y queda registrado en la auditoría.',
+      );
+      // Se mantiene el aviso de foto.
+      expect(elemento.textContent).toContain('Este resumen es una foto del momento del relevo');
+
+      // Un administrador sin membresía también lo ve.
+      TestBed.resetTestingModule();
+      const administrador = await configurar({
+        activo: grupo(1, null),
+        idUsuario: 999,
+        esAdministrador: true,
+      });
+      expect(botonConTexto(administrador.elemento, 'Reasignar a Beto Díaz')).toBeTruthy();
+    });
+
+    it('colaboradorNoVeReasignar', async () => {
+      // Aunque sea el creador del relevo (puede cancelarlo), no es coordinador.
+      const { elemento } = await configurar({ activo: grupo(1, 'COLABORADOR'), idUsuario: 300 });
+
+      expect(botonConTexto(elemento, 'Reasignar')).toBeFalsy();
+      expect(elemento.textContent).not.toContain('HU-06');
+      expect(elemento.textContent).toContain('Resumen tarea');
+    });
+
+    it('relevoCanceladoNoMuestraReasignar', async () => {
+      const { elemento } = await configurar({
+        obtenerImpl: () => of(relevo({ idEstado: ID_ESTADO_CANCELADA, codigoEstado: 'CANCELADA' })),
+      });
+
+      expect(botonConTexto(elemento, 'Reasignar')).toBeFalsy();
+    });
+
+    it('reasignarLlamaAlEndpointDeHu06ConEntranteYMotivo', async () => {
+      const { fixture, elemento, http } = await configurar();
+
+      botonConTexto(filaDeTarea(elemento, 'Resumen tarea'), 'Reasignar a Beto Díaz')!.click();
+      await fixture.whenStable();
+
+      const peticion = http.expectOne(urlAsignacion(10));
+      expect(peticion.request.method).toBe('PUT');
+      expect(peticion.request.body).toEqual({ idUsuario: 301, motivo: MOTIVO_ESPERADO });
+      peticion.flush({});
+    });
+
+    it('reasignarOkMuestraReasignadaYOcultaBoton', async () => {
+      const { fixture, elemento, http } = await configurar();
+
+      botonConTexto(filaDeTarea(elemento, 'Resumen tarea'), 'Reasignar a Beto Díaz')!.click();
+      await fixture.whenStable();
+      http.expectOne(urlAsignacion(10)).flush({});
+      await fixture.whenStable();
+
+      const fila = filaDeTarea(elemento, 'Resumen tarea');
+      expect(fila.querySelector('[role="status"]')?.textContent?.trim()).toBe(
+        'Reasignada a Beto Díaz',
+      );
+      expect(botonConTexto(fila, 'Reasignar')).toBeFalsy();
+    });
+
+    it('reasignarErrorMuestraMensajeEnAlert', async () => {
+      const { fixture, elemento, http } = await configurar();
+
+      botonConTexto(filaDeTarea(elemento, 'Resumen tarea'), 'Reasignar a Beto Díaz')!.click();
+      await fixture.whenStable();
+      http
+        .expectOne(urlAsignacion(10))
+        .flush({ detail: 'La tarea ya está finalizada; no se puede reasignar' }, ERROR_422);
+      await fixture.whenStable();
+
+      const fila = filaDeTarea(elemento, 'Resumen tarea');
+      expect(fila.querySelector('[role="alert"]')?.textContent?.trim()).toBe(
+        'La tarea ya está finalizada; no se puede reasignar',
+      );
+      // 422 es definitivo: el botón queda, pero deshabilitado.
+      expect(botonConTexto(fila, 'Reasignar a Beto Díaz')!.disabled).toBe(true);
+
+      // Un error no definitivo (500) deja el botón disponible para reintentar.
+      TestBed.resetTestingModule();
+      const otro = await configurar();
+      botonConTexto(filaDeTarea(otro.elemento, 'Resumen tarea'), 'Reasignar a Beto Díaz')!.click();
+      await otro.fixture.whenStable();
+      otro.http.expectOne(urlAsignacion(10)).flush({}, { status: 500, statusText: 'Server Error' });
+      await otro.fixture.whenStable();
+      const filaOtro = filaDeTarea(otro.elemento, 'Resumen tarea');
+      expect(filaOtro.querySelector('[role="alert"]')).toBeTruthy();
+      expect(botonConTexto(filaOtro, 'Reasignar a Beto Díaz')!.disabled).toBe(false);
+    });
+
+    it('yaAsignadaSeMuestraComoInformativo', async () => {
+      const { fixture, elemento, http } = await configurar();
+
+      botonConTexto(filaDeTarea(elemento, 'Resumen tarea'), 'Reasignar a Beto Díaz')!.click();
+      await fixture.whenStable();
+      http
+        .expectOne(urlAsignacion(10))
+        .flush({ detail: 'La tarea ya está asignada a ese integrante' }, ERROR_422);
+      await fixture.whenStable();
+
+      const fila = filaDeTarea(elemento, 'Resumen tarea');
+      expect(fila.querySelector('[role="alert"]')).toBeNull();
+      expect(fila.querySelector('[role="status"]')?.textContent?.trim()).toBe(
+        'Ya estaba asignada a Beto Díaz',
+      );
+      expect(botonConTexto(fila, 'Reasignar')).toBeFalsy();
+    });
+
+    it('reasignarTodasPideConfirmacion', async () => {
+      const { fixture, elemento, http } = await configurar({
+        obtenerImpl: () => of(relevoConTresTareas()),
+      });
+
+      botonConTexto(elemento, 'Reasignar todas a Beto Díaz')!.click();
+      await fixture.whenStable();
+
+      expect(elemento.textContent).toContain(
+        '¿Reasignar las 3 tareas pendientes a Beto Díaz? Cada reasignación queda registrada.',
+      );
+      // Todavía no se envió nada.
+      http.expectNone(() => true);
+
+      botonConTexto(elemento, 'Volver')!.click();
+      await fixture.whenStable();
+      expect(elemento.textContent).not.toContain('¿Reasignar las 3 tareas');
+      http.expectNone(() => true);
+    });
+
+    it('reasignarTodasEsSecuencialYResume', async () => {
+      const { fixture, elemento, http } = await configurar({
+        obtenerImpl: () => of(relevoConTresTareas()),
+      });
+
+      botonConTexto(elemento, 'Reasignar todas a Beto Díaz')!.click();
+      await fixture.whenStable();
+      botonConTexto(elemento, 'Confirmar')!.click();
+      await fixture.whenStable();
+
+      // `expectOne(() => true)` exige UNA sola petición pendiente en total:
+      // en secuencia y en el orden de la lista.
+      const primera = http.expectOne(() => true);
+      expect(urlAsignacion(10)(primera.request)).toBe(true);
+      expect(primera.request.body).toEqual({ idUsuario: 301, motivo: MOTIVO_ESPERADO });
+      primera.flush({});
+      await fixture.whenStable();
+
+      const segunda = http.expectOne(() => true);
+      expect(urlAsignacion(11)(segunda.request)).toBe(true);
+      segunda.flush({ detail: 'La tarea ya está finalizada; no se puede reasignar' }, ERROR_422);
+      await fixture.whenStable();
+
+      // El error de la segunda no detiene la tercera.
+      const tercera = http.expectOne(() => true);
+      expect(urlAsignacion(12)(tercera.request)).toBe(true);
+      tercera.flush({});
+      await fixture.whenStable();
+
+      expect(filaDeTarea(elemento, 'Tarea uno').textContent).toContain('Reasignada a Beto Díaz');
+      expect(filaDeTarea(elemento, 'Tarea dos').querySelector('[role="alert"]')).toBeTruthy();
+      expect(filaDeTarea(elemento, 'Tarea tres').textContent).toContain('Reasignada a Beto Díaz');
+      const resumen = Array.from(elemento.querySelectorAll('[role="status"]')).find((e) =>
+        e.textContent?.includes('Se reasignaron'),
+      );
+      expect(resumen?.textContent?.trim()).toBe('Se reasignaron 2 de 3 tareas.');
+    });
+
+    it('botonDeshabilitadoDuranteLaPeticion', async () => {
+      const { fixture, elemento, http } = await configurar();
+
+      const boton = botonConTexto(filaDeTarea(elemento, 'Resumen tarea'), 'Reasignar a Beto Díaz')!;
+      boton.click();
+      await fixture.whenStable();
+
+      expect(boton.disabled).toBe(true);
+      // Un segundo toque no genera otra petición.
+      boton.click();
+      await fixture.whenStable();
+      const peticiones = http.match(urlAsignacion(10));
+      expect(peticiones).toHaveLength(1);
+      peticiones[0].flush({});
+    });
   });
 });

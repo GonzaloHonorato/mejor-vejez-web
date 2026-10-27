@@ -3,13 +3,17 @@ import { Component, OnInit, computed, effect, inject, signal } from '@angular/co
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { descripcionEstado } from '../../nucleo/catalogos/descripcion-estado';
-import { RespuestaEstadoCatalogo, ServicioCatalogos } from '../../nucleo/catalogos/servicio-catalogos';
+import {
+  RespuestaEstadoCatalogo,
+  ServicioCatalogos,
+} from '../../nucleo/catalogos/servicio-catalogos';
 import { fechaEnSantiago, formatearFecha, formatearHora } from '../../nucleo/fechas';
 import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
 import { mensajeDeError } from '../../nucleo/http/mensaje-de-error';
 import { RespuestaDetalleRelevo, RespuestaRelevo } from '../../nucleo/relevos/modelos-relevos';
 import { ServicioRelevos } from '../../nucleo/relevos/servicio-relevos';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
+import { ReasignarTareas } from './reasignar-tareas/reasignar-tareas';
 
 /** Aviso exacto de la regla 29 del plan: la foto no se vuelve a calcular. */
 export const AVISO_FOTO_RELEVO =
@@ -30,7 +34,7 @@ export const AVISO_FOTO_RELEVO =
  */
 @Component({
   selector: 'app-relevo',
-  imports: [RouterLink],
+  imports: [RouterLink, ReasignarTareas],
   templateUrl: './relevo.html',
   styleUrl: './relevo.scss',
 })
@@ -71,7 +75,9 @@ export class Relevo implements OnInit {
   private readonly codigoActual = computed(() => {
     const relevo = this.detalle();
     if (!relevo) return null;
-    return this.estadosRelevo().find((estado) => estado.idEstado === relevo.idEstado)?.codigo ?? null;
+    return (
+      this.estadosRelevo().find((estado) => estado.idEstado === relevo.idEstado)?.codigo ?? null
+    );
   });
 
   /**
@@ -87,6 +93,19 @@ export class Relevo implements OnInit {
     const esCreador = miId !== null && miId === relevo.creador.idUsuario;
     const esCoordinador = this.activo()?.miRol === 'COORDINADOR';
     return esCreador || esCoordinador || this.esAdministrador();
+  });
+
+  /**
+   * Reasignar tareas pendientes a quien recibe (HU-11 → HU-06, decisión de
+   * Gonzalo 2026-10-27): solo coordinador del grupo o administrador (el rol
+   * se resuelve igual que en `puedeCancelar`, pero sin el creador: HU-06 no
+   * deja reasignar a un colaborador), con el relevo COMPLETADA y con tareas
+   * en el resumen. La API vuelve a validar todo (403/422).
+   */
+  protected readonly puedeReasignar = computed(() => {
+    if (!this.detalle() || this.codigoActual() !== 'COMPLETADA') return false;
+    if (this.tareasPendientes().length === 0) return false;
+    return this.activo()?.miRol === 'COORDINADOR' || this.esAdministrador();
   });
 
   protected readonly cancelando = signal(false);

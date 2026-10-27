@@ -1,11 +1,4 @@
-import {
-  Component,
-  ElementRef,
-  afterNextRender,
-  inject,
-  input,
-  output,
-} from '@angular/core';
+import { Component, ElementRef, afterNextRender, inject, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { Icono, NombreIcono } from '../../icono/icono';
@@ -33,6 +26,10 @@ export function rutaCoincide(url: string, prefijo: string): boolean {
  * No decide cuándo cerrarse: avisa con `cerrar` (Escape, clic en el fondo,
  * botón "Cerrar") y el marco la desmonta y devuelve el foco al botón
  * "Más"; al navegar, el marco la cierra por `NavigationEnd`.
+ *
+ * Es modal (`aria-modal="true"`, corrección ronda 1): Tab desde el último
+ * elemento vuelve al primero y Shift+Tab desde el primero va al último. El
+ * marco, además, deja `inert` el contenido de detrás mientras está abierta.
  */
 @Component({
   selector: 'app-panel-mas',
@@ -58,6 +55,27 @@ export class PanelMas {
     afterNextRender(() => {
       this.elemento.nativeElement.querySelector<HTMLElement>('.panel-mas__enlace')?.focus();
     });
+  }
+
+  /** Trampa de foco: Tab y Shift+Tab giran dentro de la hoja en los dos extremos. */
+  protected atraparFoco(evento: KeyboardEvent): void {
+    if (evento.key !== 'Tab') return;
+    const enfocables = Array.from(
+      this.elemento.nativeElement.querySelectorAll<HTMLElement>(
+        '.panel-mas__hoja a[href], .panel-mas__hoja button:not([disabled])',
+      ),
+    );
+    if (enfocables.length === 0) return;
+    const primero = enfocables[0];
+    const ultimo = enfocables[enfocables.length - 1];
+    const activo = document.activeElement;
+    if (evento.shiftKey && activo === primero) {
+      evento.preventDefault();
+      ultimo.focus();
+    } else if (!evento.shiftKey && activo === ultimo) {
+      evento.preventDefault();
+      primero.focus();
+    }
   }
 
   protected esActiva(entrada: EntradaMas): boolean {

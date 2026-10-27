@@ -85,13 +85,22 @@
               @if (tareasPendientes().length === 0) {
                 <p class="vacio" role="status">Sin tareas pendientes.</p>
               }
-              <ul class="lista-simple">
-                @for (item of tareasPendientes(); track item.idDetalle) {
-                  <li class="tarjeta-item">
-                    <a class="enlace" [routerLink]="['/tareas', item.idReferencia]">{{ item.resumen }}</a>
-                  </li>
-                }
-              </ul>
+              @if (puedeReasignar()) {
+                <app-reasignar-tareas
+                  [idGrupo]="datos.idGrupo"
+                  [tareas]="tareasPendientes()"
+                  [entrante]="datos.entrante"
+                  [motivo]="'Relevo del ' + fechaHora(datos.fechaTraspaso)"
+                />
+              } @else {
+                <ul class="lista-simple">
+                  @for (item of tareasPendientes(); track item.idDetalle) {
+                    <li class="tarjeta-item">
+                      <a class="enlace" [routerLink]="['/tareas', item.idReferencia]">{{ item.resumen }}</a>
+                    </li>
+                  }
+                </ul>
+              }
             </section>
 
             <section aria-labelledby="relevo-alertas-titulo">

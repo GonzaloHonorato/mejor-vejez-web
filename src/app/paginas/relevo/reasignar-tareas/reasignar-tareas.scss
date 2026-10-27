@@ -1,0 +1,107 @@
+// Reasignar tareas desde el relevo — opción C. Sólo var(--mv-...).
+
+:host {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--mv-espacio-3);
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mv-espacio-3);
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tarjeta-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--mv-espacio-2);
+  padding: var(--mv-espacio-3);
+  border: 2px solid var(--mv-color-borde);
+  border-radius: var(--mv-radio-md);
+  background: var(--mv-color-fondo);
+}
+
+.enlace {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  color: var(--mv-color-primario);
+  font-weight: var(--mv-texto-peso-negrita);
+}
+
+.confirmar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mv-espacio-2);
+
+  &__texto {
+    margin: 0;
+    font-weight: var(--mv-texto-peso-negrita);
+  }
+}
+
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mv-espacio-2);
+}
+
+.resultado,
+.error,
+.ayuda {
+  margin: 0;
+  font-size: var(--mv-texto-pequeno);
+}
+
+.resultado {
+  color: var(--mv-color-exito);
+  font-weight: var(--mv-texto-peso-negrita);
+}
+
+.error {
+  padding: var(--mv-espacio-2) var(--mv-espacio-3);
+  border-radius: var(--mv-radio-sm);
+  background: var(--mv-color-error-fondo);
+  color: var(--mv-color-error);
+  font-weight: var(--mv-texto-peso-negrita);
+}
+
+.ayuda {
+  color: var(--mv-color-secundario);
+}
+
+.boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 var(--mv-espacio-4);
+  border-radius: var(--mv-radio-md);
+  font: inherit;
+  font-weight: var(--mv-texto-peso-negrita);
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  &--contorno {
+    border: 2px solid var(--mv-color-primario);
+    background: var(--mv-color-superficie);
+    color: var(--mv-color-primario);
+  }
+
+  &--primario {
+    border: 2px solid var(--mv-color-primario);
+    background: var(--mv-color-primario);
+    color: var(--mv-color-sobre-primario);
+  }
+}

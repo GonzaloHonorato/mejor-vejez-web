@@ -1,7 +1,7 @@
-<a class="saltar" href="#contenido-principal">Saltar al contenido</a>
+<a class="saltar" href="#contenido-principal" [attr.inert]="inerteDetras()">Saltar al contenido</a>
 
 <div class="marco">
-  <aside class="lateral">
+  <aside class="lateral" [attr.inert]="inerteDetras()">
     <span class="marca marca--invertida">
       <span class="marca__isotipo" aria-hidden="true"></span>
       Mejor Vejez
@@ -26,7 +26,7 @@
   </aside>
 
   <div class="principal">
-    <header class="cabecera">
+    <header class="cabecera" [attr.inert]="inerteDetras()">
       <span class="marca cabecera__marca">
         <span class="marca__isotipo" aria-hidden="true"></span>
         Mejor Vejez
@@ -45,11 +45,11 @@
       <p class="aviso-global" role="alert">{{ mensaje }}</p>
     }
 
-    <main id="contenido-principal" class="contenido" tabindex="-1">
+    <main id="contenido-principal" class="contenido" tabindex="-1" [attr.inert]="inerteDetras()">
       <router-outlet />
     </main>
 
-    <footer class="pie">mejor-vejez-app.adndigital.cl</footer>
+    <footer class="pie" [attr.inert]="inerteDetras()">mejor-vejez-app.adndigital.cl</footer>
   </div>
 
   <nav class="pestanas" aria-label="Navegación principal">

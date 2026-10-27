@@ -1,0 +1,74 @@
+@if (reasignables().length >= 2) {
+  @if (confirmandoTodas()) {
+    <div class="confirmar">
+      <p class="confirmar__texto">
+        ¿Reasignar las {{ reasignables().length }} tareas pendientes a {{ entrante().nombre }}? Cada
+        reasignación queda registrada.
+      </p>
+      <div class="acciones">
+        <button type="button" class="boton boton--primario" (click)="confirmarReasignarTodas()">
+          Confirmar
+        </button>
+        <button type="button" class="boton boton--contorno" (click)="volverDeReasignarTodas()">
+          Volver
+        </button>
+      </div>
+    </div>
+  } @else {
+    <button
+      type="button"
+      class="boton boton--contorno"
+      [disabled]="enLote()"
+      (click)="pedirReasignarTodas()"
+    >
+      Reasignar todas a {{ entrante().nombre }}
+    </button>
+  }
+}
+
+@if (resumenLote(); as resumen) {
+  <p class="resultado" role="status">{{ resumen }}</p>
+}
+
+<ul class="lista">
+  @for (tarea of tareas(); track tarea.idDetalle) {
+    <li class="tarjeta-item">
+      <a class="enlace" [routerLink]="['/tareas', tarea.idReferencia]">{{ tarea.resumen }}</a>
+
+      @switch (estado(tarea.idReferencia)?.tipo) {
+        @case ('ok') {
+          <p class="resultado" role="status">Reasignada a {{ entrante().nombre }}</p>
+        }
+        @case ('yaAsignada') {
+          <p class="resultado" role="status">Ya estaba asignada a {{ entrante().nombre }}</p>
+        }
+        @case ('error') {
+          @if (estado(tarea.idReferencia); as fila) {
+            @if (fila.tipo === 'error') {
+              <p class="error" role="alert">{{ fila.mensaje }}</p>
+            }
+          }
+        }
+      }
+
+      @if (muestraBoton(tarea.idReferencia)) {
+        <button
+          type="button"
+          class="boton boton--contorno"
+          [disabled]="botonDeshabilitado(tarea.idReferencia)"
+          (click)="reasignar(tarea.idReferencia)"
+        >
+          {{
+            estado(tarea.idReferencia)?.tipo === 'enviando'
+              ? 'Reasignando…'
+              : 'Reasignar a ' + entrante().nombre
+          }}
+        </button>
+      }
+    </li>
+  }
+</ul>
+
+<p class="ayuda">
+  Reasignar usa la misma operación de Tareas (HU-06) y queda registrado en la auditoría.
+</p>

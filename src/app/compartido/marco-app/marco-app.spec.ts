@@ -117,7 +117,10 @@ function panelMas(elemento: HTMLElement): HTMLElement | null {
   return elemento.querySelector<HTMLElement>('[role="dialog"]');
 }
 
-async function abrirMas(marco: { fixture: { whenStable(): Promise<unknown> }; elemento: HTMLElement }) {
+async function abrirMas(marco: {
+  fixture: { whenStable(): Promise<unknown> };
+  elemento: HTMLElement;
+}) {
   botonMas(marco.elemento).click();
   await marco.fixture.whenStable();
   const panel = panelMas(marco.elemento);
@@ -290,7 +293,12 @@ describe('MarcoApp', () => {
       'Alertas',
       'Personas',
     ]);
-    expect(enlaces.map((a) => a.getAttribute('href'))).toEqual(['/', '/tareas', '/alertas', '/adultos']);
+    expect(enlaces.map((a) => a.getAttribute('href'))).toEqual([
+      '/',
+      '/tareas',
+      '/alertas',
+      '/adultos',
+    ]);
     // Íconos reales (SVG), no los cuadros vacíos de antes.
     expect(elemento.querySelector('.pestana__icono')).toBeNull();
     expect(enlaces.every((a) => a.querySelector('app-icono svg'))).toBe(true);
@@ -457,5 +465,40 @@ describe('MarcoApp', () => {
       (a) => a.textContent?.trim() === 'Relevos',
     );
     expect(relevos?.getAttribute('href')).toBe('/relevos');
+  });
+  it('masAbiertoDejaInerteElContenidoDetras', async () => {
+    const marco = await crearMarco();
+    const detras = ['.saltar', '.lateral', '.cabecera', 'main', '.pie'].map((selector) =>
+      marco.elemento.querySelector(selector)!,
+    );
+    expect(detras.every((e) => !e.hasAttribute('inert'))).toBe(true);
+
+    await abrirMas(marco);
+    expect(detras.every((e) => e.hasAttribute('inert'))).toBe(true);
+    expect(marco.elemento.querySelector('.pestanas')!.hasAttribute('inert')).toBe(false);
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await marco.fixture.whenStable();
+    expect(detras.every((e) => !e.hasAttribute('inert'))).toBe(true);
+    expect(document.activeElement).toBe(botonMas(marco.elemento));
+  });
+  // Corrección ronda 2: si `signOut` falla, el panel no debe quedar abierto
+  // ni el contenido de fondo `inert`.
+  it('cerrarSesionFallidaDesdeMasCierraElPanelYQuitaInert', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const marco = await crearMarco({
+      cerrarSesion: vi.fn().mockRejectedValue(new Error('sin red')),
+    });
+    const panel = await abrirMas(marco);
+
+    Array.from(panel.querySelectorAll('button'))
+      .find((b) => b.textContent?.includes('Cerrar sesión'))!
+      .click();
+    await marco.fixture.whenStable();
+
+    expect(panelMas(marco.elemento)).toBeNull();
+    expect(marco.elemento.querySelector('main')!.hasAttribute('inert')).toBe(false);
+    expect(marco.elemento.querySelector('.cabecera')!.hasAttribute('inert')).toBe(false);
+    expect(marco.navegar).not.toHaveBeenCalled();
   });
 });

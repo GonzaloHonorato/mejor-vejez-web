@@ -108,6 +108,12 @@ export class MarcoApp implements OnInit {
   /** URL actual (se actualiza en cada `NavigationEnd`): decide si "Más" está activo. */
   protected readonly urlActual = signal('');
   protected readonly masAbierto = signal(false);
+  /**
+   * Con "Más" abierto, todo lo de detrás (salto, lateral, cabecera, main y
+   * pie) queda `inert` (corrección ronda 1). La barra de pestañas no, para
+   * que al cerrar el foco pueda volver al botón "Más" de inmediato.
+   */
+  protected readonly inerteDetras = computed(() => (this.masAbierto() ? '' : null));
   private readonly botonMas = viewChild.required<ElementRef<HTMLButtonElement>>('botonMas');
 
   protected readonly navegacion = computed<readonly EntradaNavegacion[]>(() =>
@@ -177,6 +183,9 @@ export class MarcoApp implements OnInit {
 
   /** Navega a /ingreso solo si Firebase cerró la sesión; si falla, lo registra y no navega. */
   protected async cerrarSesion(): Promise<void> {
+    // Corrección ronda 2: se cierra "Más" antes de intentar, para que un
+    // fallo de `signOut` o de la navegación no deje el fondo `inert`.
+    this.cerrarMas();
     try {
       await this.auth.cerrarSesion();
     } catch (error) {
