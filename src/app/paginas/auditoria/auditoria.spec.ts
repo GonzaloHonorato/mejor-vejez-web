@@ -419,6 +419,23 @@ describe('Auditoria', () => {
     expect(summary.textContent?.trim()).toBe('Filtros (1 activo)');
   });
 
+  it('paginacionOcultaMientrasCargaYSinResultados', async () => {
+    const sujeto = new Subject<RespuestaPagina<RespuestaEventoAuditoria>>();
+    const { fixture, elemento } = await configurar({
+      consultarGrupoImpl: () => sujeto.asObservable(),
+    });
+
+    // Primera carga todavía en curso: sin resultados conocidos, sin paginación.
+    expect(elemento.querySelector('.paginacion')).toBeFalsy();
+
+    sujeto.next(pagina([], 0));
+    sujeto.complete();
+    await fixture.whenStable();
+
+    // Cargó, pero sin resultados: tampoco se muestra "Página 1 de 1".
+    expect(elemento.querySelector('.paginacion')).toBeFalsy();
+  });
+
   it('filtrosEmpiezanAbiertosEnEscritorio', async () => {
     const original = window.matchMedia;
     window.matchMedia = vi.fn((consulta: string) => ({

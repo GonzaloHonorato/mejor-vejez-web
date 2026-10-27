@@ -107,24 +107,26 @@
       }
     </ul>
 
-    <nav class="paginacion" aria-label="Paginación de auditoría">
-      <button
-        type="button"
-        class="boton boton--contorno"
-        [disabled]="!hayPaginaAnterior() || cargando()"
-        (click)="paginaAnterior()"
-      >
-        Anterior
-      </button>
-      <span aria-live="polite">Página {{ pagina() + 1 }} de {{ totalPaginas() }}</span>
-      <button
-        type="button"
-        class="boton boton--contorno"
-        [disabled]="!hayPaginaSiguiente() || cargando()"
-        (click)="paginaSiguiente()"
-      >
-        Siguiente
-      </button>
-    </nav>
+    @if (total() > 0) {
+      <nav class="paginacion" aria-label="Paginación de auditoría">
+        <button
+          type="button"
+          class="boton boton--contorno"
+          [disabled]="!hayPaginaAnterior() || cargando()"
+          (click)="paginaAnterior()"
+        >
+          Anterior
+        </button>
+        <span aria-live="polite">Página {{ pagina() + 1 }} de {{ totalPaginas() }}</span>
+        <button
+          type="button"
+          class="boton boton--contorno"
+          [disabled]="!hayPaginaSiguiente() || cargando()"
+          (click)="paginaSiguiente()"
+        >
+          Siguiente
+        </button>
+      </nav>
+    }
   </div>
 </div>

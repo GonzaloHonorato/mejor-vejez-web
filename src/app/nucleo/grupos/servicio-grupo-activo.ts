@@ -30,10 +30,14 @@ export class ServicioGrupoActivo {
   private generacionCarga = 0;
 
   /**
-   * Nunca rechaza: si `listar()` falla, lo captura, deja el estado vacío
-   * (sin dejar un grupo de una carga anterior a medias) y expone el motivo
-   * en `error()`. Así quien llama (`marco-app`, `grupos`) no necesita su
-   * propio try/catch para evitar una promesa rechazada sin control.
+   * Nunca rechaza: si `listar()` falla, lo captura, deja `grupos`/`activo`
+   * vacíos en memoria (sin dejar un grupo de una carga anterior a medias) y
+   * expone el motivo en `error()`. El grupo guardado en `localStorage` NO se
+   * toca: es un error transitorio (API caída un momento), no una elección de
+   * la persona de no tener grupo activo; al recuperarse, la siguiente
+   * `cargar()` exitosa lo restaura. Así quien llama (`marco-app`, `grupos`)
+   * no necesita su propio try/catch para evitar una promesa rechazada sin
+   * control.
    */
   async cargar(): Promise<void> {
     const generacion = ++this.generacionCarga;
@@ -56,7 +60,8 @@ export class ServicioGrupoActivo {
 
       this._error.set(mensajeDeError(error));
       this._grupos.set([]);
-      this.fijarActivo(null);
+      // Solo en memoria: a diferencia de `fijarActivo`, no toca `localStorage`.
+      this._activo.set(null);
     }
   }
 

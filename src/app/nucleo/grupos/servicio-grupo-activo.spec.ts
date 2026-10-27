@@ -142,6 +142,26 @@ describe('ServicioGrupoActivo', () => {
     expect(servicio.error()).toBeTruthy();
   });
 
+  it('errorAlCargarNoBorraElGrupoGuardado', async () => {
+    localStorage.setItem(CLAVE_ALMACENAMIENTO, '2');
+    const listar = vi
+      .fn()
+      .mockReturnValueOnce(throwError(() => new Error('boom')))
+      .mockReturnValueOnce(of([grupo(1), grupo(2)]));
+    TestBed.configureTestingModule({ providers: [{ provide: ServicioGrupos, useValue: { listar } }] });
+    const servicio = TestBed.inject(ServicioGrupoActivo);
+
+    await servicio.cargar();
+
+    expect(servicio.activo()).toBeNull();
+    expect(localStorage.getItem(CLAVE_ALMACENAMIENTO)).toBe('2');
+
+    await servicio.cargar();
+
+    expect(servicio.activo()?.idGrupo).toBe(2);
+    expect(localStorage.getItem(CLAVE_ALMACENAMIENTO)).toBe('2');
+  });
+
   it('limpiarDejaSinGruposNiActivo', async () => {
     const servicio = configurar([grupo(1)]);
     await servicio.cargar();
