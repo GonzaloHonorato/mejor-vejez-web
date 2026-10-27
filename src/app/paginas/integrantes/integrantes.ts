@@ -15,6 +15,7 @@ import { RespuestaGrupo, RespuestaIntegrante, RespuestaRol } from '../../nucleo/
 import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
 import { ServicioGrupos } from '../../nucleo/grupos/servicio-grupos';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
+import { SeccionSucesion } from './seccion-sucesion/seccion-sucesion';
 
 /**
  * Como `Validators.email`, pero ignora espacios al inicio/fin: sin esto, un
@@ -29,11 +30,21 @@ function validarCorreoConEspacios(control: AbstractControl<string>): ValidationE
  * Página "Integrantes" (`/grupos/:idGrupo`): lista de integrantes del grupo
  * y, si quien mira es COORDINADOR o admin, las acciones de administración
  * (agregar, cambiar rol, desactivar/reactivar, eliminar). Cualquier
- * integrante activo puede salir del grupo.
+ * integrante activo puede salir del grupo. El enlace "Auditoría del grupo"
+ * (`/grupos/:idGrupo/auditoria`, Tarea 7) usa el mismo `puedeAdministrar()`
+ * de las acciones de administración (regla 25 del plan): la API ya exige
+ * coordinador o administrador, pero el enlace no se ofrece a quien de
+ * todas formas recibiría un 403.
+ *
+ * Debajo va la sección de sucesión de la coordinación (`SeccionSucesion`,
+ * Tarea 8, regla 27 del plan), visible para cualquiera que pueda ver el
+ * grupo. Cuando emite `cambio` se recargan el grupo (el `miRol` propio
+ * cambia al completar la transferencia), los integrantes y el grupo activo
+ * compartido.
  */
 @Component({
   selector: 'app-integrantes',
-  imports: [ReactiveFormsModule, RouterLink, TitleCasePipe],
+  imports: [ReactiveFormsModule, RouterLink, TitleCasePipe, SeccionSucesion],
   templateUrl: './integrantes.html',
   styleUrl: './integrantes.scss',
 })
@@ -44,7 +55,7 @@ export class Integrantes implements OnInit {
   private readonly servicioYo = inject(ServicioYo);
   private readonly grupoActivo = inject(ServicioGrupoActivo);
 
-  private readonly idGrupo = Number(this.ruta.snapshot.paramMap.get('idGrupo'));
+  protected readonly idGrupo = Number(this.ruta.snapshot.paramMap.get('idGrupo'));
 
   protected readonly grupo = signal<RespuestaGrupo | null>(null);
   /** Falso mientras no sepamos si la carga del grupo fue exitosa: sin esto no mostramos acciones. */
@@ -52,6 +63,8 @@ export class Integrantes implements OnInit {
   protected readonly integrantes = signal<RespuestaIntegrante[]>([]);
   protected readonly roles = signal<RespuestaRol[]>([]);
   protected readonly esAdministrador = signal(false);
+  /** Id del usuario de la sesión (`GET /api/yo`), para la sección de sucesión. */
+  protected readonly idUsuario = signal<number | null>(null);
   protected readonly error = signal<string | null>(null);
   protected readonly agregando = signal(false);
   /** Interruptor "Notificar las alertas al coordinador" (regla 7 del plan). */
@@ -68,6 +81,9 @@ export class Integrantes implements OnInit {
   protected readonly puedeAdministrar = computed(
     () => this.grupoCargado() && (this.grupo()?.miRol === 'COORDINADOR' || this.esAdministrador()),
   );
+
+  /** COORDINADOR con membresía: el único que puede proponer un sucesor (regla 16 del plan). */
+  protected readonly soyCoordinador = computed(() => this.grupo()?.miRol === 'COORDINADOR');
 
   /** Puede salir del grupo: tiene un rol asignado (membresía activa). */
   protected readonly esMiembroActivo = computed(
@@ -102,16 +118,13 @@ export class Integrantes implements OnInit {
   });
 
   ngOnInit(): void {
-    this.servicioGrupos.obtener(this.idGrupo).subscribe({
-      next: (grupo) => {
-        this.grupo.set(grupo);
-        this.grupoCargado.set(true);
-      },
-      error: (error: unknown) => this.error.set(mensajeDeError(error)),
-    });
+    this.cargarGrupo();
     this.cargarIntegrantes();
     this.servicioYo.obtener().subscribe({
-      next: (yo) => this.esAdministrador.set(yo.esAdministrador),
+      next: (yo) => {
+        this.esAdministrador.set(yo.esAdministrador);
+        this.idUsuario.set(yo.idUsuario);
+      },
       error: (error: unknown) => this.error.set(mensajeDeError(error)),
     });
     this.servicioGrupos.roles().subscribe({
@@ -237,6 +250,27 @@ export class Integrantes implements OnInit {
           (evento.target as HTMLInputElement).checked = grupo.notificaCoordinador;
         },
       });
+  }
+
+  /**
+   * La sección de sucesión cambió algo: al completar la transferencia
+   * cambian los roles (el propio incluido), así que se recargan el grupo,
+   * los integrantes y el grupo activo compartido (regla 27 del plan).
+   */
+  protected alCambiarSucesion(): void {
+    this.cargarGrupo();
+    this.cargarIntegrantes();
+    void this.grupoActivo.cargar();
+  }
+
+  private cargarGrupo(): void {
+    this.servicioGrupos.obtener(this.idGrupo).subscribe({
+      next: (grupo) => {
+        this.grupo.set(grupo);
+        this.grupoCargado.set(true);
+      },
+      error: (error: unknown) => this.error.set(mensajeDeError(error)),
+    });
   }
 
   private cargarIntegrantes(): void {

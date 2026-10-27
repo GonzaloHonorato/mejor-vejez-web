@@ -1,0 +1,224 @@
+// Auditoría — opción C. Sólo tokens semánticos (`var(--mv-...)`): ver
+// src/estilos/_tema.scss. Mobile-first: la lista es de tarjetas (no tabla),
+// que es lo que mejor cabe en una pantalla angosta (regla 28 del plan).
+
+:host {
+  display: block;
+}
+
+.pagina {
+  display: flex;
+  flex-direction: column;
+}
+
+.cabecera {
+  padding: var(--mv-espacio-4);
+  background: var(--mv-color-fondo);
+}
+
+h1 {
+  margin: 0;
+}
+
+.contenido {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mv-espacio-4);
+  padding: var(--mv-espacio-4);
+}
+
+// Filtros plegables: abiertos al iniciar en escritorio, cerrados en móvil
+// (lo decide `Auditoria.filtrosAbiertosAlIniciar`).
+.filtros {
+  border: 2px solid var(--mv-color-borde);
+  border-radius: var(--mv-radio-md);
+  background: var(--mv-color-superficie);
+
+  &__resumen {
+    display: flex;
+    align-items: center;
+    min-height: 48px;
+    padding: 0 var(--mv-espacio-4);
+    cursor: pointer;
+    color: var(--mv-color-primario);
+    font-weight: var(--mv-texto-peso-negrita);
+  }
+
+  &__formulario {
+    display: flex;
+    flex-direction: column;
+    gap: var(--mv-espacio-3);
+    padding: 0 var(--mv-espacio-4) var(--mv-espacio-4);
+  }
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mv-espacio-2);
+
+  &__etiqueta {
+    font-weight: var(--mv-texto-peso-negrita);
+  }
+
+  &__control {
+    width: 100%;
+    min-height: var(--mv-espacio-12);
+    padding: 0 var(--mv-espacio-4);
+    border: 2px solid var(--mv-color-secundario);
+    border-radius: var(--mv-radio-md);
+    background: var(--mv-color-superficie);
+    color: var(--mv-color-texto);
+    font: inherit;
+  }
+}
+
+.vacio {
+  margin: 0;
+  color: var(--mv-color-secundario);
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mv-espacio-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tarjeta-evento {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--mv-espacio-1);
+  padding: var(--mv-espacio-4);
+  border: 2px solid var(--mv-color-borde);
+  border-radius: var(--mv-radio-md);
+  background: var(--mv-color-superficie);
+
+  p {
+    margin: 0;
+  }
+
+  &__fecha {
+    color: var(--mv-color-secundario);
+    font-size: var(--mv-texto-pequeno);
+  }
+
+  &__actor {
+    font-weight: var(--mv-texto-peso-negrita);
+  }
+
+  // Texto principal: la acción legible; debajo, el código crudo (útil para el docente).
+  &__codigo {
+    color: var(--mv-color-secundario);
+    font-size: var(--mv-texto-etiqueta);
+    overflow-wrap: anywhere;
+  }
+
+  &__entidad {
+    color: var(--mv-color-secundario);
+    font-size: var(--mv-texto-pequeno);
+  }
+}
+
+.insignia {
+  padding: var(--mv-espacio-1) var(--mv-espacio-3);
+  border-radius: var(--mv-radio-completo);
+  background: var(--mv-color-primario-suave);
+  color: var(--mv-color-primario);
+  font-size: var(--mv-texto-pequeno);
+  font-weight: var(--mv-texto-peso-negrita);
+}
+
+.detalles {
+  width: 100%;
+  margin-top: var(--mv-espacio-2);
+  font-size: var(--mv-texto-pequeno);
+
+  summary {
+    display: flex;
+    align-items: center;
+    min-height: var(--mv-espacio-12);
+    cursor: pointer;
+    color: var(--mv-color-primario);
+    font-weight: var(--mv-texto-peso-negrita);
+  }
+
+  pre {
+    margin: var(--mv-espacio-2) 0 0;
+    padding: var(--mv-espacio-3);
+    overflow-x: auto;
+    border-radius: var(--mv-radio-sm);
+    background: var(--mv-color-fondo);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+}
+
+.paginacion {
+  display: flex;
+  align-items: center;
+  gap: var(--mv-espacio-3);
+}
+
+.error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mv-espacio-3);
+  margin: 0;
+  padding: var(--mv-espacio-2) var(--mv-espacio-3);
+  border-radius: var(--mv-radio-sm);
+  background: var(--mv-color-error-fondo);
+  color: var(--mv-color-error);
+  font-size: var(--mv-texto-pequeno);
+  font-weight: var(--mv-texto-peso-negrita);
+
+  &__mensaje {
+    margin: 0;
+  }
+}
+
+.boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--mv-espacio-12);
+  padding: 0 var(--mv-espacio-4);
+  border-radius: var(--mv-radio-md);
+  font-weight: var(--mv-texto-peso-negrita);
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  &--contorno {
+    border: 2px solid var(--mv-color-primario);
+    background: var(--mv-color-superficie);
+    color: var(--mv-color-primario);
+  }
+}
+
+@media (min-width: 768px) {
+  .cabecera {
+    padding: var(--mv-espacio-6) var(--mv-espacio-8);
+  }
+
+  .contenido {
+    padding: var(--mv-espacio-5) var(--mv-espacio-8);
+  }
+
+  .filtros__formulario {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-end;
+  }
+
+  .campo {
+    flex: 1 1 200px;
+  }
+}

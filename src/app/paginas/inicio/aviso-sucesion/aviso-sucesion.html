@@ -1,0 +1,35 @@
+@if (confirmacion(); as mensaje) {
+  <section class="aviso" aria-labelledby="aviso-sucesion-titulo">
+    <h2 id="aviso-sucesion-titulo" class="aviso__titulo">Propuesta de coordinación</h2>
+    <p class="aviso__texto" role="status">{{ mensaje }}</p>
+  </section>
+} @else if (visible(); as propuesta) {
+  <section class="aviso" aria-labelledby="aviso-sucesion-titulo">
+    <h2 id="aviso-sucesion-titulo" class="aviso__titulo">Propuesta de coordinación</h2>
+    <p class="aviso__texto">
+      {{ propuesta.saliente.nombre }} te propone como coordinador de {{ activo()?.nombreGrupo }}.
+    </p>
+    @if (error(); as mensaje) {
+      <p class="error" role="alert">{{ mensaje }}</p>
+    }
+    <div class="aviso__acciones">
+      <button
+        type="button"
+        class="boton boton--primario"
+        [disabled]="procesando()"
+        (click)="aceptar(propuesta)"
+      >
+        Aceptar
+      </button>
+      <button
+        type="button"
+        class="boton boton--contorno"
+        [disabled]="procesando()"
+        (click)="rechazar(propuesta)"
+      >
+        Rechazar
+      </button>
+    </div>
+    <a class="enlace" [routerLink]="['/grupos', propuesta.idGrupo]">Ver integrantes del grupo</a>
+  </section>
+}

@@ -54,6 +54,10 @@ async function crearMarco(opciones: OpcionesMarco = {}) {
                 component: PaginaFicticia,
                 data: { tituloPagina: 'Integrantes' },
               },
+              { path: 'grupos/:idGrupo/auditoria', component: PaginaFicticia },
+              { path: 'relevos', component: PaginaFicticia },
+              { path: 'relevos/:idRelevo', component: PaginaFicticia },
+              { path: 'tareas', component: PaginaFicticia },
             ]
           : [],
       ),
@@ -101,6 +105,24 @@ async function pulsarCerrarSesion(cerrarSesion: ReturnType<typeof vi.fn>) {
   boton.click();
   await marco.fixture.whenStable();
   return marco;
+}
+
+function botonMas(elemento: HTMLElement): HTMLButtonElement {
+  const boton = elemento.querySelector<HTMLButtonElement>('.pestanas button.pestana');
+  if (!boton) throw new Error('Sin botón "Más"');
+  return boton;
+}
+
+function panelMas(elemento: HTMLElement): HTMLElement | null {
+  return elemento.querySelector<HTMLElement>('[role="dialog"]');
+}
+
+async function abrirMas(marco: { fixture: { whenStable(): Promise<unknown> }; elemento: HTMLElement }) {
+  botonMas(marco.elemento).click();
+  await marco.fixture.whenStable();
+  const panel = panelMas(marco.elemento);
+  if (!panel) throw new Error('El panel "Más" no se abrió');
+  return panel;
 }
 
 function textosDeEnlaces(elemento: HTMLElement): string[] {
@@ -255,5 +277,185 @@ describe('MarcoApp', () => {
     TestBed.resetTestingModule();
     const administrador = await crearMarco({ esAdministrador: true });
     expect(textosDeEnlaces(administrador.elemento)).toContain('Administración');
+  });
+  it('barraInferiorTieneCuatroPestanasYMas', async () => {
+    const { elemento } = await crearMarco({ esAdministrador: true });
+
+    const items = Array.from(elemento.querySelectorAll('.pestanas__lista > li'));
+    expect(items).toHaveLength(5);
+    const enlaces = Array.from(elemento.querySelectorAll<HTMLAnchorElement>('.pestanas__lista a'));
+    expect(enlaces.map((a) => a.textContent?.trim())).toEqual([
+      'Panel',
+      'Tareas',
+      'Alertas',
+      'Personas',
+    ]);
+    expect(enlaces.map((a) => a.getAttribute('href'))).toEqual(['/', '/tareas', '/alertas', '/adultos']);
+    // Íconos reales (SVG), no los cuadros vacíos de antes.
+    expect(elemento.querySelector('.pestana__icono')).toBeNull();
+    expect(enlaces.every((a) => a.querySelector('app-icono svg'))).toBe(true);
+
+    const boton = botonMas(elemento);
+    expect(boton.textContent?.trim()).toBe('Más');
+    expect(boton.querySelector('app-icono svg')).toBeTruthy();
+    expect(boton.getAttribute('aria-expanded')).toBe('false');
+    expect(boton.getAttribute('aria-haspopup')).toBe('true');
+    expect(boton.getAttribute('aria-controls')).toBe('panel-mas');
+    expect(panelMas(elemento)).toBeNull();
+  });
+
+  it('masMuestraRemediosRelevosGruposPerfil', async () => {
+    const marco = await crearMarco({ esAdministrador: false });
+
+    const panel = await abrirMas(marco);
+
+    expect(botonMas(marco.elemento).getAttribute('aria-expanded')).toBe('true');
+    expect(panel.id).toBe('panel-mas');
+    expect(panel.getAttribute('aria-label')).toBe('Más opciones');
+    const enlaces = Array.from(panel.querySelectorAll<HTMLAnchorElement>('a'));
+    expect(enlaces.map((a) => a.textContent?.trim())).toEqual([
+      'Remedios',
+      'Relevos',
+      'Grupos',
+      'Perfil',
+    ]);
+    expect(enlaces.map((a) => a.getAttribute('href'))).toEqual([
+      '/planes',
+      '/relevos',
+      '/grupos',
+      '/perfil',
+    ]);
+    expect(enlaces.every((a) => a.querySelector('app-icono svg'))).toBe(true);
+  });
+
+  it('masMuestraAdministracionSoloParaAdministrador', async () => {
+    const colaborador = await crearMarco({ esAdministrador: false });
+    const panelColaborador = await abrirMas(colaborador);
+    expect(panelColaborador.textContent).not.toContain('Administración');
+
+    TestBed.resetTestingModule();
+    const administrador = await crearMarco({ esAdministrador: true });
+    const panel = await abrirMas(administrador);
+    const enlace = Array.from(panel.querySelectorAll('a')).find((a) =>
+      a.textContent?.includes('Administración'),
+    );
+    expect(enlace?.getAttribute('href')).toBe('/administracion/usuarios');
+  });
+
+  it('abrirMasEnfocaPrimerEnlaceYCerrarConEscapeDevuelveFoco', async () => {
+    const marco = await crearMarco();
+
+    const panel = await abrirMas(marco);
+    expect(document.activeElement).toBe(panel.querySelector('a'));
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await marco.fixture.whenStable();
+
+    expect(panelMas(marco.elemento)).toBeNull();
+    expect(document.activeElement).toBe(botonMas(marco.elemento));
+    expect(botonMas(marco.elemento).getAttribute('aria-expanded')).toBe('false');
+
+    // El botón "Cerrar" del panel también lo cierra y devuelve el foco.
+    const panelOtraVez = await abrirMas(marco);
+    const cerrar = Array.from(panelOtraVez.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Cerrar',
+    )!;
+    cerrar.click();
+    await marco.fixture.whenStable();
+    expect(panelMas(marco.elemento)).toBeNull();
+    expect(document.activeElement).toBe(botonMas(marco.elemento));
+  });
+
+  it('clicFueraCierraMas', async () => {
+    const marco = await crearMarco();
+    await abrirMas(marco);
+
+    marco.elemento.querySelector<HTMLElement>('.panel-mas__fondo')!.click();
+    await marco.fixture.whenStable();
+
+    expect(panelMas(marco.elemento)).toBeNull();
+    expect(document.activeElement).toBe(botonMas(marco.elemento));
+  });
+
+  it('navegarCierraMas', async () => {
+    const marco = await crearMarco({ navegacionReal: true });
+    const panel = await abrirMas(marco);
+
+    const relevos = Array.from(panel.querySelectorAll<HTMLAnchorElement>('a')).find(
+      (a) => a.textContent?.trim() === 'Relevos',
+    )!;
+    relevos.click();
+    await marco.fixture.whenStable();
+
+    expect(marco.router.url).toBe('/relevos');
+    expect(panelMas(marco.elemento)).toBeNull();
+  });
+
+  it('masActivoEnRutaDeRelevos', async () => {
+    const marco = await crearMarco({ navegacionReal: true });
+    expect(botonMas(marco.elemento).classList.contains('pestana--activa')).toBe(false);
+
+    await marco.router.navigateByUrl('/relevos/7');
+    await marco.fixture.whenStable();
+    expect(botonMas(marco.elemento).classList.contains('pestana--activa')).toBe(true);
+    const panel = await abrirMas(marco);
+    const actual = panel.querySelector('a[aria-current="page"]');
+    expect(actual?.textContent?.trim()).toBe('Relevos');
+    expect(panel.querySelectorAll('a[aria-current="page"]')).toHaveLength(1);
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await marco.fixture.whenStable();
+
+    await marco.router.navigateByUrl('/grupos/1/auditoria');
+    await marco.fixture.whenStable();
+    expect(botonMas(marco.elemento).classList.contains('pestana--activa')).toBe(true);
+    const panelGrupos = await abrirMas(marco);
+    expect(panelGrupos.querySelector('a[aria-current="page"]')?.textContent?.trim()).toBe('Grupos');
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await marco.fixture.whenStable();
+
+    await marco.router.navigateByUrl('/tareas');
+    await marco.fixture.whenStable();
+    expect(botonMas(marco.elemento).classList.contains('pestana--activa')).toBe(false);
+  });
+
+  it('cerrarSesionDesdeMas', async () => {
+    const cerrarSesion = vi.fn().mockResolvedValue(undefined);
+    const marco = await crearMarco({ cerrarSesion });
+    const panel = await abrirMas(marco);
+
+    expect(panel.textContent).toContain('ana@correo.cl');
+    const boton = Array.from(panel.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Cerrar sesión'),
+    )!;
+    boton.click();
+    await marco.fixture.whenStable();
+
+    expect(cerrarSesion).toHaveBeenCalled();
+    expect(marco.grupoActivo.limpiar).toHaveBeenCalled();
+    expect(marco.navegar).toHaveBeenCalledWith('/ingreso');
+  });
+
+  it('lateralIncluyeRelevos', async () => {
+    const { elemento } = await crearMarco();
+
+    const textos = Array.from(elemento.querySelectorAll('.lateral__enlace')).map((a) =>
+      a.textContent?.trim(),
+    );
+    expect(textos).toEqual([
+      'Panel familiar',
+      'Tareas',
+      'Alertas',
+      'Medicamentos',
+      'Relevos',
+      'Adultos mayores',
+      'Grupos',
+      'Mi perfil',
+    ]);
+    const relevos = Array.from(elemento.querySelectorAll('.lateral__enlace')).find(
+      (a) => a.textContent?.trim() === 'Relevos',
+    );
+    expect(relevos?.getAttribute('href')).toBe('/relevos');
   });
 });

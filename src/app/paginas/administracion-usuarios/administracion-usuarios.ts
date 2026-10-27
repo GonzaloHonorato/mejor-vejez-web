@@ -1,5 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormControl, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 
 import { erroresDeCampos, mensajeDeError } from '../../nucleo/http/mensaje-de-error';
 import { RespuestaEstadoCatalogo, ServicioCatalogos } from '../../nucleo/catalogos/servicio-catalogos';
@@ -12,10 +13,13 @@ const TAMANO_PAGINA = 10;
  * Página "Administración de usuarios" (`/administracion/usuarios`, solo
  * administradores, ver `guardAdministrador`): buscador, listado paginado y,
  * por usuario, edición de nombre/teléfono/administrador y cambio de estado.
+ * Tiene además el enlace "Auditoría global" (`/administracion/auditoria`,
+ * Tarea 7): esta página ya está detrás de `guardAdministrador`, así que no
+ * hace falta ninguna condición extra para mostrarlo.
  */
 @Component({
   selector: 'app-administracion-usuarios',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, RouterLink],
   templateUrl: './administracion-usuarios.html',
   styleUrl: './administracion-usuarios.scss',
 })

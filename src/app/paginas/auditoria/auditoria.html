@@ -1,0 +1,130 @@
+<div class="pagina">
+  <header class="cabecera">
+    <h1>{{ modoGlobal ? 'Auditoría' : 'Auditoría del grupo' }}</h1>
+  </header>
+
+  <div class="contenido">
+    <details class="filtros" [open]="filtrosAbiertosAlIniciar">
+      <summary class="filtros__resumen">{{ textoResumenFiltros() }}</summary>
+      <form
+        class="filtros__formulario"
+        [formGroup]="formularioFiltros"
+        (ngSubmit)="aplicarFiltros()"
+        novalidate
+      >
+        <div class="campo">
+          <label class="campo__etiqueta" for="auditoria-tipo-entidad">Tipo de entidad</label>
+          <select id="auditoria-tipo-entidad" class="campo__control" formControlName="tipoEntidad">
+            <option [ngValue]="null">Todas</option>
+            @for (tipo of tiposEntidad; track tipo) {
+              <option [ngValue]="tipo">{{ etiquetaEntidad(tipo) }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="campo">
+          <label class="campo__etiqueta" for="auditoria-id-entidad">Id de entidad</label>
+          <input id="auditoria-id-entidad" class="campo__control" type="text" formControlName="idEntidad" />
+        </div>
+
+        <div class="campo">
+          <label class="campo__etiqueta" for="auditoria-accion">Código de acción</label>
+          <select id="auditoria-accion" class="campo__control" formControlName="codigoAccion">
+            <option [ngValue]="null">Todas</option>
+            @for (opcion of opcionesAccion; track opcion.codigo) {
+              <option [ngValue]="opcion.codigo">{{ opcion.etiqueta }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="campo">
+          <label class="campo__etiqueta" for="auditoria-resultado">Resultado</label>
+          <select id="auditoria-resultado" class="campo__control" formControlName="codigoResultado">
+            <option [ngValue]="null">Todos</option>
+            <option [ngValue]="'EXITO'">Éxito</option>
+            <option [ngValue]="'FALLO'">Fallo</option>
+            <option [ngValue]="'RECHAZADA'">Rechazada</option>
+          </select>
+        </div>
+
+        <div class="campo">
+          <label class="campo__etiqueta" for="auditoria-desde">Desde</label>
+          <input id="auditoria-desde" class="campo__control" type="date" formControlName="desde" />
+        </div>
+
+        <div class="campo">
+          <label class="campo__etiqueta" for="auditoria-hasta">Hasta</label>
+          <input id="auditoria-hasta" class="campo__control" type="date" formControlName="hasta" />
+        </div>
+
+        @if (modoGlobal) {
+          <div class="campo">
+            <label class="campo__etiqueta" for="auditoria-id-grupo">Id de grupo</label>
+            <input id="auditoria-id-grupo" class="campo__control" type="number" formControlName="idGrupo" />
+          </div>
+        }
+
+        <button type="submit" class="boton boton--contorno">Aplicar filtros</button>
+      </form>
+    </details>
+
+    @if (error(); as mensaje) {
+      <div class="error" role="alert">
+        <p class="error__mensaje">{{ mensaje }}</p>
+        <button type="button" class="boton boton--contorno" (click)="reintentar()">Reintentar</button>
+      </div>
+    }
+
+    @if (cargando()) {
+      <p class="vacio" role="status">Cargando…</p>
+    }
+
+    @if (!cargando() && !error() && elementos().length === 0) {
+      <p class="vacio" role="status">No hay eventos para estos filtros.</p>
+    }
+
+    <ul class="lista">
+      @for (evento of elementos(); track evento.idEvento) {
+        <li class="tarjeta-evento">
+          <p class="tarjeta-evento__fecha">
+            {{ formatearFecha(evento.fechaEvento) }} a las {{ formatearHora(evento.fechaEvento) }}
+          </p>
+          <p class="tarjeta-evento__actor">{{ evento.actor?.nombre ?? 'Proceso automático' }}</p>
+          <p class="tarjeta-evento__accion">{{ etiquetaAccion(evento.codigoAccion) }}</p>
+          <p class="tarjeta-evento__codigo">{{ evento.codigoAccion }}</p>
+          <p class="tarjeta-evento__entidad">
+            {{ etiquetaEntidad(evento.tipoEntidad) }} · {{ evento.idEntidad }}
+          </p>
+          <span class="insignia">{{ descripcionResultado(evento.idResultado) }}</span>
+
+          @if (evento.detalles) {
+            <details class="detalles">
+              <summary>Detalles</summary>
+              <pre>{{ detallesComoJson(evento.detalles) }}</pre>
+            </details>
+          }
+        </li>
+      }
+    </ul>
+
+    <nav class="paginacion" aria-label="Paginación de auditoría">
+      <button
+        type="button"
+        class="boton boton--contorno"
+        [disabled]="!hayPaginaAnterior() || cargando()"
+        (click)="paginaAnterior()"
+      >
+        Anterior
+      </button>
+      <span aria-live="polite">Página {{ pagina() + 1 }} de {{ totalPaginas() }}</span>
+      <button
+        type="button"
+        class="boton boton--contorno"
+        [disabled]="!hayPaginaSiguiente() || cargando()"
+        (click)="paginaSiguiente()"
+      >
+        Siguiente
+      </button>
+    </nav>
+  </div>
+</div>

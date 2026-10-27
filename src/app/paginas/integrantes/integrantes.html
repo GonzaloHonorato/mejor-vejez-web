@@ -13,6 +13,16 @@
       <button type="button" class="boton boton--contorno" (click)="salir()">Salir del grupo</button>
     }
 
+    @if (puedeAdministrar()) {
+      <a
+        id="integrantes-enlace-auditoria"
+        class="enlace-volver"
+        [routerLink]="['/grupos', idGrupo, 'auditoria']"
+      >
+        Auditoría del grupo
+      </a>
+    }
+
     @if (grupoCargado()) {
       @if (puedeAdministrar()) {
         <label class="interruptor">
@@ -122,6 +132,17 @@
           </button>
         </form>
       </section>
+    }
+
+    @if (grupoCargado()) {
+      <app-seccion-sucesion
+        [idGrupo]="idGrupo"
+        [integrantes]="integrantes()"
+        [idUsuarioActual]="idUsuario()"
+        [soyCoordinador]="soyCoordinador()"
+        [esAdministrador]="esAdministrador()"
+        (cambio)="alCambiarSucesion()"
+      />
     }
   </div>
 </div>

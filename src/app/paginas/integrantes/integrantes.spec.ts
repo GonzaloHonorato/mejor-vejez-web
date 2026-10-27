@@ -8,6 +8,8 @@ import { RespuestaGrupo, RespuestaIntegrante, RespuestaRol } from '../../nucleo/
 import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
 import { ServicioGrupos } from '../../nucleo/grupos/servicio-grupos';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
+import { ServicioCatalogos } from '../../nucleo/catalogos/servicio-catalogos';
+import { ServicioSucesion } from '../../nucleo/sucesion/servicio-sucesion';
 
 const ROLES: RespuestaRol[] = [
   { idRol: 1, nombreRol: 'COORDINADOR', descripcion: 'Coordina el grupo' },
@@ -64,6 +66,16 @@ async function configurar(opciones: {
     actualizar: vi.fn(),
   };
   const grupoActivo = { cargar: vi.fn(async () => {}) };
+  // La sección de sucesión (Tarea 8) carga su propio estado: sin propuesta activa ni historial.
+  const servicioSucesion = {
+    activa: vi.fn(() => of(null)),
+    historial: vi.fn(() => of([])),
+    proponer: vi.fn(),
+    aceptar: vi.fn(),
+    rechazar: vi.fn(),
+    cancelar: vi.fn(),
+    completar: vi.fn(),
+  };
   TestBed.configureTestingModule({
     imports: [Integrantes],
     providers: [
@@ -74,6 +86,8 @@ async function configurar(opciones: {
       },
       { provide: ServicioGrupos, useValue: servicioGrupos },
       { provide: ServicioGrupoActivo, useValue: grupoActivo },
+      { provide: ServicioSucesion, useValue: servicioSucesion },
+      { provide: ServicioCatalogos, useValue: { estados: vi.fn(() => of([])) } },
       {
         provide: ServicioYo,
         useValue: {
@@ -95,6 +109,7 @@ async function configurar(opciones: {
     fixture,
     servicioGrupos,
     grupoActivo,
+    servicioSucesion,
     router: TestBed.inject(Router),
     elemento: fixture.nativeElement as HTMLElement,
   };
@@ -363,5 +378,57 @@ describe('Integrantes', () => {
     );
     expect(elemento.querySelector('#integrante-email')).toBeFalsy();
     expect(botonConTexto(elemento, 'Salir del grupo')).toBeFalsy();
+  });
+
+  it('enlaceSoloParaCoordinadorEnIntegrantes', async () => {
+    const { elemento: elementoCoordinador } = await configurar({ miRol: 'COORDINADOR' });
+    expect(elementoCoordinador.querySelector('#integrantes-enlace-auditoria')).toBeTruthy();
+
+    TestBed.resetTestingModule();
+    const { elemento: elementoAdmin } = await configurar({
+      miRol: 'COLABORADOR',
+      esAdministrador: true,
+    });
+    expect(elementoAdmin.querySelector('#integrantes-enlace-auditoria')).toBeTruthy();
+
+    TestBed.resetTestingModule();
+    const { elemento: elementoColaborador } = await configurar({ miRol: 'COLABORADOR' });
+    expect(elementoColaborador.querySelector('#integrantes-enlace-auditoria')).toBeFalsy();
+  });
+
+  it('seccionSucesionRecibeElContextoYSuCambioRecargaGrupoEIntegrantes', async () => {
+    const { fixture, elemento, servicioGrupos, servicioSucesion, grupoActivo } = await configurar({
+      miRol: 'COORDINADOR',
+      integrantesIniciales: [
+        integrante(1, 'Ana', 1, 'COORDINADOR'),
+        integrante(2, 'Beto', 2, 'COLABORADOR'),
+      ],
+    });
+
+    expect(servicioSucesion.activa).toHaveBeenCalledWith(5);
+    const selector = elemento.querySelector<HTMLSelectElement>('#sucesion-candidato')!;
+    expect(Array.from(selector.options).map((opcion) => opcion.textContent?.trim())).toEqual([
+      'Selecciona…',
+      'Beto',
+    ]);
+
+    servicioSucesion.proponer.mockReturnValue(of({}));
+    selector.value = selector.options[1].value;
+    selector.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+    botonConTexto(elemento, 'Proponer sucesor')!.click();
+    await fixture.whenStable();
+
+    expect(servicioSucesion.proponer).toHaveBeenCalledWith(5, 2);
+    expect(servicioGrupos.obtener).toHaveBeenCalledTimes(2);
+    expect(servicioGrupos.integrantes).toHaveBeenCalledTimes(2);
+    expect(grupoActivo.cargar).toHaveBeenCalled();
+  });
+
+  it('colaboradorVeLaSeccionSinSelectorDeCandidato', async () => {
+    const { elemento } = await configurar({ miRol: 'COLABORADOR' });
+
+    expect(elemento.textContent).toContain('Sucesión de la coordinación');
+    expect(elemento.querySelector('#sucesion-candidato')).toBeFalsy();
   });
 });

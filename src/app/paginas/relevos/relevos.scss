@@ -1,0 +1,227 @@
+// Relevos — opción C. Sólo var(--mv-...): ver src/estilos/_tema.scss.
+
+:host {
+  display: block;
+}
+
+.pagina {
+  display: flex;
+  flex-direction: column;
+}
+
+.cabecera {
+  padding: var(--mv-espacio-4);
+  background: var(--mv-color-fondo);
+}
+
+h1 {
+  margin: 0;
+}
+
+.contenido {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mv-espacio-4);
+  padding: var(--mv-espacio-4);
+}
+
+.tarjeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--mv-espacio-4);
+  padding: var(--mv-espacio-4);
+  border: 2px solid var(--mv-color-borde);
+  border-radius: var(--mv-radio-md);
+  background: var(--mv-color-superficie);
+  max-width: var(--mv-ancho-lectura);
+
+  &--suave {
+    border-color: transparent;
+    background: var(--mv-color-fondo);
+  }
+
+  &__titulo {
+    margin: 0;
+    font-size: var(--mv-texto-grande);
+  }
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mv-espacio-2);
+  max-width: var(--mv-ancho-lectura);
+  margin-top: var(--mv-espacio-3);
+
+  &--filtro {
+    margin-top: var(--mv-espacio-3);
+  }
+
+  &__etiqueta {
+    font-weight: var(--mv-texto-peso-negrita);
+  }
+
+  &__control {
+    width: 100%;
+    min-height: var(--mv-espacio-12);
+    padding: 0 var(--mv-espacio-4);
+    border: 2px solid var(--mv-color-secundario);
+    border-radius: var(--mv-radio-md);
+    background: var(--mv-color-superficie);
+    color: var(--mv-color-texto);
+    font: inherit;
+
+    &--area {
+      padding: var(--mv-espacio-3) var(--mv-espacio-4);
+      resize: vertical;
+    }
+  }
+}
+
+.contador {
+  margin: 0;
+  align-self: flex-end;
+  color: var(--mv-color-secundario);
+  font-size: var(--mv-texto-pequeno);
+}
+
+.vacio {
+  margin: 0;
+  color: var(--mv-color-secundario);
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mv-espacio-3);
+  margin: var(--mv-espacio-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tarjeta-relevo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--mv-espacio-3);
+  padding: var(--mv-espacio-4);
+  border: 2px solid var(--mv-color-borde);
+  border-radius: var(--mv-radio-md);
+  background: var(--mv-color-superficie);
+
+  &__principal {
+    display: flex;
+    flex-direction: column;
+    gap: var(--mv-espacio-1);
+  }
+
+  &__adulto {
+    margin: 0;
+    font-weight: var(--mv-texto-peso-negrita);
+  }
+
+  &__personas,
+  &__fecha {
+    margin: 0;
+    color: var(--mv-color-secundario);
+    font-size: var(--mv-texto-pequeno);
+  }
+}
+
+.insignia {
+  padding: var(--mv-espacio-1) var(--mv-espacio-3);
+  border-radius: var(--mv-radio-completo);
+  background: var(--mv-color-exito-fondo);
+  color: var(--mv-color-exito);
+  font-size: var(--mv-texto-pequeno);
+  font-weight: var(--mv-texto-peso-negrita);
+
+  // "Cancelada" no es un éxito: usa el mismo tono de advertencia que
+  // `insignia--alerta` en `tarea.scss`/`tareas.scss`.
+  &--cancelada {
+    background: var(--mv-color-alerta-fondo);
+    color: var(--mv-color-alerta-texto);
+  }
+}
+
+.enlace {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--mv-espacio-12);
+  color: var(--mv-color-primario);
+  font-weight: var(--mv-texto-peso-negrita);
+}
+
+.error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mv-espacio-3);
+  margin: 0;
+  padding: var(--mv-espacio-2) var(--mv-espacio-3);
+  border-radius: var(--mv-radio-sm);
+  background: var(--mv-color-error-fondo);
+  color: var(--mv-color-error);
+  font-size: var(--mv-texto-pequeno);
+  font-weight: var(--mv-texto-peso-negrita);
+
+  &__mensaje {
+    margin: 0;
+    font-size: var(--mv-texto-pequeno);
+    font-weight: var(--mv-texto-peso-negrita);
+  }
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mv-espacio-4);
+  width: 100%;
+}
+
+.boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--mv-espacio-12);
+  padding: 0 var(--mv-espacio-4);
+  border-radius: var(--mv-radio-md);
+  font-weight: var(--mv-texto-peso-negrita);
+  cursor: pointer;
+  text-decoration: none;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  &--contorno {
+    border: 2px solid var(--mv-color-primario);
+    background: var(--mv-color-superficie);
+    color: var(--mv-color-primario);
+  }
+
+  &--primario {
+    border: 0;
+    background: var(--mv-color-primario);
+    color: var(--mv-color-sobre-primario);
+    min-height: calc(var(--mv-espacio-12) + var(--mv-espacio-1));
+    padding: 0 var(--mv-espacio-6);
+
+    &:hover:not(:disabled) {
+      background: var(--mv-color-primario-hover);
+    }
+  }
+}
+
+@media (min-width: 768px) {
+  .cabecera {
+    padding: var(--mv-espacio-6) var(--mv-espacio-8);
+  }
+
+  .contenido {
+    padding: var(--mv-espacio-5) var(--mv-espacio-8);
+  }
+}

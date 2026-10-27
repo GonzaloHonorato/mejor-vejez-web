@@ -26,6 +26,11 @@ h1 {
   padding: var(--mv-espacio-4);
 }
 
+.enlace {
+  color: var(--mv-color-primario);
+  font-weight: var(--mv-texto-peso-negrita);
+}
+
 .buscador {
   display: flex;
   // Sin esto, el selector genérico `form` (más abajo) impone

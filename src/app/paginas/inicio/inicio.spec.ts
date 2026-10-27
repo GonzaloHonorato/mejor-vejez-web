@@ -1,10 +1,11 @@
 import { TestBed } from '@angular/core/testing';
-import { signal } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { Router, provideRouter } from '@angular/router';
 
 import { Inicio } from './inicio';
+import { AvisoSucesion } from './aviso-sucesion/aviso-sucesion';
 import { RespuestaAdultoMayor } from '../../nucleo/adultos/modelos-adultos';
 import { RespuestaAlerta } from '../../nucleo/alertas/modelos-alertas';
 import { ServicioAutenticacion } from '../../nucleo/autenticacion/servicio-autenticacion';
@@ -192,6 +193,22 @@ function agotarPeticionesDelPanel(http: HttpTestingController): void {
   }
 }
 
+/**
+ * `AvisoSucesion` (Tarea 8) es autónomo y hace sus propias peticiones
+ * (`/api/yo`, `/sucesion/activa`): tiene su propio spec. Aquí se sustituye
+ * por un doble sin dependencias para que el `HttpTestingController` de
+ * estas pruebas siga viendo solo las peticiones de `Inicio`.
+ */
+@Component({ selector: 'app-aviso-sucesion', template: '<p class="aviso-sucesion-doble"></p>' })
+class AvisoSucesionDoble {}
+
+function sustituirAvisoSucesion(): void {
+  TestBed.overrideComponent(Inicio, {
+    remove: { imports: [AvisoSucesion] },
+    add: { imports: [AvisoSucesionDoble] },
+  });
+}
+
 function configurar(
   cerrarSesion = vi.fn().mockResolvedValue(undefined),
   grupos: RespuestaGrupo[] = [grupo(1, 'Familia Soto')],
@@ -212,6 +229,7 @@ function configurar(
       },
     ],
   });
+  sustituirAvisoSucesion();
   const fixture = TestBed.createComponent(Inicio);
   fixture.detectChanges();
   const http = TestBed.inject(HttpTestingController);
@@ -250,6 +268,7 @@ function configurarPanel(opciones?: {
       { provide: ServicioGrupoActivo, useValue: { grupos: signal(grupos), activo } },
     ],
   });
+  sustituirAvisoSucesion();
   const fixture = TestBed.createComponent(Inicio);
   const http = TestBed.inject(HttpTestingController);
   fixture.detectChanges();
@@ -350,6 +369,17 @@ describe('Inicio — panel familiar', () => {
     expect(elemento.textContent).not.toContain('Alertas de atraso');
     // Sin grupo activo no se pide nada del panel ni la lista de adultos.
     expect(http.match(() => true)).toHaveLength(0);
+  });
+
+  it('avisoSucesionSoloSeColocaConGrupoActivo', async () => {
+    const conGrupo = configurarPanel();
+    await conGrupo.fixture.whenStable();
+    expect(conGrupo.elemento.querySelector('app-aviso-sucesion')).toBeTruthy();
+
+    TestBed.resetTestingModule();
+    const sinGrupo = configurarPanel({ activoInicial: null });
+    await sinGrupo.fixture.whenStable();
+    expect(sinGrupo.elemento.querySelector('app-aviso-sucesion')).toBeFalsy();
   });
 
   it('cargaLasCincoSeccionesEnParalelo', async () => {

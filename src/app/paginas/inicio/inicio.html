@@ -38,6 +38,14 @@
   }
 
   @if (activo()) {
+    <app-aviso-sucesion />
+
+    <section class="tarjeta" aria-labelledby="inicio-relevos-titulo">
+      <h2 id="inicio-relevos-titulo" class="tarjeta__titulo">Relevos</h2>
+      <p class="tarjeta__texto">Registra y consulta los relevos del turno de cuidado.</p>
+      <a class="boton-secundario" routerLink="/relevos">Ir a Relevos</a>
+    </section>
+
     <section class="panel" aria-labelledby="panel-titulo">
       <div class="panel__cabecera">
         <h2 id="panel-titulo" class="panel__titulo">Tu panel</h2>

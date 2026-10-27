@@ -1,0 +1,37 @@
+<div class="panel-mas__fondo" aria-hidden="true" (click)="cerrar.emit()"></div>
+
+<div id="panel-mas" class="panel-mas__hoja" role="dialog" aria-label="Más opciones">
+  <div class="panel-mas__encabezado">
+    <span class="panel-mas__titulo">Más opciones</span>
+    <button type="button" class="panel-mas__cerrar" (click)="cerrar.emit()">
+      <app-icono nombre="cerrar" />
+      Cerrar
+    </button>
+  </div>
+
+  <ul class="panel-mas__lista">
+    @for (entrada of entradas(); track entrada.ruta) {
+      <li>
+        <a
+          class="panel-mas__enlace"
+          [class.panel-mas__enlace--activo]="esActiva(entrada)"
+          [routerLink]="entrada.ruta"
+          [attr.aria-current]="esActiva(entrada) ? 'page' : null"
+        >
+          <app-icono [nombre]="entrada.icono" />
+          {{ entrada.etiqueta }}
+        </a>
+      </li>
+    }
+  </ul>
+
+  <div class="panel-mas__usuario">
+    @if (correo()) {
+      <span class="panel-mas__correo">{{ correo() }}</span>
+    }
+    <button type="button" class="panel-mas__salir" (click)="cerrarSesion.emit()">
+      <app-icono nombre="salir" />
+      Cerrar sesión
+    </button>
+  </div>
+</div>

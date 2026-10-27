@@ -161,6 +161,25 @@ describe('FichaAdulto', () => {
     expect(enlace?.getAttribute('href')).toBe('/planes?idAdulto=1');
   });
 
+  it('registrarRelevoSoloApareceSiElAdultoEstaActivo', async () => {
+    const { elemento } = await configurar({});
+
+    const enlace = Array.from(elemento.querySelectorAll('a')).find((a) =>
+      a.textContent?.includes('Registrar relevo'),
+    );
+    expect(enlace?.getAttribute('href')).toBe('/relevos?idAdulto=1');
+  });
+
+  it('registrarRelevoNoApareceSiElAdultoEstaInactivo', async () => {
+    const { elemento } = await configurar({ obtenerImpl: () => of(adulto({ idEstado: 2 })) });
+
+    expect(elemento.textContent).toContain('Inactivo');
+    const enlace = Array.from(elemento.querySelectorAll('a')).find((a) =>
+      a.textContent?.includes('Registrar relevo'),
+    );
+    expect(enlace).toBeFalsy();
+  });
+
   it('colaboradorNoVeAccionesDeAdministracion', async () => {
     const { elemento } = await configurar({ activo: grupo(1, 'COLABORADOR') });
 

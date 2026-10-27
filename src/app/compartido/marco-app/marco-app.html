@@ -10,20 +10,14 @@
       <ul class="lateral__lista">
         @for (entrada of navegacion(); track entrada.etiqueta) {
           <li>
-            @if (entrada.ruta) {
-              <a
-                class="lateral__enlace"
-                [routerLink]="entrada.ruta"
-                routerLinkActive="lateral__enlace--activo"
-                ariaCurrentWhenActive="page"
-                [routerLinkActiveOptions]="{ exact: entrada.coincidenciaExacta ?? true }"
-                >{{ entrada.etiqueta }}</a
-              >
-            } @else {
-              <span class="lateral__enlace lateral__enlace--deshabilitado" aria-disabled="true">
-                {{ entrada.etiqueta }}<span class="oculto"> (próximamente)</span>
-              </span>
-            }
+            <a
+              class="lateral__enlace"
+              [routerLink]="entrada.ruta"
+              routerLinkActive="lateral__enlace--activo"
+              ariaCurrentWhenActive="page"
+              [routerLinkActiveOptions]="{ exact: entrada.coincidenciaExacta }"
+              >{{ entrada.etiqueta }}</a
+            >
           </li>
         }
       </ul>
@@ -60,27 +54,44 @@
 
   <nav class="pestanas" aria-label="Navegación principal">
     <ul class="pestanas__lista">
-      @for (entrada of navegacion(); track entrada.etiqueta) {
+      @for (entrada of pestanas; track entrada.ruta) {
         <li class="pestanas__item">
-          @if (entrada.ruta) {
-            <a
-              class="pestana"
-              [routerLink]="entrada.ruta"
-              routerLinkActive="pestana--activa"
-              ariaCurrentWhenActive="page"
-              [routerLinkActiveOptions]="{ exact: entrada.coincidenciaExacta ?? true }"
-            >
-              <span class="pestana__icono" aria-hidden="true"></span>
-              {{ entrada.etiquetaCorta }}
-            </a>
-          } @else {
-            <span class="pestana pestana--deshabilitada" aria-disabled="true">
-              <span class="pestana__icono" aria-hidden="true"></span>
-              {{ entrada.etiquetaCorta }}<span class="oculto"> (próximamente)</span>
-            </span>
-          }
+          <a
+            class="pestana"
+            [routerLink]="entrada.ruta"
+            routerLinkActive="pestana--activa"
+            ariaCurrentWhenActive="page"
+            [routerLinkActiveOptions]="{ exact: entrada.coincidenciaExacta }"
+          >
+            <app-icono [nombre]="entrada.icono" />
+            {{ entrada.etiqueta }}
+          </a>
         </li>
       }
+      <li class="pestanas__item">
+        <button
+          #botonMas
+          type="button"
+          class="pestana"
+          [class.pestana--activa]="masActivo()"
+          aria-haspopup="true"
+          aria-controls="panel-mas"
+          [attr.aria-expanded]="masAbierto()"
+          (click)="alternarMas()"
+        >
+          <app-icono nombre="mas" />
+          Más
+        </button>
+      </li>
     </ul>
+    @if (masAbierto()) {
+      <app-panel-mas
+        [entradas]="entradasMas()"
+        [correo]="correoUsuario()"
+        [urlActual]="urlActual()"
+        (cerrar)="cerrarMas()"
+        (cerrarSesion)="cerrarSesion()"
+      />
+    }
   </nav>
 </div>

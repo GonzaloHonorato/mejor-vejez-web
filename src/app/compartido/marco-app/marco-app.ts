@@ -1,4 +1,13 @@
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  OnInit,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   ActivatedRouteSnapshot,
@@ -14,46 +23,74 @@ import { mensajeDeError } from '../../nucleo/http/mensaje-de-error';
 import { ServicioAutenticacion } from '../../nucleo/autenticacion/servicio-autenticacion';
 import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
+import { Icono, NombreIcono } from '../icono/icono';
 import { SelectorGrupo } from '../selector-grupo/selector-grupo';
+import { EntradaMas, PanelMas, rutaCoincide } from './panel-mas/panel-mas';
 
 const TITULO_POR_DEFECTO = 'Panel familiar';
 
 interface EntradaNavegacion {
-  /** Texto en la barra lateral (escritorio). */
   etiqueta: string;
-  /** Texto corto en la barra inferior (móvil). */
-  etiquetaCorta: string;
-  /** Sin ruta = todavía no existe en F0; se muestra deshabilitada. */
-  ruta?: string;
-  /** Activo también en subrutas (ej. "Grupos" en /grupos/:idGrupo). Por defecto, coincidencia exacta. */
-  coincidenciaExacta?: boolean;
+  ruta: string;
+  /** Activo también en subrutas (ej. "Grupos" en /grupos/:idGrupo) si es `false`. */
+  coincidenciaExacta: boolean;
 }
 
-const NAVEGACION_BASE: readonly EntradaNavegacion[] = [
-  { etiqueta: 'Panel familiar', etiquetaCorta: 'Panel', ruta: '/', coincidenciaExacta: true },
-  { etiqueta: 'Tareas', etiquetaCorta: 'Tareas', ruta: '/tareas', coincidenciaExacta: false },
-  { etiqueta: 'Alertas', etiquetaCorta: 'Alertas', ruta: '/alertas', coincidenciaExacta: false },
-  { etiqueta: 'Medicamentos', etiquetaCorta: 'Remedios', ruta: '/planes', coincidenciaExacta: false },
-  { etiqueta: 'Adultos mayores', etiquetaCorta: 'Personas', ruta: '/adultos', coincidenciaExacta: false },
-  { etiqueta: 'Grupos', etiquetaCorta: 'Grupos', ruta: '/grupos', coincidenciaExacta: false },
-  { etiqueta: 'Mi perfil', etiquetaCorta: 'Perfil', ruta: '/perfil', coincidenciaExacta: true },
+interface EntradaPestana extends EntradaNavegacion {
+  icono: NombreIcono;
+}
+
+/** Barra lateral (escritorio): todas las entradas; no usa "Más". */
+const NAVEGACION_LATERAL: readonly EntradaNavegacion[] = [
+  { etiqueta: 'Panel familiar', ruta: '/', coincidenciaExacta: true },
+  { etiqueta: 'Tareas', ruta: '/tareas', coincidenciaExacta: false },
+  { etiqueta: 'Alertas', ruta: '/alertas', coincidenciaExacta: false },
+  { etiqueta: 'Medicamentos', ruta: '/planes', coincidenciaExacta: false },
+  { etiqueta: 'Relevos', ruta: '/relevos', coincidenciaExacta: false },
+  { etiqueta: 'Adultos mayores', ruta: '/adultos', coincidenciaExacta: false },
+  { etiqueta: 'Grupos', ruta: '/grupos', coincidenciaExacta: false },
+  { etiqueta: 'Mi perfil', ruta: '/perfil', coincidenciaExacta: true },
 ];
 
 /** Solo visible si `ServicioYo.obtener().esAdministrador` es true. */
-const ENTRADA_ADMINISTRACION: EntradaNavegacion = {
+const LATERAL_ADMINISTRACION: EntradaNavegacion = {
   etiqueta: 'Administración',
-  etiquetaCorta: 'Admin',
   ruta: '/administracion/usuarios',
   coincidenciaExacta: true,
 };
 
+/** Barra inferior (móvil): 4 accesos fijos; el resto va en "Más". */
+const PESTANAS_FIJAS: readonly EntradaPestana[] = [
+  { etiqueta: 'Panel', ruta: '/', coincidenciaExacta: true, icono: 'panel' },
+  { etiqueta: 'Tareas', ruta: '/tareas', coincidenciaExacta: false, icono: 'tareas' },
+  { etiqueta: 'Alertas', ruta: '/alertas', coincidenciaExacta: false, icono: 'alertas' },
+  { etiqueta: 'Personas', ruta: '/adultos', coincidenciaExacta: false, icono: 'personas' },
+];
+
+const ENTRADAS_MAS: readonly EntradaMas[] = [
+  { etiqueta: 'Remedios', ruta: '/planes', icono: 'remedios', prefijoActivo: '/planes' },
+  { etiqueta: 'Relevos', ruta: '/relevos', icono: 'relevos', prefijoActivo: '/relevos' },
+  { etiqueta: 'Grupos', ruta: '/grupos', icono: 'grupos', prefijoActivo: '/grupos' },
+  { etiqueta: 'Perfil', ruta: '/perfil', icono: 'perfil', prefijoActivo: '/perfil' },
+];
+
+/** Cubre todo `/administracion/...` (usuarios y auditoría global). */
+const MAS_ADMINISTRACION: EntradaMas = {
+  etiqueta: 'Administración',
+  ruta: '/administracion/usuarios',
+  icono: 'administracion',
+  prefijoActivo: '/administracion',
+};
+
 /**
  * Marco de la aplicación autenticada (opción C): barra lateral oscura en
- * escritorio y barra de pestañas inferior en móvil.
+ * escritorio y barra de pestañas inferior en móvil (4 pestañas fijas +
+ * "Más", que abre `PanelMas` con el resto de accesos, el correo y "Cerrar
+ * sesión").
  */
 @Component({
   selector: 'app-marco-app',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, SelectorGrupo],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, SelectorGrupo, Icono, PanelMas],
   templateUrl: './marco-app.html',
   styleUrl: './marco-app.scss',
 })
@@ -67,19 +104,36 @@ export class MarcoApp implements OnInit {
   private readonly esAdministrador = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly tituloRuta = signal(TITULO_POR_DEFECTO);
+  private readonly correoYo = signal('');
+  /** URL actual (se actualiza en cada `NavigationEnd`): decide si "Más" está activo. */
+  protected readonly urlActual = signal('');
+  protected readonly masAbierto = signal(false);
+  private readonly botonMas = viewChild.required<ElementRef<HTMLButtonElement>>('botonMas');
 
   protected readonly navegacion = computed<readonly EntradaNavegacion[]>(() =>
-    this.esAdministrador() ? [...NAVEGACION_BASE, ENTRADA_ADMINISTRACION] : NAVEGACION_BASE,
+    this.esAdministrador() ? [...NAVEGACION_LATERAL, LATERAL_ADMINISTRACION] : NAVEGACION_LATERAL,
+  );
+  protected readonly pestanas = PESTANAS_FIJAS;
+  protected readonly entradasMas = computed<readonly EntradaMas[]>(() =>
+    this.esAdministrador() ? [...ENTRADAS_MAS, MAS_ADMINISTRACION] : ENTRADAS_MAS,
+  );
+  /** "Más" se marca activo si la ruta actual (o una subruta) es una de las del panel. */
+  protected readonly masActivo = computed(() =>
+    this.entradasMas().some((entrada) => rutaCoincide(this.urlActual(), entrada.prefijoActivo)),
   );
   protected readonly nombreUsuario = computed(() => {
     const usuario = this.auth.usuario();
     return usuario?.displayName || usuario?.email || '';
   });
+  protected readonly correoUsuario = computed(() => this.auth.usuario()?.email || this.correoYo());
 
   ngOnInit(): void {
     this.grupoActivo.cargar();
     this.servicioYo.obtener().subscribe({
-      next: (yo) => this.esAdministrador.set(yo.esAdministrador),
+      next: (yo) => {
+        this.esAdministrador.set(yo.esAdministrador);
+        this.correoYo.set(yo.email ?? '');
+      },
       error: (error: unknown) =>
         this.error.set(mensajeDeError(error, 'No pudimos verificar tus permisos.')),
     });
@@ -90,11 +144,30 @@ export class MarcoApp implements OnInit {
         filter((evento): evento is NavigationEnd => evento instanceof NavigationEnd),
         takeUntilDestroyed(this.destroyRef),
       )
-      .subscribe(() => this.actualizarTituloRuta());
+      .subscribe(() => {
+        this.actualizarTituloRuta();
+        this.cerrarMas();
+      });
   }
 
-  /** Título del encabezado (opción C): el de la ruta hija activa, no uno fijo (ver hallazgo A11y). */
+  protected alternarMas(): void {
+    if (this.masAbierto()) {
+      this.cerrarMas();
+    } else {
+      this.masAbierto.set(true);
+    }
+  }
+
+  /** Cierra "Más" (Escape, fondo, "Cerrar" o navegación) y devuelve el foco a su botón. */
+  protected cerrarMas(): void {
+    if (!this.masAbierto()) return;
+    this.masAbierto.set(false);
+    this.botonMas().nativeElement.focus();
+  }
+
+  /** URL actual y título del encabezado (opción C): el de la ruta hija activa, no uno fijo (ver hallazgo A11y). */
   private actualizarTituloRuta(): void {
+    this.urlActual.set(this.router.url);
     let ruta: ActivatedRouteSnapshot = this.router.routerState.snapshot.root;
     while (ruta.firstChild) {
       ruta = ruta.firstChild;

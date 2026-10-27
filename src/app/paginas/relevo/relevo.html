@@ -1,0 +1,132 @@
+<div class="pagina">
+  <header class="cabecera">
+    <a class="enlace-volver" routerLink="/relevos">Volver a relevos</a>
+    <h1>Relevo</h1>
+  </header>
+
+  <div class="contenido">
+    @if (!activo()) {
+      <section class="tarjeta tarjeta--suave" aria-labelledby="relevo-sin-grupo-titulo">
+        <h2 id="relevo-sin-grupo-titulo" class="tarjeta__titulo">Primero crea o elige un grupo.</h2>
+        <a class="boton boton--contorno" routerLink="/grupos">Ir a grupos</a>
+      </section>
+    } @else if (noEncontrado()) {
+      <section class="tarjeta tarjeta--suave" aria-labelledby="relevo-no-encontrado-titulo">
+        <h2 id="relevo-no-encontrado-titulo" class="tarjeta__titulo">El relevo no existe.</h2>
+        <a class="boton boton--contorno" routerLink="/relevos">Ir a relevos</a>
+      </section>
+    } @else {
+      @if (cargando()) {
+        <p class="vacio" role="status">Cargando…</p>
+      }
+
+      @if (error(); as mensaje) {
+        <p class="error" role="alert">{{ mensaje }}</p>
+      }
+
+      @if (detalle(); as datos) {
+        <section class="tarjeta" aria-labelledby="relevo-datos-titulo">
+          <h2 id="relevo-datos-titulo">Datos</h2>
+          <dl class="lista-datos">
+            <div class="lista-datos__fila">
+              <dt>Grupo</dt>
+              <dd>{{ datos.nombreGrupo }}</dd>
+            </div>
+            <div class="lista-datos__fila">
+              <dt>Adulto mayor</dt>
+              <dd>{{ datos.nombreAdulto }}</dd>
+            </div>
+            <div class="lista-datos__fila">
+              <dt>Quien entrega</dt>
+              <dd>{{ datos.saliente.nombre }}</dd>
+            </div>
+            <div class="lista-datos__fila">
+              <dt>Quien recibe</dt>
+              <dd>{{ datos.entrante.nombre }}</dd>
+            </div>
+            <div class="lista-datos__fila">
+              <dt>Registrado por</dt>
+              <dd>{{ datos.creador.nombre }}</dd>
+            </div>
+            <div class="lista-datos__fila">
+              <dt>Fecha</dt>
+              <dd>{{ fechaHora(datos.fechaTraspaso) }}</dd>
+            </div>
+            <div class="lista-datos__fila">
+              <dt>Estado</dt>
+              <dd>
+                <span
+                  class="insignia"
+                  [class.insignia--cancelada]="datos.codigoEstado === 'CANCELADA'"
+                >
+                  {{ descripcionEstadoRelevo(datos.idEstado) }}
+                </span>
+              </dd>
+            </div>
+          </dl>
+
+          @if (datos.notas) {
+            <section aria-labelledby="relevo-notas-titulo">
+              <h3 id="relevo-notas-titulo">Notas</h3>
+              <p>{{ datos.notas }}</p>
+            </section>
+          }
+        </section>
+
+        <section class="tarjeta" aria-labelledby="relevo-resumen-titulo">
+          <h2 id="relevo-resumen-titulo">Resumen al momento del relevo</h2>
+          <p class="aviso" role="status">{{ avisoFoto }}</p>
+
+          @if (sinElementos()) {
+            <p class="vacio" role="status">Sin tareas ni alertas pendientes en este resumen.</p>
+          } @else {
+            <section aria-labelledby="relevo-tareas-titulo">
+              <h3 id="relevo-tareas-titulo">Tareas pendientes ({{ datos.totalTareas }})</h3>
+              @if (tareasPendientes().length === 0) {
+                <p class="vacio" role="status">Sin tareas pendientes.</p>
+              }
+              <ul class="lista-simple">
+                @for (item of tareasPendientes(); track item.idDetalle) {
+                  <li class="tarjeta-item">
+                    <a class="enlace" [routerLink]="['/tareas', item.idReferencia]">{{ item.resumen }}</a>
+                  </li>
+                }
+              </ul>
+            </section>
+
+            <section aria-labelledby="relevo-alertas-titulo">
+              <h3 id="relevo-alertas-titulo">Alertas abiertas ({{ datos.totalAlertas }})</h3>
+              @if (alertasAbiertas().length === 0) {
+                <p class="vacio" role="status">Sin alertas abiertas.</p>
+              }
+              <ul class="lista-simple">
+                @for (item of alertasAbiertas(); track item.idDetalle) {
+                  <li class="tarjeta-item">
+                    <a class="enlace" [routerLink]="['/alertas', item.idReferencia]">{{ item.resumen }}</a>
+                  </li>
+                }
+              </ul>
+            </section>
+          }
+        </section>
+
+        @if (puedeCancelar()) {
+          <section class="tarjeta" aria-labelledby="relevo-cancelar-titulo">
+            <h2 id="relevo-cancelar-titulo">Cancelar relevo</h2>
+            @if (errorCancelar(); as mensaje) {
+              <p class="error" role="alert">{{ mensaje }}</p>
+            }
+            <button
+              type="button"
+              class="boton boton--peligro"
+              [disabled]="cancelando()"
+              (click)="cancelar()"
+            >
+              {{ cancelando() ? 'Cancelando…' : 'Cancelar relevo' }}
+            </button>
+          </section>
+        }
+      }
+    }
+  </div>
+</div>

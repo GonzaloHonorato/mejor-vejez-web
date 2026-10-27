@@ -4,6 +4,7 @@ import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 
+import { AvisoSucesion } from './aviso-sucesion/aviso-sucesion';
 import { SeccionPanel } from './seccion-panel/seccion-panel';
 import { RespuestaAdultoMayor } from '../../nucleo/adultos/modelos-adultos';
 import { ServicioAdultos } from '../../nucleo/adultos/servicio-adultos';
@@ -61,7 +62,7 @@ const MENSAJE_CUENTA_GENERICO =
  */
 @Component({
   selector: 'app-inicio',
-  imports: [RouterLink, ReactiveFormsModule, SeccionPanel],
+  imports: [RouterLink, ReactiveFormsModule, SeccionPanel, AvisoSucesion],
   templateUrl: './inicio.html',
   styleUrl: './inicio.scss',
 })

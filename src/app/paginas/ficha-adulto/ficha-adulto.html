@@ -229,6 +229,18 @@
           </a>
         </p>
 
+        @if (adultoActivo()) {
+          <p>
+            <a
+              class="enlace-volver"
+              routerLink="/relevos"
+              [queryParams]="{ idAdulto: datosAdulto.idAdultoMayor }"
+            >
+              Registrar relevo
+            </a>
+          </p>
+        }
+
         <app-contactos-adulto
           [idGrupo]="datosAdulto.idGrupo"
           [idAdulto]="datosAdulto.idAdultoMayor"

@@ -46,6 +46,12 @@ export const routes: Routes = [
           import('./paginas/integrantes/integrantes').then((m) => m.Integrantes),
       },
       {
+        path: 'grupos/:idGrupo/auditoria',
+        title: 'Auditoría · Mejor Vejez',
+        data: { tituloPagina: 'Auditoría', modo: 'grupo' },
+        loadComponent: () => import('./paginas/auditoria/auditoria').then((m) => m.Auditoria),
+      },
+      {
         path: 'tareas',
         title: 'Tareas · Mejor Vejez',
         data: { tituloPagina: 'Tareas' },
@@ -104,6 +110,18 @@ export const routes: Routes = [
           import('./paginas/ficha-adulto/ficha-adulto').then((m) => m.FichaAdulto),
       },
       {
+        path: 'relevos',
+        title: 'Relevos · Mejor Vejez',
+        data: { tituloPagina: 'Relevos' },
+        loadComponent: () => import('./paginas/relevos/relevos').then((m) => m.Relevos),
+      },
+      {
+        path: 'relevos/:idRelevo',
+        title: 'Relevo · Mejor Vejez',
+        data: { tituloPagina: 'Relevo' },
+        loadComponent: () => import('./paginas/relevo/relevo').then((m) => m.Relevo),
+      },
+      {
         path: 'administracion/usuarios',
         title: 'Administración de usuarios · Mejor Vejez',
         data: { tituloPagina: 'Administración' },
@@ -112,6 +130,13 @@ export const routes: Routes = [
           import('./paginas/administracion-usuarios/administracion-usuarios').then(
             (m) => m.AdministracionUsuarios,
           ),
+      },
+      {
+        path: 'administracion/auditoria',
+        title: 'Auditoría · Mejor Vejez',
+        data: { tituloPagina: 'Auditoría', modo: 'global' },
+        canActivate: [guardAdministrador],
+        loadComponent: () => import('./paginas/auditoria/auditoria').then((m) => m.Auditoria),
       },
     ],
   },

@@ -86,8 +86,9 @@
     color: var(--mv-color-secundario);
   }
 
+  // En móvil el correo y "Cerrar sesión" están en "Más".
   &__usuario {
-    display: flex;
+    display: none;
     align-items: center;
     gap: var(--mv-espacio-3);
     min-width: 0;
@@ -169,31 +170,23 @@
   align-items: center;
   justify-content: center;
   gap: var(--mv-espacio-1);
+  width: 100%;
   min-height: 72px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
   font-size: var(--mv-texto-etiqueta);
+  white-space: nowrap;
   color: var(--mv-color-secundario);
   text-decoration: none;
+  cursor: pointer;
 
-  &__icono {
-    width: 22px;
-    height: 22px;
-    border: 2px solid currentColor;
-    border-radius: var(--mv-radio-sm);
-  }
-
+  // El ícono es `currentColor`: en la activa toma el primario.
   &--activa {
     background: var(--mv-color-primario-suave);
     color: var(--mv-color-primario);
     font-weight: var(--mv-texto-peso-negrita);
-
-    .pestana__icono {
-      background: currentColor;
-    }
-  }
-
-  &--deshabilitada {
-    opacity: 0.6;
-    cursor: not-allowed;
   }
 }
 
@@ -239,11 +232,6 @@
         color: var(--mv-color-navegacion-activo-texto);
         font-weight: var(--mv-texto-peso-negrita);
       }
-
-      &--deshabilitado {
-        opacity: 0.6;
-        cursor: not-allowed;
-      }
     }
   }
 
@@ -257,6 +245,10 @@
 
     &__ruta {
       display: block;
+    }
+
+    &__usuario {
+      display: flex;
     }
   }
 
