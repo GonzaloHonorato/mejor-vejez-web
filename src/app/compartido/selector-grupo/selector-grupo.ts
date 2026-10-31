@@ -4,12 +4,11 @@ import { RouterLink } from '@angular/router';
 import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
 
 /**
- * Bloque "GRUPO" del marco (opción C): muestra el grupo activo y permite
- * cambiarlo.
+ * Bloque del grupo activo del marco: muestra el grupo y permite cambiarlo.
  * - `lateral` (barra lateral de escritorio): rótulo, nombre y botón
  *   "Cambiar" que despliega una lista simple de mis grupos.
- * - `cabecera` (encabezado móvil): nombre del grupo y enlace "Cambiar" a
- *   `/grupos` (una lista desplegable no cabe bien a 390px).
+ * - `cabecera` (celular y escritorio): caja con el nombre del grupo y el
+ *   enlace "Cambiar" a `/grupos` (una lista desplegable no cabe a 390px).
  */
 @Component({
   selector: 'app-selector-grupo',

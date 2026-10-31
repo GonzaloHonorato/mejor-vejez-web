@@ -1,0 +1,730 @@
+// Componentes globales `mv-` (BEM), celular primero. Usa SOLO tokens
+// semánticos de `_tema.scss`. Guía de uso: `planes/ux-componentes.md`.
+// Los tonos se resuelven con dos propiedades locales, `--tono-texto` y
+// `--tono-fondo`, que cada modificador redefine.
+@use 'estilos/puntos-quiebre' as pq;
+
+// Marca Cuida+: isotipo con el signo "+" y el nombre. `--invertida` para
+// fondos oscuros; `--grande` en las páginas públicas.
+.mv-marca {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mv-espacio-2);
+  color: var(--mv-color-texto);
+  font-size: var(--mv-texto-grande);
+  font-weight: var(--mv-texto-peso-negrita);
+  line-height: 1;
+  white-space: nowrap;
+
+  &__isotipo {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: var(--mv-espacio-8);
+    height: var(--mv-espacio-8);
+    border-radius: var(--mv-radio-md);
+    background: var(--mv-color-primario);
+    color: var(--mv-color-sobre-primario);
+  }
+
+  &--invertida {
+    color: var(--mv-color-navegacion-activo-texto);
+
+    .mv-marca__isotipo {
+      background: var(--mv-color-navegacion-activo-texto);
+      color: var(--mv-color-primario);
+    }
+  }
+
+  &--grande {
+    font-size: var(--mv-texto-titulo);
+  }
+}
+
+// Enlace "Saltar al contenido": fuera de la vista hasta recibir el foco.
+.mv-saltar {
+  position: absolute;
+  top: -100px;
+  left: var(--mv-espacio-2);
+  z-index: 10;
+  padding: var(--mv-espacio-3) var(--mv-espacio-4);
+  border-radius: var(--mv-radio-md);
+  background: var(--mv-color-superficie);
+  color: var(--mv-color-primario);
+  font-weight: var(--mv-texto-peso-negrita);
+
+  &:focus {
+    top: var(--mv-espacio-2);
+  }
+}
+
+// Avatar redondo con las iniciales de una persona (decorativo: el nombre
+// va en texto al lado).
+.mv-avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--mv-espacio-10);
+  height: var(--mv-espacio-10);
+  border-radius: var(--mv-radio-completo);
+  background: var(--mv-color-primario-suave);
+  color: var(--mv-color-primario);
+  font-size: var(--mv-texto-pequeno);
+  font-weight: var(--mv-texto-peso-negrita);
+  line-height: 1;
+}
+
+// Solo para lectores por debajo de escritorio; visible desde escritorio.
+.mv-oculto-bajo-escritorio {
+  @media not all and (min-width: pq.$escritorio) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
+
+// Encabezado de página: rótulo, título, bajada y acción principal (en
+// celular bajo el título a todo el ancho; desde tableta, a la derecha).
+.mv-encabezado {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mv-espacio-4);
+  margin-bottom: var(--mv-espacio-6);
+
+  &__rotulo {
+    margin: 0 0 var(--mv-espacio-1);
+    color: var(--mv-color-primario);
+    font-size: var(--mv-texto-etiqueta);
+    font-weight: var(--mv-texto-peso-negrita);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  &__titulo {
+    margin: 0;
+    color: var(--mv-color-texto);
+  }
+
+  &__bajada {
+    margin: var(--mv-espacio-2) 0 0;
+    color: var(--mv-color-secundario);
+  }
+
+  &__accion {
+    display: flex;
+    flex-direction: column;
+    gap: var(--mv-espacio-2);
+  }
+
+  @include pq.desde-tableta {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+
+    &__accion {
+      flex-direction: row;
+      flex: none;
+    }
+  }
+}
+
+// Botones: la base es la variante secundaria (borde); alto mínimo 48px.
+.mv-boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--mv-espacio-2);
+  min-height: var(--mv-espacio-12);
+  padding: var(--mv-espacio-2) var(--mv-espacio-4);
+  border: 2px solid var(--mv-color-primario);
+  border-radius: var(--mv-radio-md);
+  background: var(--mv-color-superficie);
+  color: var(--mv-color-primario);
+  font-weight: var(--mv-texto-peso-negrita);
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--mv-color-fondo);
+  }
+
+  &--primario {
+    background: var(--mv-color-primario);
+    color: var(--mv-color-sobre-primario);
+
+    &:hover {
+      border-color: var(--mv-color-primario-hover);
+      background: var(--mv-color-primario-hover);
+    }
+  }
+
+  &--peligro {
+    border-color: var(--mv-color-error);
+    background: var(--mv-color-error);
+    color: var(--mv-color-sobre-primario);
+
+    &:hover {
+      background: var(--mv-color-error-fondo);
+      color: var(--mv-color-error);
+    }
+  }
+
+  &--texto {
+    padding-inline: var(--mv-espacio-2);
+    border-color: transparent;
+    background: transparent;
+
+    &:hover {
+      background: transparent;
+      text-decoration: underline;
+    }
+  }
+
+  &--bloque {
+    width: 100%;
+  }
+
+  &:disabled,
+  &[aria-disabled='true'] {
+    border-color: var(--mv-color-borde);
+    background: var(--mv-color-fondo);
+    color: var(--mv-color-secundario);
+    cursor: not-allowed;
+    text-decoration: none;
+  }
+}
+
+// Tarjeta: superficie blanca con borde, radio grande y sombra suave.
+.mv-tarjeta {
+  border: 1px solid var(--mv-color-borde);
+  border-radius: var(--mv-radio-lg);
+  background: var(--mv-color-superficie);
+  box-shadow: var(--mv-sombra-suave);
+  overflow-wrap: anywhere;
+
+  &__cabecera,
+  &__pie {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--mv-espacio-3);
+    padding: var(--mv-espacio-4);
+  }
+
+  &__cabecera {
+    border-bottom: 1px solid var(--mv-color-borde);
+  }
+
+  &__pie {
+    border-top: 1px solid var(--mv-color-borde);
+  }
+
+  &__titulo {
+    margin: 0;
+    font-size: var(--mv-texto-grande);
+  }
+
+  &__cuerpo {
+    padding: var(--mv-espacio-4);
+  }
+
+  @include pq.desde-tableta {
+    &__cabecera,
+    &__pie,
+    &__cuerpo {
+      padding: var(--mv-espacio-5);
+    }
+  }
+}
+
+// Indicadores: tarjetas con número; 2 columnas en celular, 4 en escritorio.
+// Valor y etiqueta van juntos para leerse como "3 pendientes".
+.mv-indicadores {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--mv-espacio-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  @include pq.desde-escritorio {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.mv-indicador {
+  --tono-texto: var(--mv-color-primario);
+  --tono-fondo: var(--mv-color-primario-suave);
+
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--mv-espacio-1) var(--mv-espacio-3);
+  padding: var(--mv-espacio-3) var(--mv-espacio-4);
+  border: 1px solid var(--mv-color-borde);
+  border-radius: var(--mv-radio-lg);
+  background: var(--mv-color-superficie);
+  box-shadow: var(--mv-sombra-suave);
+
+  &__icono {
+    display: grid;
+    place-items: center;
+    width: var(--mv-espacio-10);
+    height: var(--mv-espacio-10);
+    border-radius: var(--mv-radio-md);
+    background: var(--tono-fondo);
+    color: var(--tono-texto);
+  }
+
+  &__valor {
+    color: var(--mv-color-texto);
+    font-size: var(--mv-texto-titulo);
+    font-weight: var(--mv-texto-peso-negrita);
+    line-height: 1.1;
+  }
+
+  &__etiqueta {
+    grid-column: 1 / -1;
+    color: var(--mv-color-secundario);
+  }
+
+  &--alerta {
+    --tono-texto: var(--mv-color-alerta-texto);
+    --tono-fondo: var(--mv-color-alerta-fondo);
+  }
+
+  &--exito {
+    --tono-texto: var(--mv-color-exito);
+    --tono-fondo: var(--mv-color-exito-fondo);
+  }
+
+  &--peligro {
+    --tono-texto: var(--mv-color-error);
+    --tono-fondo: var(--mv-color-error-fondo);
+  }
+}
+
+// Chip de estado (pastilla); sin modificador es neutro.
+.mv-chip {
+  --tono-texto: var(--mv-color-secundario);
+  --tono-fondo: var(--mv-color-neutro-fondo);
+
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mv-espacio-1);
+  max-width: 100%;
+  padding: var(--mv-espacio-1) var(--mv-espacio-3);
+  border-radius: var(--mv-radio-completo);
+  background: var(--tono-fondo);
+  color: var(--tono-texto);
+  font-size: var(--mv-texto-pequeno);
+  font-weight: var(--mv-texto-peso-negrita);
+  line-height: 1.3;
+
+  &--info {
+    --tono-texto: var(--mv-color-info);
+    --tono-fondo: var(--mv-color-info-fondo);
+  }
+
+  &--exito {
+    --tono-texto: var(--mv-color-exito);
+    --tono-fondo: var(--mv-color-exito-fondo);
+  }
+
+  &--alerta {
+    --tono-texto: var(--mv-color-alerta-texto);
+    --tono-fondo: var(--mv-color-alerta-fondo);
+  }
+
+  &--peligro {
+    --tono-texto: var(--mv-color-error);
+    --tono-fondo: var(--mv-color-error-fondo);
+  }
+}
+
+// Panel de filtros: campos apilados en celular, en fila desde tableta.
+.mv-filtros {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mv-espacio-4);
+  padding: var(--mv-espacio-4);
+  border: 1px solid var(--mv-color-borde);
+  border-radius: var(--mv-radio-lg);
+  background: var(--mv-color-superficie);
+
+  @include pq.desde-tableta {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-end;
+
+    > * {
+      flex: 1 1 12rem;
+    }
+  }
+}
+
+// Campo de formulario: etiqueta arriba, control de 48px y error debajo.
+// `--casilla` pone una casilla de verificación y su texto en línea.
+.mv-campo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mv-espacio-2);
+  min-width: 0;
+
+  &__etiqueta {
+    font-weight: var(--mv-texto-peso-negrita);
+  }
+
+  &__control {
+    width: 100%;
+    min-height: var(--mv-espacio-12);
+    padding: var(--mv-espacio-2) var(--mv-espacio-3);
+    border: 1px solid var(--mv-color-borde-control);
+    border-radius: var(--mv-radio-md);
+    background: var(--mv-color-superficie);
+    color: var(--mv-color-texto);
+    font: inherit;
+  }
+
+  // Error del campo, bajo el control y enlazado con `aria-describedby`.
+  &__error {
+    margin: 0;
+    color: var(--mv-color-error);
+    font-size: var(--mv-texto-pequeno);
+    font-weight: var(--mv-texto-peso-negrita);
+  }
+
+  &--casilla {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--mv-espacio-3);
+    min-height: var(--mv-espacio-12);
+    cursor: pointer;
+
+    input {
+      flex: none;
+      width: var(--mv-espacio-6);
+      height: var(--mv-espacio-6);
+      margin: 0;
+      accent-color: var(--mv-color-primario);
+    }
+  }
+}
+
+// Pestañas con contador; se reparten el ancho en celular. La activa se
+// marca con `--activa`, `aria-selected` o `aria-pressed`.
+.mv-pestanas {
+  display: flex;
+  gap: var(--mv-espacio-1);
+  box-shadow: inset 0 -1px 0 var(--mv-color-borde);
+  overflow-x: auto;
+
+  &__pestana {
+    display: inline-flex;
+    flex: 1 0 auto;
+    align-items: center;
+    justify-content: center;
+    gap: var(--mv-espacio-2);
+    min-height: var(--mv-espacio-12);
+    padding: 0 var(--mv-espacio-4);
+    border: 0;
+    border-bottom: 3px solid transparent;
+    background: transparent;
+    color: var(--mv-color-secundario);
+    font-weight: var(--mv-texto-peso-negrita);
+    cursor: pointer;
+
+    &--activa,
+    &[aria-selected='true'],
+    &[aria-pressed='true'] {
+      border-bottom-color: var(--mv-color-primario);
+      color: var(--mv-color-primario);
+
+      .mv-pestanas__contador {
+        background: var(--mv-color-primario-suave);
+        color: var(--mv-color-primario);
+      }
+    }
+  }
+
+  &__contador {
+    min-width: var(--mv-espacio-6);
+    padding: 0 var(--mv-espacio-2);
+    border-radius: var(--mv-radio-completo);
+    background: var(--mv-color-neutro-fondo);
+    font-size: var(--mv-texto-pequeno);
+  }
+
+  @include pq.desde-tableta {
+    &__pestana {
+      flex: none;
+    }
+  }
+}
+
+// Lista de filas: en celular cada fila es una tarjeta; desde escritorio la
+// lista es un panel y las filas, renglones de una grilla. Las columnas se
+// ajustan por página con `--fila-columnas`.
+.mv-lista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mv-espacio-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  @include pq.desde-escritorio {
+    gap: 0;
+    border: 1px solid var(--mv-color-borde);
+    border-radius: var(--mv-radio-lg);
+    background: var(--mv-color-superficie);
+    box-shadow: var(--mv-sombra-suave);
+    overflow: hidden;
+  }
+}
+
+.mv-fila {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mv-espacio-3);
+  padding: var(--mv-espacio-4);
+  border: 1px solid var(--mv-color-borde);
+  border-radius: var(--mv-radio-lg);
+  background: var(--mv-color-superficie);
+  box-shadow: var(--mv-sombra-suave);
+  overflow-wrap: anywhere;
+
+  &__dato {
+    color: var(--mv-color-texto);
+    font-size: var(--mv-texto-grande);
+    font-weight: var(--mv-texto-peso-negrita);
+  }
+
+  &__principal {
+    display: flex;
+    flex-direction: column;
+    gap: var(--mv-espacio-1);
+    min-width: 0;
+  }
+
+  &__titulo {
+    margin: 0;
+    font-weight: var(--mv-texto-peso-negrita);
+  }
+
+  &__meta {
+    margin: 0;
+    color: var(--mv-color-secundario);
+  }
+
+  &__acciones {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--mv-espacio-2);
+  }
+
+  @include pq.desde-escritorio {
+    display: grid;
+    grid-template-columns: var(--fila-columnas, minmax(0, 1fr) auto);
+    align-items: center;
+    gap: var(--mv-espacio-4);
+    padding: var(--mv-espacio-3) var(--mv-espacio-5);
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+
+    & + & {
+      border-top: 1px solid var(--mv-color-borde);
+    }
+  }
+}
+
+// Título de fila como enlace estirado: su `::after` cubre toda la fila, así
+// se toca en cualquier parte; las acciones quedan por encima. El anillo de
+// foco se dibuja sobre la fila completa.
+.mv-fila {
+  position: relative;
+}
+
+.mv-fila__acciones {
+  position: relative;
+  z-index: 1;
+}
+
+.mv-fila__enlace {
+  color: var(--mv-color-primario);
+  text-decoration: none;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: var(--mv-radio-lg);
+  }
+
+  &:hover,
+  &:focus-visible {
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: none;
+
+    &::after {
+      outline: 3px solid var(--mv-color-foco);
+      outline-offset: -3px;
+    }
+  }
+
+  @include pq.desde-escritorio {
+    &::after {
+      border-radius: 0;
+    }
+  }
+}
+
+// "Más acciones" (u otro contenido que se despliega): un `<details>` cuyo
+// `<summary>` es un botón de texto y cuyas opciones van debajo, en
+// `__panel`. Sin el marcador del navegador; abierto, el resumen queda
+// resaltado. `--flotante`: desde tableta el panel flota bajo el resumen,
+// alineado a la derecha, sobre el contenido.
+.mv-mas {
+  display: grid;
+  gap: var(--mv-espacio-2);
+
+  > summary {
+    justify-self: start;
+    list-style: none;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+  }
+
+  &[open] > summary {
+    background: var(--mv-color-primario-suave);
+  }
+
+  &__panel {
+    display: grid;
+    gap: var(--mv-espacio-2);
+  }
+
+  &--flotante {
+    position: relative;
+
+    @include pq.desde-tableta {
+      .mv-mas__panel {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        z-index: 2;
+        min-width: 14rem;
+        margin-top: var(--mv-espacio-2);
+        padding: var(--mv-espacio-3);
+        border: 1px solid var(--mv-color-borde);
+        border-radius: var(--mv-radio-lg);
+        background: var(--mv-color-superficie);
+        box-shadow: var(--mv-sombra-suave);
+      }
+    }
+  }
+}
+
+// Foco: las piezas con sombra conservan el anillo claro del foco global.
+:is(.mv-tarjeta, .mv-indicador, .mv-fila):focus-visible {
+  box-shadow: 0 0 0 2px var(--mv-color-foco-contraste);
+}
+
+// Aviso en línea; sin modificador es informativo.
+.mv-aviso {
+  --tono-texto: var(--mv-color-texto);
+  --tono-fondo: var(--mv-color-info-fondo);
+  --tono-borde: var(--mv-color-info);
+
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mv-espacio-3);
+  padding: var(--mv-espacio-3) var(--mv-espacio-4);
+  border-left: 4px solid var(--tono-borde);
+  border-radius: var(--mv-radio-md);
+  background: var(--tono-fondo);
+  color: var(--tono-texto);
+
+  p {
+    margin: 0;
+  }
+
+  &--alerta {
+    --tono-texto: var(--mv-color-alerta-texto);
+    --tono-fondo: var(--mv-color-alerta-fondo);
+    --tono-borde: var(--mv-color-alerta-texto);
+  }
+
+  &--error {
+    --tono-texto: var(--mv-color-error);
+    --tono-fondo: var(--mv-color-error-fondo);
+    --tono-borde: var(--mv-color-error);
+  }
+}
+
+// Estado vacío: mensaje centrado y una acción opcional.
+.mv-vacio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--mv-espacio-3);
+  padding: var(--mv-espacio-8) var(--mv-espacio-4);
+  color: var(--mv-color-secundario);
+  text-align: center;
+
+  &__titulo {
+    margin: 0;
+    color: var(--mv-color-texto);
+    font-weight: var(--mv-texto-peso-negrita);
+  }
+
+  &__texto {
+    margin: 0;
+  }
+}
+
+// Esqueleto de carga: bloques que laten; quietos con movimiento reducido.
+.mv-esqueleto {
+  display: block;
+  height: var(--mv-espacio-4);
+  border-radius: var(--mv-radio-md);
+  background: var(--mv-color-esqueleto);
+  animation: mv-latido var(--mv-duracion-esqueleto) ease-in-out infinite;
+
+  &--titulo {
+    width: 60%;
+    height: var(--mv-espacio-8);
+  }
+
+  &--bloque {
+    height: 6rem;
+    border-radius: var(--mv-radio-lg);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@keyframes mv-latido {
+  50% {
+    opacity: 0.45;
+  }
+}

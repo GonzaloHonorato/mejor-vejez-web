@@ -138,4 +138,47 @@ describe('Ingreso', () => {
       'Demasiados intentos. Prueba más tarde.',
     );
   });
+
+  it('continuarConGoogleMuestraElLogotipoGDecorativoConColoresDeTokens', async () => {
+    configurar(vi.fn());
+    const fixture = TestBed.createComponent(Ingreso);
+    await fixture.whenStable();
+    const elemento = fixture.nativeElement as HTMLElement;
+
+    const boton = Array.from(elemento.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Continuar con Google'),
+    )!;
+    const logo = boton.querySelector('svg.logo-google')!;
+    expect(logo).not.toBeNull();
+    expect(logo.getAttribute('aria-hidden')).toBe('true');
+    expect(logo.getAttribute('focusable')).toBe('false');
+    const partes = Array.from(logo.querySelectorAll('path')).map((path) => path.getAttribute('class'));
+    expect(partes.sort()).toEqual([
+      'logo-google__amarillo',
+      'logo-google__azul',
+      'logo-google__rojo',
+      'logo-google__verde',
+    ]);
+    expect(logo.outerHTML).not.toMatch(/#[0-9a-f]{3,8}\b/i);
+    expect(boton.textContent?.trim()).toBe('Continuar con Google');
+  });
+
+  it('mostrarYOcultarLaContrasenaCambiaElTipoDelCampo', async () => {
+    configurar(vi.fn());
+    const fixture = TestBed.createComponent(Ingreso);
+    await fixture.whenStable();
+    const elemento = fixture.nativeElement as HTMLElement;
+
+    const clave = elemento.querySelector<HTMLInputElement>('#ingreso-clave')!;
+    const alternar = elemento.querySelector<HTMLButtonElement>('button[aria-controls="ingreso-clave"]')!;
+    expect(clave.type).toBe('password');
+    expect(alternar.getAttribute('aria-pressed')).toBe('false');
+
+    alternar.click();
+    await fixture.whenStable();
+
+    expect(clave.type).toBe('text');
+    expect(alternar.getAttribute('aria-pressed')).toBe('true');
+    expect(alternar.textContent?.trim()).toBe('Ocultar');
+  });
 });

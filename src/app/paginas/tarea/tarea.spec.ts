@@ -22,6 +22,7 @@ import {
 } from '../../nucleo/tareas/modelos-tareas';
 import { ServicioTareas } from '../../nucleo/tareas/servicio-tareas';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
+import { fechaHoraLegible } from '../../nucleo/fecha-legible';
 
 const ESTADOS_TAREA: RespuestaEstadoCatalogo[] = [
   { idEstado: 10, codigo: 'PENDIENTE', descripcion: 'Pendiente', orden: 1 },
@@ -310,7 +311,7 @@ describe('Tarea', () => {
 
     // El detalle ya cargó (la tarea no es final), pero sin el catálogo de
     // estados no se puede saber si lo es: no debe ofrecerse "Reasignar"
-    // todavía (evita el parpadeo del hallazgo T11-1).
+    // todavía (evita un parpadeo).
     expect(botonConTexto(elemento, 'Reasignar')).toBeFalsy();
     expect(elemento.querySelector('#tarea-reasignar-integrante')).toBeNull();
 
@@ -345,8 +346,69 @@ describe('Tarea', () => {
     const datos = detalle({ tarea: tarea({ fechaHorario: '2026-11-03T01:00:00Z' }) });
     const { elemento } = await configurar({ obtenerImpl: () => of(datos) });
 
-    expect(elemento.textContent).toContain('02-11-2026 22:00');
-    expect(elemento.textContent).not.toContain('03-11-2026 22:00');
+    const enSantiago = fechaHoraLegible('2026-11-02T22:00:00-03:00');
+    expect(fechaHoraLegible('2026-11-03T01:00:00Z')).toBe(enSantiago);
+    expect(elemento.textContent).toContain(enSantiago);
+    expect(elemento.textContent).not.toContain(fechaHoraLegible('2026-11-03T22:00:00-03:00'));
+  });
+
+  it('encabezadoTieneEnlaceVolverTituloYChipDeEstadoConSuTono', async () => {
+    const { elemento } = await configurar({
+      obtenerImpl: () => of(detalle({ tarea: tarea({ idEstado: 10, atrasada: true }) })),
+    });
+
+    const volver = elemento.querySelector<HTMLAnchorElement>('a.volver');
+    expect(volver?.textContent).toContain('Volver a tareas');
+    expect(volver?.getAttribute('href')).toBe('/tareas');
+    expect(volver?.querySelector('app-icono')?.getAttribute('aria-hidden')).toBe('true');
+
+    const encabezado = elemento.querySelector('header.mv-encabezado')!;
+    expect(encabezado.querySelector('h1')?.textContent).toContain('Comprar Losartán');
+    const chips = Array.from(encabezado.querySelectorAll('.mv-chip'));
+    expect(chips.map((chip) => chip.textContent?.trim())).toEqual(['Pendiente', 'Atrasada']);
+    expect(chips[0].classList.contains('mv-chip--alerta')).toBe(true);
+    expect(chips[1].classList.contains('mv-chip--peligro')).toBe(true);
+  });
+
+  it('datosEnListaDeDefinicionConFechaLegibleResponsableYNotas', async () => {
+    const datos = detalle({
+      tarea: tarea({
+        descripcion: 'Tomar con agua',
+        responsable: { idUsuario: 200, nombre: 'Carlos Soto' },
+      }),
+    });
+    const { elemento } = await configurar({ obtenerImpl: () => of(datos) });
+
+    const filas = Array.from(elemento.querySelectorAll('dl.datos > div')).map((fila) => [
+      fila.querySelector('dt')?.textContent?.trim(),
+      fila.querySelector('dd')?.textContent?.trim(),
+    ]);
+    expect(filas).toContainEqual(['Adulto mayor', 'Rosa González']);
+    expect(filas).toContainEqual(['Fecha y hora', fechaHoraLegible('2026-11-02T08:00:00-03:00')]);
+    expect(filas).toContainEqual(['Responsable', 'Carlos Soto']);
+    expect(filas).toContainEqual(['Notas', 'Tomar con agua']);
+  });
+
+  it('historialMuestraLaFechaLegibleDeCadaCambio', async () => {
+    const { elemento } = await configurar();
+
+    const fila = elemento.querySelector('[data-prueba="historial-item"]')!;
+    expect(fila.textContent).toContain(fechaHoraLegible('2026-11-01T08:00:00-03:00'));
+  });
+
+  it('errorDeCargaOfreceReintentarYVuelveAPedirElDetalle', async () => {
+    const obtenerImpl = vi
+      .fn()
+      .mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 500 })))
+      .mockReturnValueOnce(of(detalle()));
+    const { fixture, elemento, servicioTareas } = await configurar({ obtenerImpl });
+
+    expect(elemento.querySelector('.mv-aviso--error[role="alert"]')).not.toBeNull();
+    botonConTexto(elemento, 'Reintentar')!.click();
+    await fixture.whenStable();
+
+    expect(servicioTareas.obtener).toHaveBeenCalledTimes(2);
+    expect(elemento.querySelector('h1')?.textContent).toContain('Comprar Losartán');
   });
 
   it('cuatroCeroCuatroMuestraMensajeYEnlaceATareas', async () => {

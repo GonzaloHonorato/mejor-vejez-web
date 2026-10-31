@@ -45,6 +45,8 @@ export class BuscadorMedicamento {
   readonly idGrupo = input.required<number>();
   /** Opciones de `PRESENTACION_MEDICAMENTO` (para mostrar resultados y para el alta). */
   readonly presentaciones = input<RespuestaOpcionCatalogo[]>([]);
+  /** id del mensaje de error que describe al buscador (lo pone quien lo usa); null sin error. */
+  readonly descritoPor = input<string | null>(null);
   readonly elegido = output<RespuestaMedicamento>();
 
   protected readonly texto = this.fb.control('');

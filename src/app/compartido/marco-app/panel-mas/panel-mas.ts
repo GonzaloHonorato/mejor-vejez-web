@@ -19,7 +19,7 @@ export function rutaCoincide(url: string, prefijo: string): boolean {
 }
 
 /**
- * Hoja "Más" de la barra inferior móvil (ajustes post-F7): los accesos que
+ * Hoja "Más" de la barra inferior móvil: los accesos que
  * no caben en las 4 pestañas fijas, más el correo y "Cerrar sesión" (que
  * en móvil salen de la cabecera). Solo existe mientras está abierta (el
  * marco la monta con `@if`), así que al montarse enfoca el primer enlace.
@@ -27,7 +27,7 @@ export function rutaCoincide(url: string, prefijo: string): boolean {
  * botón "Cerrar") y el marco la desmonta y devuelve el foco al botón
  * "Más"; al navegar, el marco la cierra por `NavigationEnd`.
  *
- * Es modal (`aria-modal="true"`, corrección ronda 1): Tab desde el último
+ * Es modal (`aria-modal="true"`): Tab desde el último
  * elemento vuelve al primero y Shift+Tab desde el primero va al último. El
  * marco, además, deja `inert` el contenido de detrás mientras está abierta.
  */

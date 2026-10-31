@@ -1,12 +1,15 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { Observable, Subject, of, throwError } from 'rxjs';
 
 import { ContactosAdulto } from './contactos-adulto';
 import { RespuestaContacto } from '../../../nucleo/adultos/modelos-adultos';
 import { ServicioAdultos } from '../../../nucleo/adultos/servicio-adultos';
-import { RespuestaEstadoCatalogo, ServicioCatalogos } from '../../../nucleo/catalogos/servicio-catalogos';
+import {
+  RespuestaEstadoCatalogo,
+  ServicioCatalogos,
+} from '../../../nucleo/catalogos/servicio-catalogos';
 
 const ESTADOS_CONTACTO: RespuestaEstadoCatalogo[] = [
   { idEstado: 1, codigo: 'ACTIVO', descripcion: 'Activo', orden: 1 },
@@ -33,11 +36,14 @@ interface Opciones {
   puedeAdministrar?: boolean;
   adultoActivo?: boolean;
   estados?: RespuestaEstadoCatalogo[];
+  contactosImpl?: () => Observable<RespuestaContacto[]>;
 }
 
 async function configurar(opciones: Opciones = {}) {
   const servicioAdultos = {
-    contactos: vi.fn(() => of(opciones.contactosIniciales ?? [contacto()])),
+    contactos: vi.fn(
+      opciones.contactosImpl ?? (() => of(opciones.contactosIniciales ?? [contacto()])),
+    ),
     crearContacto: vi.fn(),
     actualizarContacto: vi.fn(),
     designarPrincipal: vi.fn(),
@@ -82,6 +88,90 @@ function filaDe(elemento: HTMLElement, nombre: string): HTMLElement {
 }
 
 describe('ContactosAdulto', () => {
+  it('cadaContactoTieneEditarYElRestoEnMasAcciones', async () => {
+    const { elemento } = await configurar({
+      contactosIniciales: [
+        contacto({ idContacto: 1, nombreContacto: 'Juana Pérez', esPrincipal: true }),
+        contacto({ idContacto: 2, nombreContacto: 'Pedro Pérez', esPrincipal: false }),
+      ],
+    });
+
+    const fila = filaDe(elemento, 'Pedro Pérez');
+    const acciones = fila.querySelector('.contacto__acciones')!;
+    expect(acciones.querySelector(':scope > .mv-boton')?.textContent?.trim()).toBe('Editar');
+    const mas = acciones.querySelector('details.mv-mas')!;
+    expect(mas.querySelector('summary')?.getAttribute('aria-label')).toBe(
+      'Más acciones: Pedro Pérez',
+    );
+    const secundarias = Array.from(mas.querySelectorAll('button')).map((b) =>
+      b.textContent?.trim(),
+    );
+    expect(secundarias).toEqual(['Hacer principal', 'Desactivar', 'Eliminar']);
+  });
+
+  it('marcaPrincipalEInactivoConChips', async () => {
+    const { elemento } = await configurar({
+      contactosIniciales: [
+        contacto({ idContacto: 1, nombreContacto: 'Juana Pérez', esPrincipal: true }),
+        contacto({ idContacto: 2, nombreContacto: 'Pedro Pérez', esPrincipal: false, idEstado: 2 }),
+      ],
+    });
+
+    expect(
+      filaDe(elemento, 'Juana Pérez').querySelector('.mv-chip--info')?.textContent?.trim(),
+    ).toBe('Principal');
+    expect(filaDe(elemento, 'Pedro Pérez').querySelector('.mv-chip')?.textContent?.trim()).toBe(
+      'Inactivo',
+    );
+  });
+
+  it('mientrasCargaMuestraElEsqueleto', async () => {
+    const pendiente = new Subject<RespuestaContacto[]>();
+    const { fixture, elemento } = await configurar({
+      contactosImpl: () => pendiente.asObservable(),
+    });
+
+    expect(elemento.querySelector('[role="status"]')?.textContent).toContain('Cargando contactos');
+    expect(elemento.querySelector('.mv-esqueleto')).toBeTruthy();
+
+    pendiente.next([contacto()]);
+    await fixture.whenStable();
+    expect(elemento.querySelector('.mv-esqueleto')).toBeFalsy();
+    expect(elemento.textContent).toContain('Juana Pérez');
+  });
+
+  it('sinContactosMuestraElEstadoVacio', async () => {
+    const { elemento } = await configurar({ contactosIniciales: [] });
+
+    expect(elemento.querySelector('.mv-vacio')?.textContent).toContain(
+      'Aún no hay contactos registrados.',
+    );
+  });
+
+  it('errorAlCargarPermiteReintentar', async () => {
+    let intentos = 0;
+    const { fixture, elemento, servicioAdultos } = await configurar({
+      contactosImpl: () =>
+        ++intentos === 1
+          ? throwError(
+              () => new HttpErrorResponse({ status: 500, error: { detail: 'Falló la carga.' } }),
+            )
+          : of([contacto()]),
+    });
+
+    const aviso = elemento.querySelector('.mv-aviso--error');
+    expect(aviso?.getAttribute('role')).toBe('alert');
+    expect(aviso?.textContent).toContain('Falló la carga.');
+    expect(elemento.querySelector('.mv-vacio')).toBeFalsy();
+
+    botonConTexto(elemento, 'Reintentar')!.click();
+    await fixture.whenStable();
+
+    expect(servicioAdultos.contactos).toHaveBeenCalledTimes(2);
+    expect(elemento.querySelector('.mv-aviso--error')).toBeFalsy();
+    expect(elemento.textContent).toContain('Juana Pérez');
+  });
+
   it('marcaAlPrincipal', async () => {
     const { elemento } = await configurar({
       contactosIniciales: [
@@ -108,7 +198,9 @@ describe('ContactosAdulto', () => {
     });
 
     servicioAdultos.desactivarContacto.mockReturnValue(
-      of(contacto({ idContacto: 1, nombreContacto: 'Juana Pérez', esPrincipal: false, idEstado: 2 })),
+      of(
+        contacto({ idContacto: 1, nombreContacto: 'Juana Pérez', esPrincipal: false, idEstado: 2 }),
+      ),
     );
 
     const filaPrincipal = filaDe(elemento, 'Juana Pérez');
@@ -203,7 +295,9 @@ describe('ContactosAdulto', () => {
     expect(elemento.textContent).toContain('Elige el nuevo contacto principal');
 
     servicioAdultos.desactivarContacto.mockReturnValue(
-      of(contacto({ idContacto: 1, nombreContacto: 'Juana Pérez', esPrincipal: false, idEstado: 2 })),
+      of(
+        contacto({ idContacto: 1, nombreContacto: 'Juana Pérez', esPrincipal: false, idEstado: 2 }),
+      ),
     );
     botonConTexto(filaDe(elemento, 'Juana Pérez'), 'Confirmar')!.click();
     await fixture.whenStable();

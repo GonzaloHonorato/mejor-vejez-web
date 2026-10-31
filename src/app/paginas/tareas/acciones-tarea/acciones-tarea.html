@@ -1,16 +1,16 @@
 <div class="acciones-tarea">
   @if (error(); as mensaje) {
-    <p class="error" role="alert">{{ mensaje }}</p>
+    <p class="mv-aviso mv-aviso--error" role="alert">{{ mensaje }}</p>
   }
 
   @if (accionPidiendoObservacion(); as accion) {
-    <div class="observacion">
-      <label class="campo__etiqueta" [attr.for]="'observacion-' + tarea().idTarea">
+    <div class="mv-campo">
+      <label class="mv-campo__etiqueta" [attr.for]="'observacion-' + tarea().idTarea">
         {{ etiquetaObservacion(accion) }}
       </label>
       <textarea
         [id]="'observacion-' + tarea().idTarea"
-        class="campo__control campo__control--area"
+        class="mv-campo__control area"
         [formControl]="controlObservacion"
         [attr.maxlength]="largoMaximoObservacion(accion)"
         [attr.aria-invalid]="mensajeCampoObservacion(accion) ? true : null"
@@ -19,29 +19,48 @@
         "
       ></textarea>
       @if (mensajeCampoObservacion(accion); as mensaje) {
-        <p [id]="'observacion-error-' + tarea().idTarea" class="error" role="alert">{{ mensaje }}</p>
+        <p [id]="'observacion-error-' + tarea().idTarea" class="mv-campo__error" role="alert">
+          {{ mensaje }}
+        </p>
       }
-      <div class="acciones-tarea__botones">
-        <button type="button" class="boton boton--primario" [disabled]="enviando()" (click)="confirmar()">
+      <div class="botones">
+        <button type="button" class="mv-boton mv-boton--primario" [disabled]="enviando()" (click)="confirmar()">
           Confirmar
         </button>
-        <button type="button" class="boton boton--contorno" [disabled]="enviando()" (click)="volver()">
-          Volver
-        </button>
+        <button type="button" class="mv-boton" [disabled]="enviando()" (click)="volver()">Volver</button>
       </div>
     </div>
-  } @else {
-    <div class="acciones-tarea__botones">
-      @for (accion of acciones(); track accion) {
-        <button
-          type="button"
-          class="boton boton--contorno"
-          [disabled]="enviando()"
-          [attr.aria-label]="ariaLabelAccion(accion)"
-          (click)="elegir(accion)"
-        >
-          {{ etiquetaAccion[accion] }}
-        </button>
+  } @else if (principal(); as accionPrincipal) {
+    <div class="botones">
+      <button
+        type="button"
+        class="mv-boton mv-boton--primario"
+        [disabled]="enviando()"
+        [attr.aria-label]="ariaLabelAccion(accionPrincipal)"
+        (click)="elegir(accionPrincipal)"
+      >
+        {{ etiquetaAccion[accionPrincipal] }}
+      </button>
+      @if (secundarias().length > 0) {
+        <details class="mv-mas">
+          <summary class="mv-boton mv-boton--texto" [attr.aria-label]="ariaLabelMas()">
+            <app-icono nombre="mas" aria-hidden="true" />
+            Más acciones
+          </summary>
+          <div class="botones">
+            @for (accion of secundarias(); track accion) {
+              <button
+                type="button"
+                class="mv-boton"
+                [disabled]="enviando()"
+                [attr.aria-label]="ariaLabelAccion(accion)"
+                (click)="elegir(accion)"
+              >
+                {{ etiquetaAccion[accion] }}
+              </button>
+            }
+          </div>
+        </details>
       }
     </div>
   }

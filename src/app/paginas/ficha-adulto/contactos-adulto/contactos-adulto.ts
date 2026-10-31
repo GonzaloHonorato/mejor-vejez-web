@@ -17,10 +17,18 @@ import {
   Validators,
 } from '@angular/forms';
 
+import { Icono } from '../../../compartido/icono/icono';
 import { RespuestaContacto } from '../../../nucleo/adultos/modelos-adultos';
 import { ServicioAdultos } from '../../../nucleo/adultos/servicio-adultos';
-import { RespuestaEstadoCatalogo, ServicioCatalogos } from '../../../nucleo/catalogos/servicio-catalogos';
-import { erroresDeCampos, mensajeDeCampo, mensajeDeError } from '../../../nucleo/http/mensaje-de-error';
+import {
+  RespuestaEstadoCatalogo,
+  ServicioCatalogos,
+} from '../../../nucleo/catalogos/servicio-catalogos';
+import {
+  erroresDeCampos,
+  mensajeDeCampo,
+  mensajeDeError,
+} from '../../../nucleo/http/mensaje-de-error';
 
 type FormularioEdicionContacto = FormGroup<{
   nombreContacto: FormControl<string>;
@@ -36,7 +44,7 @@ type FormularioEdicionContacto = FormGroup<{
  * hay contactos que pedir.
  *
  * Desactivar al principal habiendo otros contactos activos exige elegir un
- * reemplazo (Foco de revisión 2 de la Fase 2): el botón "Desactivar" no
+ * reemplazo: el botón "Desactivar" no
  * llama a la API, solo abre un `<select>` en línea con "Confirmar"/
  * "Cancelar" explícitos; la llamada se dispara únicamente al tocar
  * "Confirmar" con una opción real elegida (nunca con el placeholder, y
@@ -44,7 +52,7 @@ type FormularioEdicionContacto = FormGroup<{
  */
 @Component({
   selector: 'app-contactos-adulto',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, Icono],
   templateUrl: './contactos-adulto.html',
   styleUrl: './contactos-adulto.scss',
 })
@@ -63,8 +71,10 @@ export class ContactosAdulto implements OnInit {
   protected readonly contactos = signal<RespuestaContacto[]>([]);
   protected readonly cargando = signal(false);
   protected readonly error = signal<string | null>(null);
+  /** Falla al pedir la lista: se ofrece reintentar, a diferencia de un error de una acción. */
+  protected readonly errorCarga = signal<string | null>(null);
   protected readonly agregando = signal(false);
-  /** Errores de campo SOLO del formulario "Agregar contacto": nunca se mezclan con los de una fila en edición (findings Important 3). */
+  /** Errores de campo SOLO del formulario "Agregar contacto": nunca se mezclan con los de una fila en edición. */
   protected readonly erroresCamposNuevo = signal<Record<string, string>>({});
 
   /** idContacto del principal que pide reemplazo antes de desactivarse; null si ninguno. */
@@ -149,8 +159,16 @@ export class ContactosAdulto implements OnInit {
   }
 
   /** Error de la API, o si no un mensaje local cuando se tocó sin completar, en el formulario "Agregar contacto". */
-  protected mensajeCampoNuevo(campo: 'nombreContacto' | 'telefono', mensajeRequerido: string): string | null {
-    return mensajeDeCampo(this.formulario.controls[campo], this.erroresCamposNuevo(), campo, mensajeRequerido);
+  protected mensajeCampoNuevo(
+    campo: 'nombreContacto' | 'telefono',
+    mensajeRequerido: string,
+  ): string | null {
+    return mensajeDeCampo(
+      this.formulario.controls[campo],
+      this.erroresCamposNuevo(),
+      campo,
+      mensajeRequerido,
+    );
   }
 
   /** Igual que {@link mensajeCampoNuevo}, pero para la fila en edición de `contacto`. */
@@ -160,7 +178,12 @@ export class ContactosAdulto implements OnInit {
     mensajeRequerido: string,
   ): string | null {
     const formulario = this.formularioEdicion(contacto);
-    return mensajeDeCampo(formulario.controls[campo], this.erroresEdicion(contacto.idContacto), campo, mensajeRequerido);
+    return mensajeDeCampo(
+      formulario.controls[campo],
+      this.erroresEdicion(contacto.idContacto),
+      campo,
+      mensajeRequerido,
+    );
   }
 
   protected editar(contacto: RespuestaContacto): void {
@@ -210,13 +233,15 @@ export class ContactosAdulto implements OnInit {
 
   protected hacerPrincipal(contacto: RespuestaContacto): void {
     this.error.set(null);
-    this.servicioAdultos.designarPrincipal(this.idGrupo(), this.idAdulto(), contacto.idContacto).subscribe({
-      next: () => {
-        this.cargar();
-        this.cambio.emit();
-      },
-      error: (error: unknown) => this.error.set(mensajeDeError(error)),
-    });
+    this.servicioAdultos
+      .designarPrincipal(this.idGrupo(), this.idAdulto(), contacto.idContacto)
+      .subscribe({
+        next: () => {
+          this.cargar();
+          this.cambio.emit();
+        },
+        error: (error: unknown) => this.error.set(mensajeDeError(error)),
+      });
   }
 
   protected desactivar(contacto: RespuestaContacto): void {
@@ -260,26 +285,30 @@ export class ContactosAdulto implements OnInit {
 
   protected reactivar(contacto: RespuestaContacto): void {
     this.error.set(null);
-    this.servicioAdultos.reactivarContacto(this.idGrupo(), this.idAdulto(), contacto.idContacto).subscribe({
-      next: () => {
-        this.cargar();
-        this.cambio.emit();
-      },
-      error: (error: unknown) => this.error.set(mensajeDeError(error)),
-    });
+    this.servicioAdultos
+      .reactivarContacto(this.idGrupo(), this.idAdulto(), contacto.idContacto)
+      .subscribe({
+        next: () => {
+          this.cargar();
+          this.cambio.emit();
+        },
+        error: (error: unknown) => this.error.set(mensajeDeError(error)),
+      });
   }
 
   protected eliminar(contacto: RespuestaContacto): void {
     if (!window.confirm('Solo si fue agregado por error.')) return;
 
     this.error.set(null);
-    this.servicioAdultos.eliminarContacto(this.idGrupo(), this.idAdulto(), contacto.idContacto).subscribe({
-      next: () => {
-        this.cargar();
-        this.cambio.emit();
-      },
-      error: (error: unknown) => this.error.set(mensajeDeError(error)),
-    });
+    this.servicioAdultos
+      .eliminarContacto(this.idGrupo(), this.idAdulto(), contacto.idContacto)
+      .subscribe({
+        next: () => {
+          this.cargar();
+          this.cambio.emit();
+        },
+        error: (error: unknown) => this.error.set(mensajeDeError(error)),
+      });
   }
 
   protected agregar(): void {
@@ -303,7 +332,12 @@ export class ContactosAdulto implements OnInit {
       .subscribe({
         next: () => {
           this.agregando.set(false);
-          this.formulario.reset({ nombreContacto: '', parentesco: '', telefono: '', esPrincipal: false });
+          this.formulario.reset({
+            nombreContacto: '',
+            parentesco: '',
+            telefono: '',
+            esPrincipal: false,
+          });
           this.cargar();
           this.cambio.emit();
         },
@@ -327,7 +361,10 @@ export class ContactosAdulto implements OnInit {
     return errores;
   }
 
-  private confirmarDesactivar(contacto: RespuestaContacto, idNuevoPrincipal: number | undefined): void {
+  private confirmarDesactivar(
+    contacto: RespuestaContacto,
+    idNuevoPrincipal: number | undefined,
+  ): void {
     this.servicioAdultos
       .desactivarContacto(this.idGrupo(), this.idAdulto(), contacto.idContacto, idNuevoPrincipal)
       .subscribe({
@@ -348,15 +385,20 @@ export class ContactosAdulto implements OnInit {
     });
   }
 
+  protected reintentarCarga(): void {
+    this.cargar();
+  }
+
   private cargar(): void {
     this.cargando.set(true);
+    this.errorCarga.set(null);
     this.servicioAdultos.contactos(this.idGrupo(), this.idAdulto()).subscribe({
       next: (contactos) => {
         this.contactos.set(contactos);
         this.cargando.set(false);
       },
       error: (error: unknown) => {
-        this.error.set(mensajeDeError(error));
+        this.errorCarga.set(mensajeDeError(error));
         this.cargando.set(false);
       },
     });

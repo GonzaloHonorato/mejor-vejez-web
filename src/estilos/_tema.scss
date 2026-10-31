@@ -25,6 +25,7 @@
   --mv-color-texto: var(--mv-p-azul-900);
   --mv-color-secundario: var(--mv-p-pizarra-700);
   --mv-color-borde: var(--mv-p-gris-azulado-300);
+  --mv-color-borde-control: var(--mv-p-gris-azulado-500); // inputs y selects
   --mv-color-fondo: var(--mv-p-azul-50);
   --mv-color-superficie: var(--mv-p-blanco);
 
@@ -32,12 +33,21 @@
   --mv-color-exito-fondo: var(--mv-p-verde-100);
   --mv-color-error: var(--mv-p-rojo-700);
   --mv-color-error-fondo: var(--mv-p-rojo-100);
+  --mv-color-info: var(--mv-p-azul-700);
+  --mv-color-info-fondo: var(--mv-p-azul-100);
+  --mv-color-neutro-fondo: var(--mv-p-azul-50); // chips y contadores neutros
+  --mv-color-esqueleto: var(--mv-p-azul-100); // bloques de carga
 
-  // Colores — marco de navegación (Tarea 9: barra lateral oscura en
-  // escritorio, barra inferior en móvil). Se agregan ahora para que T9 no
-  // tenga que tocar primitivos/tema ni inventar valores: todos vienen 1:1
-  // de la barra lateral de "Panel familiar · Escritorio" de la fuente de
-  // verdad visual (ver arriba).
+  // Colores — logotipo "G" de Google en "Continuar con Google". Son colores
+  // de marca de un tercero: no se reutilizan para otros roles.
+  --mv-color-google-azul: var(--mv-p-google-azul);
+  --mv-color-google-verde: var(--mv-p-google-verde);
+  --mv-color-google-amarillo: var(--mv-p-google-amarillo);
+  --mv-color-google-rojo: var(--mv-p-google-rojo);
+
+  // Colores — marco de navegación (barra lateral oscura en escritorio,
+  // barra inferior en móvil). Todos vienen 1:1 de la barra lateral de
+  // "Panel familiar · Escritorio" de la fuente de verdad visual (ver arriba).
   --mv-color-navegacion-fondo: var(--mv-p-azul-900);
   --mv-color-navegacion-texto: var(--mv-p-azul-100);
   --mv-color-navegacion-activo: var(--mv-color-primario);
@@ -52,7 +62,7 @@
 
   // Tipografía — tamaños, nombrados por rol (no por escala numérica), para
   // que cambiar de diseño no obligue a releer qué significaba cada número.
-  // `--mv-texto-base` es el piso de accesibilidad (16px): la opción C usa
+  // `--mv-texto-base` es el piso de accesibilidad (16px): el diseño usa
   // 15–16px de cuerpo, nunca se baja de 16px en la web.
   --mv-texto-etiqueta: var(--mv-p-texto-1); // rótulos en mayúsculas
   --mv-texto-pequeno: var(--mv-p-texto-2); // pastillas, metadatos, pie
@@ -75,7 +85,12 @@
   // Radios
   --mv-radio-sm: var(--mv-p-radio-sm); // isotipo, avisos, insignias
   --mv-radio-md: var(--mv-p-radio-md);
+  --mv-radio-lg: var(--mv-p-radio-lg); // tarjetas, paneles, filas
   --mv-radio-completo: var(--mv-p-radio-completo);
+
+  // Elevación y movimiento
+  --mv-sombra-suave: var(--mv-p-sombra-suave);
+  --mv-duracion-esqueleto: var(--mv-p-duracion-pulso);
 
   // Layout
   --mv-ancho-contenido: var(--mv-p-ancho-contenido);

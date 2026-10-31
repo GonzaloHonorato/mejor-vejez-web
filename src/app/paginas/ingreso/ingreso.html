@@ -1,39 +1,58 @@
 <div class="pagina">
   <header class="cabecera">
-    <span class="marca">
-      <span class="marca__isotipo" aria-hidden="true"></span>
-      Mejor Vejez
+    <span class="mv-marca mv-marca--grande">
+      <span class="mv-marca__isotipo" aria-hidden="true">+</span>
+      Cuida+
     </span>
   </header>
 
   <main class="contenido">
-    <section class="tarjeta" aria-labelledby="ingreso-titulo">
+    <section class="mv-tarjeta tarjeta" aria-labelledby="ingreso-titulo">
       <div class="tarjeta__encabezado">
-        <h1 id="ingreso-titulo">Iniciar sesión</h1>
+        <h1 id="ingreso-titulo" class="titulo">Iniciar sesión</h1>
         <p class="bajada">Accede con tu cuenta de Google o con tu correo.</p>
       </div>
 
       <div class="tarjeta__cuerpo">
         @if (!habilitado) {
-          <p class="aviso" role="alert">El ingreso no está disponible por ahora.</p>
+          <div class="mv-aviso mv-aviso--alerta" role="alert">
+            <p>El ingreso no está disponible por ahora.</p>
+          </div>
         }
 
         <button
           type="button"
-          class="boton boton--contorno"
+          class="mv-boton mv-boton--bloque google"
           (click)="ingresarConGoogle()"
           [disabled]="!habilitado || enviando()"
         >
-          <span class="boton__icono" aria-hidden="true"></span>
+          <svg class="logo-google" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+            <path
+              class="logo-google__rojo"
+              d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
+            />
+            <path
+              class="logo-google__azul"
+              d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
+            />
+            <path
+              class="logo-google__amarillo"
+              d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
+            />
+            <path
+              class="logo-google__verde"
+              d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
+            />
+          </svg>
           Continuar con Google
         </button>
 
         <form class="formulario" [formGroup]="formulario" (ngSubmit)="ingresarConCorreo()" novalidate>
-          <div class="campo">
-            <label class="campo__etiqueta" for="ingreso-correo">Correo electrónico</label>
+          <div class="mv-campo">
+            <label class="mv-campo__etiqueta" for="ingreso-correo">Correo electrónico</label>
             <input
               id="ingreso-correo"
-              class="campo__control"
+              class="mv-campo__control"
               type="email"
               autocomplete="email"
               inputmode="email"
@@ -43,9 +62,9 @@
             />
           </div>
 
-          <div class="campo">
-            <label class="campo__etiqueta" for="ingreso-clave">Contraseña</label>
-            <div class="campo__control campo__control--con-accion" [class.campo__control--error]="error()">
+          <div class="mv-campo">
+            <label class="mv-campo__etiqueta" for="ingreso-clave">Contraseña</label>
+            <div class="mv-campo__control con-accion" [class.con-accion--error]="error()">
               <input
                 id="ingreso-clave"
                 [type]="mostrarClave() ? 'text' : 'password'"
@@ -56,7 +75,7 @@
               />
               <button
                 type="button"
-                class="campo__accion"
+                class="mv-boton mv-boton--texto accion"
                 (click)="mostrarClave.set(!mostrarClave())"
                 [attr.aria-pressed]="mostrarClave()"
                 aria-controls="ingreso-clave"
@@ -65,28 +84,42 @@
               </button>
             </div>
             @if (error(); as mensaje) {
-              <p id="ingreso-error" class="error" role="alert">{{ mensaje }}</p>
+              <p id="ingreso-error" class="mv-aviso mv-aviso--error" role="alert">{{ mensaje }}</p>
             }
           </div>
 
-          <button type="submit" class="boton boton--primario" [disabled]="!habilitado || enviando()">
+          <button
+            type="submit"
+            class="mv-boton mv-boton--primario mv-boton--bloque"
+            [disabled]="!habilitado || enviando()"
+          >
             {{ enviando() ? 'Entrando…' : 'Entrar' }}
           </button>
         </form>
 
         @if (!mostrarRecuperar()) {
-          <button type="button" id="ingreso-olvide" class="campo__accion" (click)="abrirRecuperar()">
+          <button
+            type="button"
+            id="ingreso-olvide"
+            class="mv-boton mv-boton--texto olvide"
+            (click)="abrirRecuperar()"
+          >
             ¿Olvidaste tu contraseña?
           </button>
         } @else {
-          <form class="formulario" [formGroup]="formularioRecuperar" (ngSubmit)="recuperarClave()" novalidate>
-            <div class="campo">
-              <label class="campo__etiqueta" for="recuperar-correo">
+          <form
+            class="formulario recuperar"
+            [formGroup]="formularioRecuperar"
+            (ngSubmit)="recuperarClave()"
+            novalidate
+          >
+            <div class="mv-campo">
+              <label class="mv-campo__etiqueta" for="recuperar-correo">
                 Escribe tu correo y te enviamos un enlace
               </label>
               <input
                 id="recuperar-correo"
-                class="campo__control"
+                class="mv-campo__control"
                 type="email"
                 autocomplete="email"
                 inputmode="email"
@@ -95,11 +128,13 @@
                 [attr.aria-describedby]="errorCorreoRecuperar() ? 'recuperar-correo-error' : null"
               />
               @if (errorCorreoRecuperar(); as mensaje) {
-                <p id="recuperar-correo-error" class="error" role="alert">{{ mensaje }}</p>
+                <p id="recuperar-correo-error" class="mv-campo__error" role="alert">
+                  {{ mensaje }}
+                </p>
               }
             </div>
 
-            <button type="submit" class="boton boton--contorno" [disabled]="enviandoRecuperar()">
+            <button type="submit" class="mv-boton mv-boton--bloque" [disabled]="enviandoRecuperar()">
               {{ enviandoRecuperar() ? 'Enviando…' : 'Enviar enlace' }}
             </button>
 

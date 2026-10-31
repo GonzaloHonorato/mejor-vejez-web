@@ -2,12 +2,15 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
-import { Observable, of, throwError } from 'rxjs';
+import { Observable, Subject, of, throwError } from 'rxjs';
 
 import { Adultos } from './adultos';
 import { RespuestaAdultoMayor, RespuestaContacto } from '../../nucleo/adultos/modelos-adultos';
 import { ServicioAdultos } from '../../nucleo/adultos/servicio-adultos';
-import { RespuestaEstadoCatalogo, ServicioCatalogos } from '../../nucleo/catalogos/servicio-catalogos';
+import {
+  RespuestaEstadoCatalogo,
+  ServicioCatalogos,
+} from '../../nucleo/catalogos/servicio-catalogos';
 import { RespuestaGrupo } from '../../nucleo/grupos/modelos-grupos';
 import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
@@ -112,6 +115,17 @@ async function configurar(opciones: Opciones = {}) {
   };
 }
 
+function botonConTexto(elemento: HTMLElement, texto: string): HTMLButtonElement | undefined {
+  return Array.from(elemento.querySelectorAll('button')).find((boton) =>
+    boton.textContent?.includes(texto),
+  );
+}
+
+async function abrirFormulario(fixture: { whenStable(): Promise<unknown> }, elemento: HTMLElement) {
+  botonConTexto(elemento, 'Agregar adulto mayor')!.click();
+  await fixture.whenStable();
+}
+
 describe('Adultos', () => {
   it('sinGrupoActivoInvitaAElegirUno', async () => {
     const { elemento } = await configurar({ activo: null });
@@ -135,7 +149,7 @@ describe('Adultos', () => {
     });
 
     expect(servicioAdultos.listar).toHaveBeenCalledWith(1, false);
-    const tarjetas = Array.from(elemento.querySelectorAll('.tarjeta-adulto'));
+    const tarjetas = Array.from(elemento.querySelectorAll('.lista-adultos .mv-fila'));
     expect(tarjetas).toHaveLength(2);
 
     expect(tarjetas[0].textContent).toContain('Rosa González');
@@ -145,17 +159,156 @@ describe('Adultos', () => {
     expect(tarjetas[0].querySelector('a[href^="tel:"]')?.getAttribute('href')).toBe(
       'tel:+56911111111',
     );
-    expect(tarjetas[0].querySelector('a.enlace')?.getAttribute('href')).toBe('/adultos/1');
+    expect(tarjetas[0].querySelector('a.mv-fila__titulo')?.getAttribute('href')).toBe('/adultos/1');
     expect(tarjetas[0].textContent).not.toContain('Inactivo');
 
     expect(tarjetas[1].textContent).toContain('Pedro Soto');
     expect(tarjetas[1].textContent).toContain('Inactivo');
+    expect(tarjetas[1].textContent).toContain('Sin contacto principal');
+  });
+
+  it('cadaFilaMuestraInicialesEdadYCodigoYElNombreEnlazaALaFicha', async () => {
+    const { elemento } = await configurar({
+      adultosIniciales: [adulto({ codigoInterno: 'AM-001', nombreCompleto: 'Rosa Elena Rojas' })],
+    });
+
+    const fila = elemento.querySelector('.lista-adultos .mv-fila')!;
+    const avatar = fila.querySelector('.mv-avatar');
+    expect(avatar?.textContent?.trim()).toBe('RE');
+    expect(avatar?.getAttribute('aria-hidden')).toBe('true');
+    expect(fila.querySelector('.mv-fila__meta')?.textContent).toMatch(/\d+ años · Código AM-001/);
+    const titulo = fila.querySelector('a.mv-fila__titulo');
+    expect(titulo?.textContent?.trim()).toBe('Rosa Elena Rojas');
+    expect(titulo?.getAttribute('aria-label')).toBe('Ver ficha de Rosa Elena Rojas, código AM-001');
+  });
+
+  it('sinFechaNiCodigoNoMuestraEdadNiCodigo', async () => {
+    const { elemento } = await configurar({
+      adultosIniciales: [adulto({ fechaNacimiento: null, codigoInterno: null })],
+    });
+
+    const fila = elemento.querySelector('.lista-adultos .mv-fila')!;
+    expect(fila.textContent).not.toContain('años');
+    expect(fila.textContent).not.toContain('Código');
+    expect(fila.querySelector('a.mv-fila__titulo')?.getAttribute('aria-label')).toBe(
+      'Ver ficha de Rosa González',
+    );
+  });
+
+  it('chipDeEstadoActivoOInactivo', async () => {
+    const { elemento } = await configurar({
+      adultosIniciales: [
+        adulto(),
+        adulto({ idAdultoMayor: 2, nombreCompleto: 'Pedro Soto', idEstado: 2 }),
+      ],
+    });
+
+    const chips = Array.from(elemento.querySelectorAll('.lista-adultos .mv-chip'));
+    expect(chips.map((chip) => chip.textContent?.trim())).toEqual(['Activo', 'Inactivo']);
+    expect(chips[0].classList).toContain('mv-chip--exito');
+  });
+
+  it('sinCatalogoDeEstadosNoAfirmaNingunEstado', async () => {
+    const { elemento } = await configurar({ estados: [] });
+
+    expect(elemento.querySelector('.lista-adultos .mv-chip')).toBeFalsy();
+  });
+
+  it('cuentaLosAdultosDeLaLista', async () => {
+    const { elemento } = await configurar({
+      adultosIniciales: [adulto(), adulto({ idAdultoMayor: 2, nombreCompleto: 'Pedro Soto' })],
+    });
+
+    expect(elemento.querySelector('.cuenta')?.textContent?.trim()).toBe('2 adultos mayores');
+  });
+
+  it('mientrasCargaMuestraElEsqueleto', async () => {
+    const pendiente = new Subject<RespuestaAdultoMayor[]>();
+    const { fixture, elemento } = await configurar({ listarImpl: () => pendiente.asObservable() });
+
+    const estado = elemento.querySelector('[role="status"]');
+    expect(estado?.textContent).toContain('Cargando adultos mayores');
+    expect(elemento.querySelector('.mv-esqueleto')).toBeTruthy();
+
+    pendiente.next([adulto()]);
+    await fixture.whenStable();
+    expect(elemento.querySelector('.mv-esqueleto')).toBeFalsy();
+  });
+
+  it('listaVaciaMuestraElEstadoVacio', async () => {
+    const { elemento } = await configurar({ adultosIniciales: [] });
+
+    expect(elemento.querySelector('.mv-vacio')?.textContent).toContain(
+      'Aún no hay adultos mayores registrados en este grupo.',
+    );
+  });
+
+  it('errorAlCargarPermiteReintentar', async () => {
+    let intentos = 0;
+    const { fixture, elemento, servicioAdultos } = await configurar({
+      listarImpl: () =>
+        ++intentos === 1
+          ? throwError(
+              () => new HttpErrorResponse({ status: 500, error: { detail: 'Falló la carga.' } }),
+            )
+          : of([adulto()]),
+    });
+
+    const aviso = elemento.querySelector('.mv-aviso--error');
+    expect(aviso?.getAttribute('role')).toBe('alert');
+    expect(aviso?.textContent).toContain('Falló la carga.');
+
+    botonConTexto(elemento, 'Reintentar')!.click();
+    await fixture.whenStable();
+
+    expect(servicioAdultos.listar).toHaveBeenCalledTimes(2);
+    expect(servicioAdultos.listar).toHaveBeenLastCalledWith(1, false);
+    expect(elemento.querySelector('.mv-aviso--error')).toBeFalsy();
+    expect(elemento.textContent).toContain('Rosa González');
+  });
+
+  it('elFormularioDeAltaEstaPlegadoTrasLaAccionPrincipal', async () => {
+    const { fixture, elemento } = await configurar({});
+
+    const accion = botonConTexto(elemento, 'Agregar adulto mayor')!;
+    expect(accion.classList).toContain('mv-boton--primario');
+    expect(accion.getAttribute('aria-expanded')).toBe('false');
+    expect(elemento.querySelector('#adulto-nombre')).toBeFalsy();
+
+    accion.click();
+    await fixture.whenStable();
+
+    expect(accion.getAttribute('aria-expanded')).toBe('true');
+    const seccion = elemento.querySelector(`#${accion.getAttribute('aria-controls')}`);
+    expect(seccion?.querySelector('#adulto-nombre')).toBeTruthy();
+    expect(document.activeElement?.id).toBe('adulto-nombre');
+
+    botonConTexto(seccion as HTMLElement, 'Cancelar')!.click();
+    await fixture.whenStable();
+
+    expect(elemento.querySelector('#adulto-nombre')).toBeFalsy();
+    expect(accion.getAttribute('aria-expanded')).toBe('false');
+    expect(accion.id).toBe('adultos-abrir-alta');
+    expect(document.activeElement).toBe(accion);
+  });
+
+  it('cancelarVaPrimeroYGuardarAlFinal', async () => {
+    const { fixture, elemento } = await configurar({});
+
+    botonConTexto(elemento, 'Agregar adulto mayor')!.click();
+    await fixture.whenStable();
+
+    const botones = Array.from(
+      elemento.querySelectorAll<HTMLButtonElement>('#adultos-alta .botones button'),
+    ).map((b) => b.textContent?.trim());
+    expect(botones).toEqual(['Cancelar', 'Guardar adulto mayor']);
   });
 
   it('colaboradorNoVeElFormulario', async () => {
     const { elemento } = await configurar({ activo: grupo(1, 'COLABORADOR') });
 
     expect(elemento.textContent).not.toContain('Agregar adulto mayor');
+    expect(botonConTexto(elemento, 'Agregar adulto mayor')).toBeFalsy();
     expect(elemento.querySelector('#adulto-nombre')).toBeFalsy();
   });
 
@@ -165,6 +318,7 @@ describe('Adultos', () => {
     });
     const navegar = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
     servicioAdultos.crear.mockReturnValue(of(adulto({ idAdultoMayor: 9 })));
+    await abrirFormulario(fixture, elemento);
 
     const campoNombre = elemento.querySelector<HTMLInputElement>('#adulto-nombre')!;
     campoNombre.value = 'Rosa González';
@@ -184,6 +338,7 @@ describe('Adultos', () => {
 
   it('crearConNombreVacioMuestraMensajeRequeridoYNoLlamaALaApi', async () => {
     const { fixture, elemento, servicioAdultos } = await configurar({ adultosIniciales: [] });
+    await abrirFormulario(fixture, elemento);
 
     elemento.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'));
     await fixture.whenStable();
@@ -206,6 +361,7 @@ describe('Adultos', () => {
           }),
       ),
     );
+    await abrirFormulario(fixture, elemento);
 
     const campoNombre = elemento.querySelector<HTMLInputElement>('#adulto-nombre')!;
     campoNombre.value = 'Rosa';

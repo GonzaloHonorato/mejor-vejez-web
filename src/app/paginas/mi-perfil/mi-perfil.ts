@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
+import { inicialesDe } from '../../compartido/marco-app/identidad-usuario';
 import { ServicioAutenticacion } from '../../nucleo/autenticacion/servicio-autenticacion';
 import { erroresDeCampos, mensajeDeError } from '../../nucleo/http/mensaje-de-error';
 import { RespuestaYo, ServicioYo } from '../../nucleo/usuarios/servicio-yo';
@@ -26,9 +27,12 @@ export class MiPerfil implements OnInit {
   private readonly servicioYo = inject(ServicioYo);
   protected readonly auth = inject(ServicioAutenticacion);
 
+  protected readonly iniciales = inicialesDe;
   protected readonly yo = signal<RespuestaYo | null>(null);
   protected readonly guardando = signal(false);
   protected readonly confirmacion = signal(false);
+  /** Falló la carga del perfil (`GET /api/yo`); se ofrece reintentar. */
+  protected readonly errorCarga = signal<string | null>(null);
   protected readonly errorGeneral = signal<string | null>(null);
   protected readonly erroresCampos = signal<Record<string, string>>({});
 
@@ -48,13 +52,18 @@ export class MiPerfil implements OnInit {
   });
 
   ngOnInit(): void {
+    this.cargar();
+  }
+
+  protected cargar(): void {
+    this.errorCarga.set(null);
     this.servicioYo.obtener().subscribe({
       next: (yo) => {
         this.yo.set(yo);
         this.formulario.patchValue({ nombre: yo.nombre, telefono: yo.telefono ?? '' });
       },
       error: (error: unknown) =>
-        this.errorGeneral.set(mensajeDeError(error, 'No pudimos cargar tu perfil.')),
+        this.errorCarga.set(mensajeDeError(error, 'No pudimos cargar tu perfil.')),
     });
   }
 

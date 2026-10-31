@@ -1,18 +1,31 @@
-import { TitleCasePipe } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  Injector,
+  OnInit,
+  afterNextRender,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
+import { Icono } from '../../compartido/icono/icono';
+import { fechaConAnio } from '../../nucleo/fecha-legible';
 import { mensajeDeError } from '../../nucleo/http/mensaje-de-error';
+import { etiquetaRol } from '../../nucleo/grupos/etiqueta-rol';
 import { RespuestaGrupo } from '../../nucleo/grupos/modelos-grupos';
 import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
 import { ServicioGrupos } from '../../nucleo/grupos/servicio-grupos';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
 
-/** Página "Grupos": mis grupos (con mi rol), creación y, si soy admin, todos los grupos. */
+/**
+ * Página "Grupos": mis grupos (con mi rol), creación plegada tras la acción
+ * principal y, si soy admin, todos los grupos.
+ */
 @Component({
   selector: 'app-grupos',
-  imports: [ReactiveFormsModule, RouterLink, TitleCasePipe],
+  imports: [ReactiveFormsModule, RouterLink, Icono],
   templateUrl: './grupos.html',
   styleUrl: './grupos.scss',
 })
@@ -20,8 +33,10 @@ export class Grupos implements OnInit {
   private readonly servicioGrupos = inject(ServicioGrupos);
   private readonly servicioYo = inject(ServicioYo);
   protected readonly grupoActivo = inject(ServicioGrupoActivo);
+  private readonly injector = inject(Injector);
 
   protected readonly activo = this.grupoActivo.activo;
+  protected readonly etiquetaRol = etiquetaRol;
   protected readonly esAdministrador = signal(false);
   protected readonly verTodos = signal(false);
   protected readonly listaTodos = signal<RespuestaGrupo[]>([]);
@@ -30,6 +45,9 @@ export class Grupos implements OnInit {
     this.verTodos() ? this.listaTodos() : this.grupoActivo.grupos(),
   );
 
+  /** Verdadero mientras llega la primera lista de mis grupos. */
+  protected readonly cargando = signal(true);
+  protected readonly formularioAbierto = signal(false);
   protected readonly creando = signal(false);
   protected readonly errorCrear = signal<string | null>(null);
   protected readonly error = signal<string | null>(null);
@@ -39,12 +57,37 @@ export class Grupos implements OnInit {
   });
 
   ngOnInit(): void {
-    this.grupoActivo.cargar();
+    void this.cargarMisGrupos();
     this.servicioYo.obtener().subscribe({
       next: (yo) => this.esAdministrador.set(yo.esAdministrador),
       error: (error: unknown) =>
         this.error.set(mensajeDeError(error, 'No pudimos verificar tus permisos.')),
     });
+  }
+
+  protected reintentar(): void {
+    this.cargando.set(true);
+    void this.cargarMisGrupos();
+  }
+
+  protected creadoEl(grupo: RespuestaGrupo): string {
+    return `Creado el ${fechaConAnio(grupo.fechaCreacion)}`;
+  }
+
+  protected alternarFormulario(): void {
+    if (this.formularioAbierto()) this.cerrarFormulario();
+    else this.abrirFormulario();
+  }
+
+  protected abrirFormulario(): void {
+    this.errorCrear.set(null);
+    this.formularioAbierto.set(true);
+    this.enfocar('grupo-nombre');
+  }
+
+  protected cerrarFormulario(): void {
+    this.formularioAbierto.set(false);
+    this.enfocar('grupos-abrir-crear');
   }
 
   protected usar(idGrupo: number): void {
@@ -74,6 +117,7 @@ export class Grupos implements OnInit {
             this.cargarTodos();
           }
           this.grupoActivo.seleccionar(grupo.idGrupo);
+          this.cerrarFormulario();
         } catch (error) {
           // Defensivo: ServicioGrupoActivo.cargar() ya no rechaza, pero si
           // algún día lo hiciera, el botón no debe quedar bloqueado para siempre.
@@ -87,6 +131,18 @@ export class Grupos implements OnInit {
         this.errorCrear.set(mensajeDeError(error));
       },
     });
+  }
+
+  private async cargarMisGrupos(): Promise<void> {
+    try {
+      await this.grupoActivo.cargar();
+    } finally {
+      this.cargando.set(false);
+    }
+  }
+
+  private enfocar(id: string): void {
+    afterNextRender(() => document.getElementById(id)?.focus(), { injector: this.injector });
   }
 
   private cargarTodos(): void {

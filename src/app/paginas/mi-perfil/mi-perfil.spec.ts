@@ -91,6 +91,23 @@ describe('MiPerfil', () => {
     );
   });
 
+  it('reintentarVuelveACargarElPerfil', async () => {
+    const { fixture, http, elemento } = await configurarConFalloDeCarga();
+
+    const reintentar = Array.from(elemento.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Reintentar',
+    )!;
+    expect(reintentar.closest('.mv-aviso--error')).toBeTruthy();
+
+    reintentar.click();
+    http.expectOne((req) => req.method === 'GET' && req.url.endsWith('/api/yo')).flush(YO);
+    await fixture.whenStable();
+
+    expect(elemento.querySelector('.mv-aviso--error')).toBeFalsy();
+    expect(elemento.textContent).toContain('ana@correo.cl');
+    expect(elemento.querySelector<HTMLInputElement>('#perfil-nombre')!.value).toBe('Ana Rojas');
+  });
+
   it('guardaYMuestraConfirmacion', async () => {
     const { fixture, http, elemento } = await configurar();
 
@@ -170,7 +187,11 @@ describe('MiPerfil', () => {
     escribir(elemento.querySelector<HTMLInputElement>('#clave-actual')!, 'clave-mala');
     escribir(elemento.querySelector<HTMLInputElement>('#clave-nueva')!, 'clave-nueva1');
     escribir(elemento.querySelector<HTMLInputElement>('#clave-confirmacion')!, 'clave-nueva1');
-    elemento.querySelectorAll('form')[1].dispatchEvent(new Event('submit'));
+    elemento
+      .querySelector('#clave-titulo')!
+      .closest('section')!
+      .querySelector('form')!
+      .dispatchEvent(new Event('submit'));
     await fixture.whenStable();
 
     expect(cambiarClave).toHaveBeenCalledWith('clave-mala', 'clave-nueva1');
@@ -178,5 +199,42 @@ describe('MiPerfil', () => {
       ?.closest('section')
       ?.querySelector('[role="alert"]');
     expect(alerta?.textContent).toContain('La contraseña actual no es correcta.');
+  });
+
+  it('encabezadoYSeccionesEnTarjetasEnOrden', async () => {
+    const { elemento } = await configurarConAuth({ tieneAccesoConClave: () => true });
+
+    expect(elemento.querySelector('.mv-encabezado h1')?.textContent?.trim()).toBe('Mi perfil');
+    const titulos = Array.from(elemento.querySelectorAll('.mv-tarjeta h2')).map((h) =>
+      h.textContent?.trim(),
+    );
+    expect(titulos).toEqual(['Datos de mi cuenta', 'Canales de notificación', 'Cambiar contraseña']);
+  });
+
+  it('muestraElCorreoYLasInicialesDelUsuario', async () => {
+    const { elemento } = await configurar();
+
+    expect(elemento.querySelector('.correo')?.textContent?.trim()).toBe('ana@correo.cl');
+    const avatar = elemento.querySelector('.mv-avatar');
+    expect(avatar?.textContent?.trim()).toBe('AR');
+    expect(avatar?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('mientrasCargaElPerfilMuestraEstadoDeCarga', async () => {
+    TestBed.configureTestingModule({
+      imports: [MiPerfil],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+    });
+    const fixture = TestBed.createComponent(MiPerfil);
+    const http = TestBed.inject(HttpTestingController);
+    fixture.detectChanges();
+    const elemento = fixture.nativeElement as HTMLElement;
+
+    expect(elemento.querySelector('[role="status"]')?.textContent).toContain('Cargando tu perfil');
+
+    http.expectOne((req) => req.method === 'GET' && req.url.endsWith('/api/yo')).flush(YO);
+    flushCanales(http);
+    await fixture.whenStable();
+    expect(elemento.textContent).not.toContain('Cargando tu perfil');
   });
 });

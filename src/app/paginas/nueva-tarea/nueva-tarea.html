@@ -1,37 +1,45 @@
 <div class="pagina">
-  <header class="cabecera">
-    <h1>Nueva tarea</h1>
+  <header class="mv-encabezado">
+    <div>
+      <p class="mv-encabezado__rotulo">Organización diaria</p>
+      <h1 class="mv-encabezado__titulo">Nueva tarea</h1>
+      <p class="mv-encabezado__bajada">Compra o retiro de medicamentos, o una cita médica.</p>
+    </div>
   </header>
 
   <div class="contenido">
     @if (!activo()) {
-      <section class="tarjeta tarjeta--suave" aria-labelledby="nueva-tarea-sin-grupo-titulo">
-        <h2 id="nueva-tarea-sin-grupo-titulo" class="tarjeta__titulo">
-          Primero crea o elige un grupo.
-        </h2>
-        <a class="boton boton--contorno" routerLink="/grupos">Ir a grupos</a>
+      <section class="mv-tarjeta" aria-labelledby="nueva-tarea-sin-grupo-titulo">
+        <div class="mv-tarjeta__cuerpo sin-datos">
+          <h2 id="nueva-tarea-sin-grupo-titulo" class="mv-tarjeta__titulo">
+            Primero crea o elige un grupo.
+          </h2>
+          <a class="mv-boton" routerLink="/grupos">Ir a grupos</a>
+        </div>
       </section>
     } @else if (!puedeAdministrar()) {
-      <p role="status">Solo el coordinador puede crear tareas.</p>
+      <div class="mv-aviso mv-aviso--info" role="status">
+        <p>Solo el coordinador puede crear tareas.</p>
+      </div>
     } @else {
-      <form class="formulario tarjeta" [formGroup]="formulario" (ngSubmit)="enviar()" novalidate>
+      <form class="formulario mv-tarjeta" [formGroup]="formulario" (ngSubmit)="enviar()" novalidate>
         <fieldset class="grupo">
           <legend>Tipo de tarea</legend>
-          <label class="casilla">
+          <label class="mv-campo mv-campo--casilla">
             <input type="radio" value="COMPRA_RETIRO_MEDICAMENTOS" formControlName="tipoTarea" />
             <span>Compra o retiro de medicamentos</span>
           </label>
-          <label class="casilla">
+          <label class="mv-campo mv-campo--casilla">
             <input type="radio" value="CITAS_CONTROLES_MEDICOS" formControlName="tipoTarea" />
             <span>Cita o control médico</span>
           </label>
         </fieldset>
 
-        <div class="campo">
-          <label class="etiqueta" for="nueva-tarea-adulto">Adulto mayor</label>
+        <div class="mv-campo">
+          <label class="mv-campo__etiqueta" for="nueva-tarea-adulto">Adulto mayor</label>
           <select
             id="nueva-tarea-adulto"
-            class="control"
+            class="mv-campo__control"
             formControlName="idAdultoMayor"
             [attr.aria-describedby]="mensaje('idAdultoMayor') ? 'nueva-tarea-adulto-error' : null"
           >
@@ -41,30 +49,30 @@
             }
           </select>
           @if (mensaje('idAdultoMayor'); as m) {
-            <p id="nueva-tarea-adulto-error" class="error" role="alert">{{ m }}</p>
+            <p id="nueva-tarea-adulto-error" class="mv-campo__error" role="alert">{{ m }}</p>
           }
         </div>
 
-        <div class="campo">
-          <label class="etiqueta" for="nueva-tarea-titulo">Título</label>
+        <div class="mv-campo">
+          <label class="mv-campo__etiqueta" for="nueva-tarea-titulo">Título</label>
           <input
             id="nueva-tarea-titulo"
-            class="control"
+            class="mv-campo__control"
             type="text"
             maxlength="200"
             formControlName="titulo"
             [attr.aria-describedby]="mensaje('titulo') ? 'nueva-tarea-titulo-error' : null"
           />
           @if (mensaje('titulo'); as m) {
-            <p id="nueva-tarea-titulo-error" class="error" role="alert">{{ m }}</p>
+            <p id="nueva-tarea-titulo-error" class="mv-campo__error" role="alert">{{ m }}</p>
           }
         </div>
 
-        <div class="campo">
-          <label class="etiqueta" for="nueva-tarea-descripcion">Descripción</label>
+        <div class="mv-campo">
+          <label class="mv-campo__etiqueta" for="nueva-tarea-descripcion">Descripción</label>
           <textarea
             id="nueva-tarea-descripcion"
-            class="control control--area"
+            class="mv-campo__control area"
             rows="3"
             maxlength="1000"
             formControlName="descripcion"
@@ -72,37 +80,41 @@
         </div>
 
         <div class="fila">
-          <div class="campo">
-            <label class="etiqueta" for="nueva-tarea-fecha">Fecha</label>
+          <div class="mv-campo">
+            <label class="mv-campo__etiqueta" for="nueva-tarea-fecha">Fecha</label>
             <input
               id="nueva-tarea-fecha"
-              class="control"
+              class="mv-campo__control"
               type="date"
               formControlName="fecha"
               [attr.aria-describedby]="mensaje('fecha') ? 'nueva-tarea-fecha-error' : null"
             />
             @if (mensaje('fecha'); as m) {
-              <p id="nueva-tarea-fecha-error" class="error" role="alert">{{ m }}</p>
+              <p id="nueva-tarea-fecha-error" class="mv-campo__error" role="alert">{{ m }}</p>
             }
           </div>
-          <div class="campo">
-            <label class="etiqueta" for="nueva-tarea-hora">Hora</label>
+          <div class="mv-campo">
+            <label class="mv-campo__etiqueta" for="nueva-tarea-hora">Hora</label>
             <input
               id="nueva-tarea-hora"
-              class="control"
+              class="mv-campo__control"
               type="time"
               formControlName="hora"
               [attr.aria-describedby]="mensaje('hora') ? 'nueva-tarea-hora-error' : null"
             />
             @if (mensaje('hora'); as m) {
-              <p id="nueva-tarea-hora-error" class="error" role="alert">{{ m }}</p>
+              <p id="nueva-tarea-hora-error" class="mv-campo__error" role="alert">{{ m }}</p>
             }
           </div>
         </div>
 
-        <div class="campo">
-          <label class="etiqueta" for="nueva-tarea-responsable">Responsable</label>
-          <select id="nueva-tarea-responsable" class="control" formControlName="idResponsable">
+        <div class="mv-campo">
+          <label class="mv-campo__etiqueta" for="nueva-tarea-responsable">Responsable</label>
+          <select
+            id="nueva-tarea-responsable"
+            class="mv-campo__control"
+            formControlName="idResponsable"
+          >
             <option [ngValue]="null">Sin responsable</option>
             @for (integrante of integrantesActivos(); track integrante.idUsuario) {
               <option [ngValue]="integrante.idUsuario">{{ integrante.nombre }}</option>
@@ -118,9 +130,9 @@
                 @if (linea.controls.nombreMedicamento.value; as nombre) {
                   <div class="elegido">
                     <p class="elegido__nombre">
-                      <span class="etiqueta">Medicamento:</span> {{ nombre }}
+                      <span class="elegido__rotulo">Medicamento:</span> {{ nombre }}
                     </p>
-                    <button type="button" class="boton" (click)="cambiarMedicamento(i)">
+                    <button type="button" class="mv-boton" (click)="cambiarMedicamento(i)">
                       Cambiar medicamento
                     </button>
                   </div>
@@ -128,22 +140,33 @@
                   <app-buscador-medicamento
                     [idGrupo]="activo()!.idGrupo"
                     [presentaciones]="presentaciones()"
+                    [descritoPor]="idErrorLinea(i, 'idMedicamento')"
                     (elegido)="elegirMedicamento(i, $event)"
                   />
                   @if (mensajeLinea(i, 'idMedicamento'); as m) {
-                    <p class="error" role="alert">{{ m }}</p>
+                    <p
+                      [id]="'nueva-tarea-compra-' + i + '-medicamento-error'"
+                      class="mv-campo__error"
+                      role="alert"
+                    >
+                      {{ m }}
+                    </p>
                   }
                 }
 
                 <div class="fila">
-                  <div class="campo">
-                    <label class="etiqueta" [for]="'nueva-tarea-compra-' + i + '-presentacion'"
+                  <div class="mv-campo">
+                    <label
+                      class="mv-campo__etiqueta"
+                      [for]="'nueva-tarea-compra-' + i + '-presentacion'"
                       >Presentación</label
                     >
                     <select
                       [id]="'nueva-tarea-compra-' + i + '-presentacion'"
-                      class="control"
+                      class="mv-campo__control"
                       formControlName="idPresentacion"
+                      [attr.aria-invalid]="idErrorLinea(i, 'idPresentacion') ? true : null"
+                      [attr.aria-describedby]="idErrorLinea(i, 'idPresentacion')"
                     >
                       <option [ngValue]="null">Selecciona…</option>
                       @for (opcion of presentaciones(); track opcion.idOpcion) {
@@ -151,34 +174,52 @@
                       }
                     </select>
                     @if (mensajeLinea(i, 'idPresentacion'); as m) {
-                      <p class="error" role="alert">{{ m }}</p>
+                      <p
+                        [id]="'nueva-tarea-compra-' + i + '-presentacion-error'"
+                        class="mv-campo__error"
+                        role="alert"
+                      >
+                        {{ m }}
+                      </p>
                     }
                   </div>
-                  <div class="campo">
-                    <label class="etiqueta" [for]="'nueva-tarea-compra-' + i + '-cantidad'"
+                  <div class="mv-campo">
+                    <label
+                      class="mv-campo__etiqueta"
+                      [for]="'nueva-tarea-compra-' + i + '-cantidad'"
                       >Cantidad</label
                     >
                     <input
                       [id]="'nueva-tarea-compra-' + i + '-cantidad'"
-                      class="control"
+                      class="mv-campo__control"
                       type="number"
                       inputmode="decimal"
                       step="0.001"
                       min="0.001"
                       formControlName="cantidadSolicitada"
+                      [attr.aria-invalid]="idErrorLinea(i, 'cantidadSolicitada') ? true : null"
+                      [attr.aria-describedby]="idErrorLinea(i, 'cantidadSolicitada')"
                     />
                     @if (mensajeLinea(i, 'cantidadSolicitada'); as m) {
-                      <p class="error" role="alert">{{ m }}</p>
+                      <p
+                        [id]="'nueva-tarea-compra-' + i + '-cantidad-error'"
+                        class="mv-campo__error"
+                        role="alert"
+                      >
+                        {{ m }}
+                      </p>
                     }
                   </div>
-                  <div class="campo">
-                    <label class="etiqueta" [for]="'nueva-tarea-compra-' + i + '-unidad'"
+                  <div class="mv-campo">
+                    <label class="mv-campo__etiqueta" [for]="'nueva-tarea-compra-' + i + '-unidad'"
                       >Unidad</label
                     >
                     <select
                       [id]="'nueva-tarea-compra-' + i + '-unidad'"
-                      class="control"
+                      class="mv-campo__control"
                       formControlName="idUnidadCantidad"
+                      [attr.aria-invalid]="idErrorLinea(i, 'idUnidadCantidad') ? true : null"
+                      [attr.aria-describedby]="idErrorLinea(i, 'idUnidadCantidad')"
                     >
                       <option [ngValue]="null">Selecciona…</option>
                       @for (opcion of unidades(); track opcion.idOpcion) {
@@ -186,31 +227,39 @@
                       }
                     </select>
                     @if (mensajeLinea(i, 'idUnidadCantidad'); as m) {
-                      <p class="error" role="alert">{{ m }}</p>
+                      <p
+                        [id]="'nueva-tarea-compra-' + i + '-unidad-error'"
+                        class="mv-campo__error"
+                        role="alert"
+                      >
+                        {{ m }}
+                      </p>
                     }
                   </div>
                 </div>
 
-                <div class="campo">
-                  <label class="etiqueta" [for]="'nueva-tarea-compra-' + i + '-dosis'"
+                <div class="mv-campo">
+                  <label class="mv-campo__etiqueta" [for]="'nueva-tarea-compra-' + i + '-dosis'"
                     >Dosis indicada</label
                   >
                   <input
                     [id]="'nueva-tarea-compra-' + i + '-dosis'"
-                    class="control"
+                    class="mv-campo__control"
                     type="text"
                     maxlength="200"
                     formControlName="dosisIndicada"
                   />
                 </div>
 
-                <div class="campo">
-                  <label class="etiqueta" [for]="'nueva-tarea-compra-' + i + '-observaciones'"
+                <div class="mv-campo">
+                  <label
+                    class="mv-campo__etiqueta"
+                    [for]="'nueva-tarea-compra-' + i + '-observaciones'"
                     >Observaciones</label
                   >
                   <textarea
                     [id]="'nueva-tarea-compra-' + i + '-observaciones'"
-                    class="control control--area"
+                    class="mv-campo__control area"
                     rows="2"
                     maxlength="500"
                     formControlName="observaciones"
@@ -219,7 +268,7 @@
 
                 <button
                   type="button"
-                  class="boton"
+                  class="mv-boton"
                   [attr.aria-label]="'Quitar medicamento ' + (i + 1)"
                   [disabled]="compra.length === 1"
                   (click)="quitarLinea(i)"
@@ -229,15 +278,17 @@
               </div>
             }
           </fieldset>
-          <button type="button" class="boton" (click)="agregarLinea()">Agregar medicamento</button>
+          <button type="button" class="mv-boton" (click)="agregarLinea()">
+            Agregar medicamento
+          </button>
         } @else {
           <fieldset class="grupo" [formGroup]="cita">
             <legend>Cita o control médico</legend>
-            <div class="campo">
-              <label class="etiqueta" for="nueva-tarea-cita-medico">Médico</label>
+            <div class="mv-campo">
+              <label class="mv-campo__etiqueta" for="nueva-tarea-cita-medico">Médico</label>
               <input
                 id="nueva-tarea-cita-medico"
-                class="control"
+                class="mv-campo__control"
                 type="text"
                 maxlength="180"
                 formControlName="nombreMedico"
@@ -246,14 +297,16 @@
                 "
               />
               @if (mensajeCita('nombreMedico'); as m) {
-                <p id="nueva-tarea-cita-medico-error" class="error" role="alert">{{ m }}</p>
+                <p id="nueva-tarea-cita-medico-error" class="mv-campo__error" role="alert">
+                  {{ m }}
+                </p>
               }
             </div>
-            <div class="campo">
-              <label class="etiqueta" for="nueva-tarea-cita-lugar">Lugar</label>
+            <div class="mv-campo">
+              <label class="mv-campo__etiqueta" for="nueva-tarea-cita-lugar">Lugar</label>
               <input
                 id="nueva-tarea-cita-lugar"
-                class="control"
+                class="mv-campo__control"
                 type="text"
                 maxlength="250"
                 formControlName="lugarAtencion"
@@ -262,14 +315,18 @@
                 "
               />
               @if (mensajeCita('lugarAtencion'); as m) {
-                <p id="nueva-tarea-cita-lugar-error" class="error" role="alert">{{ m }}</p>
+                <p id="nueva-tarea-cita-lugar-error" class="mv-campo__error" role="alert">
+                  {{ m }}
+                </p>
               }
             </div>
-            <div class="campo">
-              <label class="etiqueta" for="nueva-tarea-cita-observaciones">Observaciones</label>
+            <div class="mv-campo">
+              <label class="mv-campo__etiqueta" for="nueva-tarea-cita-observaciones"
+                >Observaciones</label
+              >
               <textarea
                 id="nueva-tarea-cita-observaciones"
-                class="control control--area"
+                class="mv-campo__control area"
                 rows="2"
                 maxlength="1000"
                 formControlName="observaciones"
@@ -279,14 +336,14 @@
         }
 
         @if (error(); as m) {
-          <p class="error" role="alert">{{ m }}</p>
+          <p class="mv-aviso mv-aviso--error" role="alert">{{ m }}</p>
         }
 
         <div class="acciones">
-          <button type="submit" class="boton boton--primario" [disabled]="guardando()">
+          <button type="button" class="mv-boton" (click)="cancelar()">Cancelar</button>
+          <button type="submit" class="mv-boton mv-boton--primario" [disabled]="guardando()">
             {{ guardando() ? 'Guardando…' : 'Crear tarea' }}
           </button>
-          <button type="button" class="boton" (click)="cancelar()">Cancelar</button>
         </div>
       </form>
     }

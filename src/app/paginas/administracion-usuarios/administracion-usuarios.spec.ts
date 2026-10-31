@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 
 import { AdministracionUsuarios } from './administracion-usuarios';
 import { RespuestaEstadoCatalogo, ServicioCatalogos } from '../../nucleo/catalogos/servicio-catalogos';
@@ -163,7 +163,7 @@ describe('AdministracionUsuarios', () => {
     const checkbox = elemento.querySelector<HTMLInputElement>('#usuario-administrador')!;
     checkbox.checked = false;
     checkbox.dispatchEvent(new Event('change'));
-    elemento.querySelector<HTMLFormElement>('.tarjeta form')!.dispatchEvent(new Event('submit'));
+    elemento.querySelector<HTMLFormElement>('.editar-usuario form')!.dispatchEvent(new Event('submit'));
     await fixture.whenStable();
 
     expect(elemento.querySelector('[role="alert"]')?.textContent).toContain(
@@ -178,7 +178,7 @@ describe('AdministracionUsuarios', () => {
     await fixture.whenStable();
 
     escribir(elemento.querySelector<HTMLInputElement>('#usuario-nombre')!, '');
-    elemento.querySelector<HTMLFormElement>('.tarjeta form')!.dispatchEvent(new Event('submit'));
+    elemento.querySelector<HTMLFormElement>('.editar-usuario form')!.dispatchEvent(new Event('submit'));
     await fixture.whenStable();
 
     const error = elemento.querySelector('#usuario-nombre-error');
@@ -353,5 +353,112 @@ describe('AdministracionUsuarios', () => {
       'no puede superar los 160 caracteres',
     );
     expect(servicioUsuarios.crear).not.toHaveBeenCalled();
+  });
+
+  it('encabezadoConCrearUsuarioComoAccionPrincipalYEnlaceAAuditoria', async () => {
+    const { fixture, elemento } = await configurar();
+
+    expect(elemento.querySelector('.mv-encabezado h1')?.textContent?.trim()).toBe(
+      'Administración de usuarios',
+    );
+    const crear = elemento.querySelector<HTMLButtonElement>(
+      '.mv-encabezado__accion button.mv-boton--primario',
+    )!;
+    expect(crear.textContent?.trim()).toBe('Crear usuario');
+    expect(crear.getAttribute('aria-expanded')).toBe('false');
+    expect(
+      elemento.querySelector('.mv-encabezado__accion a[href="/administracion/auditoria"]')?.textContent,
+    ).toContain('Auditoría global');
+
+    crear.click();
+    await fixture.whenStable();
+    expect(crear.getAttribute('aria-expanded')).toBe('true');
+    expect(elemento.querySelector('.crear-usuario')).toBeTruthy();
+    expect(document.activeElement?.id).toBe('usuario-crear-nombre');
+
+    crear.click();
+    await fixture.whenStable();
+    expect(elemento.querySelector('.crear-usuario')).toBeFalsy();
+    expect(document.activeElement).toBe(crear);
+  });
+
+  it('filaMuestraAvatarNombreCorreoYChips', async () => {
+    const { elemento } = await configurar([
+      usuario(1, 'Ana Rojas', true, 1),
+      usuario(2, 'Beto', false, 2),
+    ]);
+
+    const filas = elemento.querySelectorAll('.lista-usuarios .mv-fila');
+    expect(filas).toHaveLength(2);
+    expect(filas[0].querySelector('.mv-avatar')?.textContent?.trim()).toBe('AR');
+    expect(filas[0].querySelector('.mv-avatar')?.getAttribute('aria-hidden')).toBe('true');
+    expect(filas[0].querySelector('.usuario__nombre')?.textContent?.trim()).toBe('Ana Rojas');
+    expect(filas[0].querySelector('.usuario__correo')?.textContent?.trim()).toBe('ana rojas@correo.cl');
+
+    const chips = (fila: Element) =>
+      Array.from(fila.querySelectorAll('.mv-chip')).map((chip) => chip.textContent?.trim());
+    expect(chips(filas[0])).toEqual(['Activo', 'Administrador']);
+    expect(filas[0].querySelector('.mv-chip')!.classList).toContain('mv-chip--exito');
+    expect(chips(filas[1])).toEqual(['Inactivo', 'Integrante']);
+    expect(filas[1].querySelector('.mv-chip')!.classList).not.toContain('mv-chip--exito');
+  });
+
+  it('editarEsLaAccionPrincipalYElRestoVaEnMasAcciones', async () => {
+    const { elemento } = await configurar([usuario(1, 'Ana')]);
+
+    const fila = elemento.querySelector('.lista-usuarios .mv-fila')!;
+    expect(fila.querySelector('.usuario__editar')?.getAttribute('aria-label')).toBe('Editar a Ana');
+    const mas = fila.querySelector<HTMLDetailsElement>('details.mv-mas')!;
+    expect(mas.querySelector('summary')?.getAttribute('aria-label')).toBe('Más acciones: Ana');
+    expect(mas.open).toBe(false);
+    expect(mas.querySelector('#usuario-estado-1')).toBeTruthy();
+    expect(botonConTexto(mas, 'Reenviar accesos')).toBeTruthy();
+  });
+
+  it('editarAbreElFormularioEnLaFilaYCancelarDevuelveElFoco', async () => {
+    const { fixture, elemento } = await configurar([usuario(1, 'Ana'), usuario(2, 'Beto')]);
+
+    const filas = elemento.querySelectorAll('.lista-usuarios .mv-fila');
+    const editar = filas[1].querySelector<HTMLButtonElement>('.usuario__editar')!;
+    editar.click();
+    await fixture.whenStable();
+
+    expect(filas[1].querySelector('.editar-usuario #usuario-nombre')).toBeTruthy();
+    expect(filas[0].querySelector('.editar-usuario')).toBeFalsy();
+    expect(document.activeElement?.id).toBe('usuario-nombre');
+
+    botonConTexto(filas[1].querySelector('.editar-usuario')!, 'Cancelar')!.click();
+    await fixture.whenStable();
+
+    expect(elemento.querySelector('.editar-usuario')).toBeFalsy();
+    expect(document.activeElement).toBe(editar);
+  });
+
+  it('estadosDeCargaVacioYErrorConReintento', async () => {
+    const sujeto = new Subject<RespuestaPagina<RespuestaUsuario>>();
+    const { fixture, elemento } = await configurar(undefined, {
+      listar: vi.fn(() => sujeto.asObservable()),
+    });
+    expect(elemento.querySelector('[role="status"]')?.textContent).toContain('Cargando usuarios');
+
+    sujeto.next(pagina([]));
+    sujeto.complete();
+    await fixture.whenStable();
+    expect(elemento.querySelector('.mv-vacio')?.textContent).toContain('No hay usuarios para mostrar.');
+
+    TestBed.resetTestingModule();
+    document.body.innerHTML = '';
+    const listar = vi
+      .fn()
+      .mockReturnValueOnce(throwError(() => new Error('boom')))
+      .mockReturnValueOnce(of(pagina([usuario(1, 'Ana')])));
+    const { fixture: conError, elemento: elementoError } = await configurar(undefined, { listar });
+
+    botonConTexto(elementoError.querySelector('.mv-aviso--error')!, 'Reintentar')!.click();
+    await conError.whenStable();
+
+    expect(listar).toHaveBeenCalledTimes(2);
+    expect(elementoError.querySelector('[role="alert"]')).toBeFalsy();
+    expect(elementoError.querySelector('.usuario__nombre')?.textContent?.trim()).toBe('Ana');
   });
 });

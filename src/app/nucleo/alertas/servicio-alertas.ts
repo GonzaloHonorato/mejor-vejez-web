@@ -11,7 +11,7 @@ import {
   TipoAlerta,
 } from './modelos-alertas';
 
-/** Filtros opcionales de `GET /api/grupos/{idGrupo}/alertas` (regla 18 del plan). */
+/** Filtros opcionales de `GET /api/grupos/{idGrupo}/alertas`. */
 export interface FiltroAlertas {
   idEstado?: number;
   tipoAlerta?: TipoAlerta;
@@ -26,7 +26,10 @@ export class ServicioAlertas {
   private readonly http = inject(HttpClient);
   private readonly urlBase = `${configuracionEjecucion.urlApi}/api/grupos`;
 
-  listar(idGrupo: number, filtro: FiltroAlertas = {}): Observable<RespuestaPagina<RespuestaAlerta>> {
+  listar(
+    idGrupo: number,
+    filtro: FiltroAlertas = {},
+  ): Observable<RespuestaPagina<RespuestaAlerta>> {
     const parametros: Record<string, string> = {};
     if (filtro.idEstado !== undefined) {
       parametros['idEstado'] = String(filtro.idEstado);
@@ -54,7 +57,11 @@ export class ServicioAlertas {
     );
   }
 
-  cerrar(idGrupo: number, idAlerta: number, observacion: string): Observable<RespuestaAlertaDetallada> {
+  cerrar(
+    idGrupo: number,
+    idAlerta: number,
+    observacion: string,
+  ): Observable<RespuestaAlertaDetallada> {
     const solicitud: SolicitudCerrarAlerta = { observacion };
     return this.http.post<RespuestaAlertaDetallada>(
       `${this.urlBase}/${idGrupo}/alertas/${idAlerta}/cierre`,

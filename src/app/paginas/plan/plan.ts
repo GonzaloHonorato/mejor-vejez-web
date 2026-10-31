@@ -4,9 +4,10 @@ import { FormControl, NonNullableFormBuilder, ReactiveFormsModule, Validators } 
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { FormularioDetalle } from './formulario-detalle/formulario-detalle';
+import { Icono } from '../../compartido/icono/icono';
 import { puedeAdministrarGrupo } from '../../nucleo/adultos/permisos-adultos';
 import { RespuestaOpcionCatalogo, ServicioCatalogos } from '../../nucleo/catalogos/servicio-catalogos';
-import { formatearFecha } from '../../nucleo/fechas';
+import { fechaConAnio } from '../../nucleo/fecha-legible';
 import { RespuestaIntegrante } from '../../nucleo/grupos/modelos-grupos';
 import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
 import { ServicioGrupos } from '../../nucleo/grupos/servicio-grupos';
@@ -36,8 +37,7 @@ const ABREVIATURA_DIA: Record<string, string> = {
 /**
  * Texto de lectura del horario guardado (`horas` expandidas): reconstruye
  * el contrato con `reconstruirHorario` (igual que `FormularioDetalle` al
- * editar) y lo describe en español. No hay helper compartido de "texto de
- * horario" (Tarea 9 no lo necesitó), así que vive acá.
+ * editar) y lo describe en español.
  */
 function textoHorario(horas: string[]): string {
   const horario = reconstruirHorario(horas);
@@ -51,7 +51,7 @@ function textoHorario(horas: string[]): string {
  * Página "Plan de medicamentos" (`/planes/:idPlan`): datos del plan
  * (administración en el lugar, desactivar/reactivar, eliminar), la lista de
  * medicamentos (detalles) con sus acciones, y el formulario de alta/edición
- * (`FormularioDetalle`, Tarea 9) montado bajo demanda.
+ * (`FormularioDetalle`) montado bajo demanda.
  *
  * Sigue el mismo patrón de `FichaAdulto`: trabaja sobre el `idGrupo` del
  * grupo activo al entrar al plan; si ese grupo cambia de verdad mientras se
@@ -59,7 +59,7 @@ function textoHorario(horas: string[]): string {
  */
 @Component({
   selector: 'app-plan',
-  imports: [ReactiveFormsModule, RouterLink, FormularioDetalle],
+  imports: [ReactiveFormsModule, RouterLink, FormularioDetalle, Icono],
   templateUrl: './plan.html',
   styleUrl: './plan.scss',
 })
@@ -74,7 +74,7 @@ export class Plan implements OnInit {
 
   protected readonly grupoActivo = inject(ServicioGrupoActivo);
   protected readonly activo = this.grupoActivo.activo;
-  protected readonly formatearFecha = formatearFecha;
+  protected readonly fechaConAnio = fechaConAnio;
   protected readonly textoHorario = textoHorario;
 
   private readonly idPlan = Number(this.ruta.snapshot.paramMap.get('idPlan'));
@@ -148,7 +148,7 @@ export class Plan implements OnInit {
     vigenteHasta: [''],
   });
 
-  // --- Formulario de detalle (Tarea 9), montado bajo demanda ---
+  // --- Formulario de detalle, montado bajo demanda ---
   protected readonly agregandoDetalle = signal(false);
   protected readonly detalleEnEdicion = signal<RespuestaDetallePlan | null>(null);
   protected readonly editando = computed(
@@ -255,7 +255,7 @@ export class Plan implements OnInit {
   protected textoTermino(detalle: RespuestaDetallePlan): string {
     if (!detalle.fechaEstimadaTermino) return 'Sin estimación';
     const modo = detalle.modoCalculoTermino === 'AUTOMATICO' ? 'automático' : 'manual';
-    return `Término estimado: ${formatearFecha(detalle.fechaEstimadaTermino)} (${modo})`;
+    return `Término estimado: ${fechaConAnio(detalle.fechaEstimadaTermino)} (${modo})`;
   }
 
   protected controlCantidad(detalle: RespuestaDetallePlan): FormControl<number | null> {
@@ -403,6 +403,12 @@ export class Plan implements OnInit {
       next: () => this.router.navigateByUrl('/planes'),
       error: (error: unknown) => this.errorAccionPlan.set(mensajeDeError(error)),
     });
+  }
+
+  /** Vuelve a pedir el plan tras un error de carga. */
+  protected reintentar(): void {
+    if (this.idGrupoCargado === null) return;
+    this.cargarPlan(this.idGrupoCargado);
   }
 
   protected agregarMedicamento(): void {

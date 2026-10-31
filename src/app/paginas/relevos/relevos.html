@@ -1,174 +1,243 @@
-<div class="pagina">
-  <header class="cabecera">
-    <h1>Relevos</h1>
-  </header>
+<header class="mv-encabezado">
+  <div>
+    <p class="mv-encabezado__rotulo">Continuidad del cuidado</p>
+    <h1 class="mv-encabezado__titulo">Relevos</h1>
+    <p class="mv-encabezado__bajada">Registro de entrega y recepción del cuidado familiar.</p>
+  </div>
+  @if (activo()) {
+    <div class="mv-encabezado__accion">
+      <button
+        id="relevos-abrir-registro"
+        type="button"
+        class="mv-boton mv-boton--primario"
+        aria-controls="relevos-registrar"
+        [attr.aria-expanded]="formularioAbierto()"
+        (click)="alternarFormulario()"
+      >
+        Registrar relevo
+      </button>
+    </div>
+  }
+</header>
 
-  <div class="contenido">
-    @if (!activo()) {
-      <section class="tarjeta tarjeta--suave" aria-labelledby="relevos-sin-grupo-titulo">
-        <h2 id="relevos-sin-grupo-titulo" class="tarjeta__titulo">Primero crea o elige un grupo.</h2>
-        <a class="boton boton--contorno" routerLink="/grupos">Ir a grupos</a>
-      </section>
-    } @else {
-      <section aria-labelledby="relevos-lista-titulo">
-        <h2 id="relevos-lista-titulo">Historial de relevos</h2>
-
-        <div class="campo campo--filtro">
-          <label class="campo__etiqueta" for="relevos-filtro-adulto">Adulto mayor</label>
-          <select
-            id="relevos-filtro-adulto"
-            class="campo__control"
-            [formControl]="controlFiltroAdulto"
-            (change)="cambiarFiltroAdulto()"
-          >
-            <option [ngValue]="null">Todos</option>
-            @for (adulto of adultos(); track adulto.idAdultoMayor) {
-              <option [ngValue]="adulto.idAdultoMayor">{{ adulto.nombreCompleto }}</option>
-            }
-          </select>
-        </div>
-
-        @if (error(); as mensaje) {
-          <div class="error" role="alert">
-            <p class="error__mensaje">{{ mensaje }}</p>
-            <button type="button" class="boton boton--contorno" (click)="reintentar()">Reintentar</button>
+<div class="contenido">
+  @if (!activo()) {
+    <section class="mv-tarjeta" aria-labelledby="relevos-sin-grupo-titulo">
+      <div class="mv-tarjeta__cuerpo sin-grupo">
+        <h2 id="relevos-sin-grupo-titulo" class="mv-tarjeta__titulo">
+          Primero crea o elige un grupo.
+        </h2>
+        <a class="mv-boton" routerLink="/grupos">Ir a grupos</a>
+      </div>
+    </section>
+  } @else {
+    <div id="relevos-registrar" class="registro">
+      @if (formularioAbierto()) {
+        <section class="mv-tarjeta" aria-labelledby="relevos-registrar-titulo">
+          <div class="mv-tarjeta__cabecera">
+            <h2 id="relevos-registrar-titulo" class="mv-tarjeta__titulo">Registrar relevo</h2>
           </div>
-        }
+          <form
+            class="mv-tarjeta__cuerpo formulario"
+            [formGroup]="formulario"
+            (ngSubmit)="registrar()"
+            novalidate
+          >
+            <p class="ayuda">Indica quién entrega y quién recibe el turno de cuidado.</p>
 
-        @if (cargando()) {
-          <p class="vacio" role="status">Cargando…</p>
-        }
+            <div class="mv-campo">
+              <label class="mv-campo__etiqueta" for="relevos-adulto">Adulto mayor</label>
+              <select
+                id="relevos-adulto"
+                class="mv-campo__control"
+                formControlName="idAdulto"
+                [attr.aria-describedby]="mensaje('idAdulto') ? 'relevos-adulto-error' : null"
+              >
+                <option [ngValue]="null">Selecciona…</option>
+                @for (adulto of adultos(); track adulto.idAdultoMayor) {
+                  <option [ngValue]="adulto.idAdultoMayor">{{ adulto.nombreCompleto }}</option>
+                }
+              </select>
+              @if (mensaje('idAdulto'); as m) {
+                <p id="relevos-adulto-error" class="mv-campo__error" role="alert">{{ m }}</p>
+              }
+            </div>
 
-        @if (!cargando() && !error() && elementos().length === 0) {
-          <p class="vacio" role="status">No hay relevos registrados.</p>
-        }
-
-        <ul class="lista">
-          @for (relevo of elementos(); track relevo.idRelevo) {
-            <li class="tarjeta-relevo">
-              <div class="tarjeta-relevo__principal">
-                <p class="tarjeta-relevo__adulto">{{ relevo.nombreAdulto }}</p>
-                <p class="tarjeta-relevo__personas">
-                  {{ relevo.saliente.nombre }} → {{ relevo.entrante.nombre }}
-                </p>
-                <p class="tarjeta-relevo__fecha">
-                  {{ formatearFecha(relevo.fechaTraspaso) }} a las {{ formatearHora(relevo.fechaTraspaso) }}
-                  ·
-                  <span
-                    class="insignia"
-                    [class.insignia--cancelada]="relevo.codigoEstado === 'CANCELADA'"
-                  >
-                    {{ descripcionEstadoRelevo(relevo.idEstado) }}
-                  </span>
-                </p>
-              </div>
-              <a
-                class="enlace"
-                [routerLink]="['/relevos', relevo.idRelevo]"
-                [attr.aria-label]="
-                  'Ver detalle del relevo de ' +
-                  relevo.nombreAdulto +
-                  ' del ' +
-                  formatearFecha(relevo.fechaTraspaso)
+            <div class="mv-campo">
+              <label class="mv-campo__etiqueta" for="relevos-saliente">Quien entrega</label>
+              <select
+                id="relevos-saliente"
+                class="mv-campo__control"
+                formControlName="idUsuarioSaliente"
+                [attr.aria-describedby]="
+                  mensaje('idUsuarioSaliente') ? 'relevos-saliente-error' : null
                 "
               >
-                Ver detalle
-              </a>
+                <option [ngValue]="null">Selecciona…</option>
+                @for (integrante of integrantesActivos(); track integrante.idUsuario) {
+                  <option [ngValue]="integrante.idUsuario">{{ integrante.nombre }}</option>
+                }
+              </select>
+              @if (mensaje('idUsuarioSaliente'); as m) {
+                <p id="relevos-saliente-error" class="mv-campo__error" role="alert">
+                  {{ m }}
+                </p>
+              }
+            </div>
+
+            <div class="mv-campo">
+              <label class="mv-campo__etiqueta" for="relevos-entrante">Quien recibe</label>
+              <select
+                id="relevos-entrante"
+                class="mv-campo__control"
+                formControlName="idUsuarioEntrante"
+                [attr.aria-describedby]="
+                  mensaje('idUsuarioEntrante') ? 'relevos-entrante-error' : null
+                "
+              >
+                <option [ngValue]="null">Selecciona…</option>
+                @for (integrante of integrantesParaEntrante(); track integrante.idUsuario) {
+                  <option [ngValue]="integrante.idUsuario">{{ integrante.nombre }}</option>
+                }
+              </select>
+              @if (mensaje('idUsuarioEntrante'); as m) {
+                <p id="relevos-entrante-error" class="mv-campo__error" role="alert">
+                  {{ m }}
+                </p>
+              }
+            </div>
+
+            <div class="mv-campo notas">
+              <label class="mv-campo__etiqueta" for="relevos-notas">Notas (opcional)</label>
+              <textarea
+                id="relevos-notas"
+                class="mv-campo__control area"
+                rows="3"
+                aria-describedby="relevos-notas-contador"
+                [attr.maxlength]="maximoCaracteresNotas"
+                formControlName="notas"
+              ></textarea>
+              <p id="relevos-notas-contador" class="contador">{{ contadorNotas() }}</p>
+            </div>
+
+            @if (errorFormulario(); as mensaje) {
+              <p class="mv-aviso mv-aviso--error" role="alert">{{ mensaje }}</p>
+            }
+
+            <div class="botones">
+              <button type="button" class="mv-boton" (click)="cerrarFormulario()">Cancelar</button>
+              <button type="submit" class="mv-boton mv-boton--primario" [disabled]="guardando()">
+                {{ guardando() ? 'Registrando…' : 'Registrar relevo' }}
+              </button>
+            </div>
+          </form>
+        </section>
+      }
+    </div>
+
+    @if (!cargando() && !error()) {
+      <ul class="mv-indicadores indicadores" aria-label="Resumen de relevos">
+        <li class="mv-indicador">
+          <span class="mv-indicador__icono" aria-hidden="true"
+            ><app-icono nombre="relevos"
+          /></span>
+          <span class="mv-indicador__valor">{{ total() }}</span>
+          <span class="mv-indicador__etiqueta"
+            >{{ ' ' }}{{ plural(total(), 'relevo registrado', 'relevos registrados') }}</span
+          >
+        </li>
+        @if (ultimo(); as reciente) {
+          <li class="mv-indicador mv-indicador--exito">
+            <span class="mv-indicador__valor ultimo">{{
+              fechaHoraLegible(reciente.fechaTraspaso)
+            }}</span>
+            <span class="mv-indicador__etiqueta">{{ ' ' }}último relevo</span>
+          </li>
+        }
+      </ul>
+    }
+
+    <section class="historial" aria-labelledby="relevos-lista-titulo">
+      <h2 id="relevos-lista-titulo" class="historial__titulo">Historial de relevos</h2>
+
+      <div class="mv-campo filtro">
+        <label class="mv-campo__etiqueta" for="relevos-filtro-adulto">Adulto mayor</label>
+        <select
+          id="relevos-filtro-adulto"
+          class="mv-campo__control"
+          [formControl]="controlFiltroAdulto"
+          (change)="cambiarFiltroAdulto()"
+        >
+          <option [ngValue]="null">Todos</option>
+          @for (adulto of adultos(); track adulto.idAdultoMayor) {
+            <option [ngValue]="adulto.idAdultoMayor">{{ adulto.nombreCompleto }}</option>
+          }
+        </select>
+      </div>
+
+      @if (error(); as mensaje) {
+        <div class="mv-aviso mv-aviso--error" role="alert">
+          <p>{{ mensaje }}</p>
+          <button type="button" class="mv-boton" (click)="reintentar()">Reintentar</button>
+        </div>
+      }
+
+      @if (cargando()) {
+        <div role="status" aria-live="polite">
+          <span class="oculto">Cargando relevos…</span>
+          <div class="esqueleto" aria-hidden="true">
+            <span class="mv-esqueleto mv-esqueleto--bloque"></span>
+            <span class="mv-esqueleto mv-esqueleto--bloque"></span>
+          </div>
+        </div>
+      } @else if (!error() && elementos().length === 0) {
+        <div class="mv-vacio" role="status">
+          <p class="mv-vacio__titulo">No hay relevos registrados.</p>
+          <p class="mv-vacio__texto">
+            Cuando alguien entregue el turno de cuidado, el relevo aparecerá aquí.
+          </p>
+        </div>
+      }
+
+      @if (elementos().length > 0) {
+        <ul class="mv-lista lista-relevos">
+          @for (relevo of elementos(); track relevo.idRelevo) {
+            <li class="mv-fila">
+              <div class="mv-fila__principal">
+                <a
+                  class="mv-fila__titulo mv-fila__enlace"
+                  [routerLink]="['/relevos', relevo.idRelevo]"
+                  [attr.aria-label]="etiquetaEnlace(relevo)"
+                  >{{ relevo.nombreAdulto }}</a
+                >
+              </div>
+              <p class="personas">
+                <span>{{ relevo.saliente.nombre }}</span>
+                <app-icono nombre="flecha-derecha" aria-hidden="true" />
+                <span class="oculto"> entrega a </span>
+                <span>{{ relevo.entrante.nombre }}</span>
+              </p>
+              <p class="mv-fila__meta">{{ fechaHoraLegible(relevo.fechaTraspaso) }}</p>
+              <span class="estado"
+                ><span class="mv-chip {{ tonoEstado(relevo) }}">{{
+                  descripcionEstadoRelevo(relevo.idEstado)
+                }}</span></span
+              >
             </li>
           }
         </ul>
+      }
 
-        @if (!cargando() && hayMas()) {
-          <button
-            type="button"
-            class="boton boton--contorno"
-            [disabled]="cargandoMas()"
-            (click)="cargarMas()"
-          >
-            {{ cargandoMas() ? 'Cargando…' : 'Cargar más' }}
-          </button>
-        }
-      </section>
-
-      <section class="tarjeta" aria-labelledby="relevos-registrar-titulo">
-        <h2 id="relevos-registrar-titulo">Registrar relevo</h2>
-
-        <form [formGroup]="formulario" (ngSubmit)="registrar()" novalidate>
-          <div class="campo">
-            <label class="campo__etiqueta" for="relevos-adulto">Adulto mayor</label>
-            <select
-              id="relevos-adulto"
-              class="campo__control"
-              formControlName="idAdulto"
-              [attr.aria-describedby]="mensaje('idAdulto') ? 'relevos-adulto-error' : null"
-            >
-              <option [ngValue]="null">Selecciona…</option>
-              @for (adulto of adultos(); track adulto.idAdultoMayor) {
-                <option [ngValue]="adulto.idAdultoMayor">{{ adulto.nombreCompleto }}</option>
-              }
-            </select>
-            @if (mensaje('idAdulto'); as m) {
-              <p id="relevos-adulto-error" class="error" role="alert">{{ m }}</p>
-            }
-          </div>
-
-          <div class="campo">
-            <label class="campo__etiqueta" for="relevos-saliente">Quien entrega</label>
-            <select
-              id="relevos-saliente"
-              class="campo__control"
-              formControlName="idUsuarioSaliente"
-              [attr.aria-describedby]="mensaje('idUsuarioSaliente') ? 'relevos-saliente-error' : null"
-            >
-              <option [ngValue]="null">Selecciona…</option>
-              @for (integrante of integrantesActivos(); track integrante.idUsuario) {
-                <option [ngValue]="integrante.idUsuario">{{ integrante.nombre }}</option>
-              }
-            </select>
-            @if (mensaje('idUsuarioSaliente'); as m) {
-              <p id="relevos-saliente-error" class="error" role="alert">{{ m }}</p>
-            }
-          </div>
-
-          <div class="campo">
-            <label class="campo__etiqueta" for="relevos-entrante">Quien recibe</label>
-            <select
-              id="relevos-entrante"
-              class="campo__control"
-              formControlName="idUsuarioEntrante"
-              [attr.aria-describedby]="mensaje('idUsuarioEntrante') ? 'relevos-entrante-error' : null"
-            >
-              <option [ngValue]="null">Selecciona…</option>
-              @for (integrante of integrantesParaEntrante(); track integrante.idUsuario) {
-                <option [ngValue]="integrante.idUsuario">{{ integrante.nombre }}</option>
-              }
-            </select>
-            @if (mensaje('idUsuarioEntrante'); as m) {
-              <p id="relevos-entrante-error" class="error" role="alert">{{ m }}</p>
-            }
-          </div>
-
-          <div class="campo">
-            <label class="campo__etiqueta" for="relevos-notas">Notas</label>
-            <textarea
-              id="relevos-notas"
-              class="campo__control campo__control--area"
-              rows="3"
-              [attr.maxlength]="maximoCaracteresNotas"
-              formControlName="notas"
-            ></textarea>
-            <p class="contador">{{ contadorNotas() }}</p>
-          </div>
-
-          @if (errorFormulario(); as mensaje) {
-            <p class="error" role="alert">{{ mensaje }}</p>
-          }
-
-          <button type="submit" class="boton boton--primario" [disabled]="guardando()">
-            {{ guardando() ? 'Registrando…' : 'Registrar relevo' }}
-          </button>
-        </form>
-      </section>
-    }
-  </div>
+      @if (!cargando() && hayMas()) {
+        <button
+          type="button"
+          class="mv-boton mv-boton--bloque"
+          [disabled]="cargandoMas()"
+          (click)="cargarMas()"
+        >
+          {{ cargandoMas() ? 'Cargando…' : 'Cargar más' }}
+        </button>
+      }
+    </section>
+  }
 </div>

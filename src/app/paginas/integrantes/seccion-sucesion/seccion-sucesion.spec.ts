@@ -284,7 +284,7 @@ describe('SeccionSucesion', () => {
 
     expect(elemento.textContent).toContain('Condiciones pendientes');
     expect(elemento.textContent).toContain('Comprar Losartán');
-    expect(elemento.textContent).toContain('03-11-2026 10:00');
+    expect(elemento.textContent).toContain('3 nov 2026 · 10:00');
     const selector = elemento.querySelector<HTMLSelectElement>('#sucesion-destino-401')!;
     const opciones = Array.from(selector.options).map((opcion) => opcion.textContent?.trim());
     // Integrantes ACTIVO menos el saliente.
@@ -405,10 +405,14 @@ describe('SeccionSucesion', () => {
     expect(filas).toHaveLength(2);
     expect(filas[0].textContent).toContain('Beto');
     expect(filas[0].textContent).toContain('Transferencia completada');
-    expect(filas[0].textContent).toContain('02-10-2026 11:30');
+    expect(filas[0].textContent).toContain('2 oct 2026 · 11:30');
+    expect(filas[0].textContent).not.toContain('→');
+    expect(filas[0].querySelector('app-icono')?.getAttribute('aria-hidden')).toBe('true');
+    expect(filas[0].querySelector('.oculto')?.textContent).toContain('propuso a');
+    expect(filas[0].querySelector('.mv-chip')?.textContent).toContain('Transferencia completada');
     expect(filas[1].textContent).toContain('Carla');
     expect(filas[1].textContent).toContain('Cancelada');
-    expect(filas[1].textContent).toContain('15-09-2026 12:00');
+    expect(filas[1].textContent).toContain('15 sep 2026 · 12:00');
     expect(historial.textContent).not.toContain('COMPLETADA');
   });
 

@@ -80,7 +80,7 @@ function textoONulo(valor: string): string | null {
  * Formulario para agregar o editar un medicamento (detalle) de un plan.
  *
  * Presentacional respecto a los datos de referencia: la página contenedora
- * (Tarea 8) le pasa el plan, el detalle a editar (o `null` para uno nuevo),
+ * (`Plan`) le pasa el plan, el detalle a editar (o `null` para uno nuevo),
  * las opciones de catálogo ya cargadas y la lista de integrantes ACTIVOS del
  * grupo (ya filtrada; este componente no consulta estados de integrantes).
  * Solo llama a la API para guardar (`agregarDetalle`/`actualizarDetalle`) y,
@@ -114,7 +114,7 @@ export class FormularioDetalle implements OnInit {
   readonly cancelado = output<void>();
 
   protected readonly aviso =
-    'Registra la indicación entregada por un profesional o cuidador autorizado. Mejor Vejez no prescribe ni recomienda dosis.';
+    'Registra la indicación entregada por un profesional o cuidador autorizado. Cuida+ no prescribe ni recomienda dosis.';
 
   protected readonly formulario = this.fb.group({
     idMedicamento: this.fb.control<number | null>(null, Validators.required),

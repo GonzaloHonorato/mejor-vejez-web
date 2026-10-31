@@ -1,14 +1,14 @@
 import { TipoEntidadAuditoria } from './modelos-auditoria';
 
 /**
- * Etiquetas legibles de la auditoría (ajustes post-F7): la página muestra
- * la frase y deja el código crudo como texto secundario.
+ * Etiquetas legibles de la auditoría: la fila muestra la frase y el código
+ * crudo queda en el detalle desplegable, para la trazabilidad.
  *
  * El mapa de acciones cubre TODOS los `codigoAccion` que audita la API.
  * Verificado con grep sobre `mejor-vejez-api/src/main/java`: constantes
  * `ACCION_*`, `AccionesAlertas`, `AccionesTareas`, `AccionesPlanificacion`,
  * `CodigosRelevos`, `CodigosSucesion`, `CodigosPanel`,
- * `CodigosNotificaciones` y los literales pasados a `new
+ * `CodigosNotificaciones`, el módulo de cuentas y los literales pasados a `new
  * EventoARegistrar(...)`. Un código nuevo que todavía no esté aquí no
  * rompe la página: cae al respaldo (`frasePorDefecto`).
  */
@@ -17,6 +17,10 @@ const ETIQUETAS_ACCION: Readonly<Record<string, string>> = {
   ACCESO_GRUPO: 'Intento de acceso al grupo',
   ACCESO_ADMINISTRADOR: 'Intento de acceso de administrador',
   CREAR_USUARIO_PRIMER_INGRESO: 'Ingresó por primera vez',
+  // Cuentas (RegistroCuentas, ServicioAltaCuentas, ServicioRecuperarClave)
+  CREAR_CUENTA: 'Creó una cuenta',
+  REENVIAR_ACCESO: 'Reenvió los datos de acceso',
+  SOLICITAR_RECUPERAR_CLAVE: 'Solicitó recuperar la contraseña',
   // Usuarios y perfil
   ACTUALIZAR_PERFIL: 'Actualizó su perfil',
   ADMIN_ACTUALIZAR_USUARIO: 'Administración actualizó un usuario',
@@ -67,6 +71,7 @@ const ETIQUETAS_ACCION: Readonly<Record<string, string>> = {
   CERRAR_ALERTA: 'Cerró una alerta',
   EJECUTAR_DETECCION_ATRASOS: 'Ejecutó la detección de atrasos',
   EJECUTAR_ALERTAS_PREVENTIVAS: 'Ejecutó las alertas preventivas',
+  EJECUTAR_REPORTE_SEMANAL: 'Ejecutó el reporte semanal',
   // Panel (CodigosPanel)
   CONSULTAR_PANEL: 'Consultó el panel familiar',
   // Relevos (CodigosRelevos)

@@ -34,4 +34,9 @@ describe('Icono', () => {
       expect(svg!.children.length, nombre).toBeGreaterThan(0);
     }
   });
+
+  it('incluyeLasFlechasDelNavegadorDeFecha', () => {
+    expect(NOMBRES_ICONO).toContain('flecha-izquierda');
+    expect(NOMBRES_ICONO).toContain('flecha-derecha');
+  });
 });

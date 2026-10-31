@@ -9,13 +9,17 @@ import { RespuestaGrupo } from '../../nucleo/grupos/modelos-grupos';
 import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
 
-function grupo(idGrupo: number, nombreGrupo: string): RespuestaGrupo {
+function grupo(
+  idGrupo: number,
+  nombreGrupo: string,
+  miRol: string | null = 'COORDINADOR',
+): RespuestaGrupo {
   return {
     idGrupo,
     nombreGrupo,
     notificaCoordinador: true,
     idEstado: 1,
-    miRol: 'COORDINADOR',
+    miRol,
     fechaCreacion: '2026-01-01T00:00:00-03:00',
   };
 }
@@ -26,6 +30,9 @@ interface OpcionesMarco {
   grupos?: RespuestaGrupo[];
   activo?: RespuestaGrupo | null;
   falloServicioYo?: boolean;
+  usuario?: { displayName: string | null; email: string | null } | null;
+  /** `nombre` de `GET /api/yo`; por defecto 'Ana'. */
+  nombreYo?: string;
   /** Navegación real del router (sin mockear `navigateByUrl`): necesario para probar routerLinkActive. */
   navegacionReal?: boolean;
 }
@@ -65,7 +72,7 @@ async function crearMarco(opciones: OpcionesMarco = {}) {
         provide: ServicioAutenticacion,
         useValue: {
           habilitado: true,
-          usuario: signal(null),
+          usuario: signal(opciones.usuario ?? null),
           listo: signal(true),
           cerrarSesion: opciones.cerrarSesion ?? vi.fn().mockResolvedValue(undefined),
         },
@@ -79,7 +86,7 @@ async function crearMarco(opciones: OpcionesMarco = {}) {
               ? throwError(() => new Error('boom'))
               : of({
                   idUsuario: 1,
-                  nombre: 'Ana',
+                  nombre: opciones.nombreYo ?? 'Ana',
                   email: 'ana@correo.cl',
                   telefono: null,
                   esAdministrador: opciones.esAdministrador ?? false,
@@ -190,6 +197,93 @@ describe('MarcoApp', () => {
     // grupo" (el sufijo oculto " de grupo" se agregaba también cuando no
     // había grupo activo).
     expect(enlace.textContent?.replace(/\s+/g, ' ').trim()).toBe('Crear grupo');
+  });
+
+  it('laMarcaVisibleEsCuidaMas', async () => {
+    const { elemento } = await crearMarco();
+
+    expect(elemento.querySelector('.lateral')?.textContent).toContain('Cuida+');
+    expect(elemento.querySelector('.cabecera')?.textContent).toContain('Cuida+');
+    expect(elemento.textContent).not.toContain('Mejor Vejez');
+  });
+
+  it('laCabeceraMuestraElRolDelGrupoActivo', async () => {
+    const coordinador = await crearMarco({ activo: grupo(1, 'Familia Soto', 'COORDINADOR') });
+    expect(coordinador.elemento.querySelector('.cabecera__rol')?.textContent?.trim()).toBe(
+      'Coordinador/a',
+    );
+
+    TestBed.resetTestingModule();
+    const colaborador = await crearMarco({ activo: grupo(1, 'Familia Soto', 'COLABORADOR') });
+    expect(colaborador.elemento.querySelector('.cabecera__rol')?.textContent?.trim()).toBe(
+      'Colaborador/a',
+    );
+  });
+
+  it('laCabeceraNoMuestraRolSiMiRolEsNull', async () => {
+    const sinRol = await crearMarco({ activo: grupo(1, 'Familia Soto', null) });
+    expect(sinRol.elemento.querySelector('.cabecera__rol')).toBeNull();
+
+    TestBed.resetTestingModule();
+    const sinGrupo = await crearMarco({ activo: null });
+    expect(sinGrupo.elemento.querySelector('.cabecera__rol')).toBeNull();
+  });
+
+  it('laCabeceraMuestraAvatarConInicialesYNombre', async () => {
+    const conNombre = await crearMarco({
+      usuario: { displayName: null, email: 'rosa@correo.cl' },
+      nombreYo: 'Rosa Elena Rojas Muñoz',
+    });
+    const avatar = conNombre.elemento.querySelector('.cabecera .mv-avatar')!;
+    expect(avatar.textContent?.trim()).toBe('RE');
+    expect(avatar.getAttribute('aria-hidden')).toBe('true');
+    expect(conNombre.elemento.querySelector('.cabecera__nombre-usuario')?.textContent).toContain(
+      'Rosa Elena Rojas Muñoz',
+    );
+
+    TestBed.resetTestingModule();
+    const soloCorreo = await crearMarco({
+      usuario: { displayName: null, email: 'ana@correo.cl' },
+      nombreYo: '',
+    });
+    expect(soloCorreo.elemento.querySelector('.cabecera .mv-avatar')?.textContent?.trim()).toBe(
+      'A',
+    );
+  });
+
+  it('elNombreDeLaCabeceraPrefiereElDelNucleo', async () => {
+    const marco = await crearMarco({
+      usuario: { displayName: 'Firebase Nombre', email: 'gonzalo@correo.cl' },
+      nombreYo: 'Gonzalo Honorato',
+    });
+    const nombre = () =>
+      marco.elemento.querySelector('.cabecera__nombre-usuario')?.textContent?.trim();
+    expect(nombre()).toBe('Gonzalo Honorato');
+    expect(marco.elemento.querySelector('.cabecera .mv-avatar')?.textContent?.trim()).toBe('GH');
+
+    // El correo del panel "Más" no cambia.
+    const panel = await abrirMas(marco);
+    expect(panel.textContent).toContain('gonzalo@correo.cl');
+  });
+
+  it('sinNombreDelNucleoUsaElDeFirebaseYLuegoElCorreo', async () => {
+    const conDisplayName = await crearMarco({
+      usuario: { displayName: 'Rosa Rojas', email: 'rosa@correo.cl' },
+      nombreYo: '',
+    });
+    expect(
+      conDisplayName.elemento.querySelector('.cabecera__nombre-usuario')?.textContent?.trim(),
+    ).toBe('Rosa Rojas');
+
+    TestBed.resetTestingModule();
+    const fallaYo = await crearMarco({
+      usuario: { displayName: null, email: 'rosa@correo.cl' },
+      falloServicioYo: true,
+    });
+    expect(fallaYo.elemento.querySelector('.cabecera__nombre-usuario')?.textContent?.trim()).toBe(
+      'rosa@correo.cl',
+    );
+    expect(fallaYo.elemento.querySelector('.cabecera .mv-avatar')?.textContent?.trim()).toBe('R');
   });
 
   it('muestraAvisoSiFallaLaVerificacionDePermisos', async () => {
@@ -468,7 +562,7 @@ describe('MarcoApp', () => {
   });
   it('masAbiertoDejaInerteElContenidoDetras', async () => {
     const marco = await crearMarco();
-    const detras = ['.saltar', '.lateral', '.cabecera', 'main', '.pie'].map((selector) =>
+    const detras = ['.mv-saltar', '.lateral', '.cabecera', 'main', '.pie'].map((selector) =>
       marco.elemento.querySelector(selector)!,
     );
     expect(detras.every((e) => !e.hasAttribute('inert'))).toBe(true);
@@ -482,7 +576,7 @@ describe('MarcoApp', () => {
     expect(detras.every((e) => !e.hasAttribute('inert'))).toBe(true);
     expect(document.activeElement).toBe(botonMas(marco.elemento));
   });
-  // Corrección ronda 2: si `signOut` falla, el panel no debe quedar abierto
+  // Si `signOut` falla, el panel no debe quedar abierto
   // ni el contenido de fondo `inert`.
   it('cerrarSesionFallidaDesdeMasCierraElPanelYQuitaInert', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);

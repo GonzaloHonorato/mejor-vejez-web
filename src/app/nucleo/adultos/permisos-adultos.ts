@@ -1,5 +1,5 @@
 /**
- * Aviso operativo exacto de las Restricciones globales de la Fase 2 (HU-03).
+ * Aviso operativo exacto sobre qué datos se registran.
  * Se muestra en el formulario de alta de "Adultos" y en el editor de la
  * ficha: vive acá (y no duplicado en cada página) porque ambas lo necesitan
  * igual, carácter por carácter.

@@ -66,6 +66,14 @@ const MENSAJES_REQUERIDO_LINEA: Partial<Record<CampoLinea, string>> = {
   idUnidadCantidad: 'Elige la unidad',
 };
 
+/** Sufijo del id del error de cada campo validado de una línea de compra. */
+const SUFIJO_ERROR_LINEA: Partial<Record<CampoLinea, string>> = {
+  idMedicamento: 'medicamento',
+  idPresentacion: 'presentacion',
+  cantidadSolicitada: 'cantidad',
+  idUnidadCantidad: 'unidad',
+};
+
 const MENSAJES_REQUERIDO_CITA: Partial<Record<CampoCita, string>> = {
   nombreMedico: 'Ingresa el nombre del médico',
   lugarAtencion: 'Ingresa el lugar de la atención',
@@ -80,14 +88,14 @@ function textoONulo(valor: string): string | null {
 /**
  * Página "Nueva tarea" (`/tareas/nueva`): alta manual de una tarea de
  * cuidado, de compra/retiro de medicamentos (varias líneas) o de cita o
- * control médico. Consume `ServicioTareas.crearManual` (Tarea 8 de la API).
+ * control médico. Consume `ServicioTareas.crearManual`.
  *
- * Solo coordinador o administrador (regla de permisos de la Fase 4): sin
+ * Solo coordinador o administrador: sin
  * grupo activo no hay nada que crear (mismo aviso de `Tareas`); con grupo
- * pero sin poder administrar, se muestra el aviso de la regla y no se monta
+ * pero sin poder administrar, se muestra un aviso y no se monta
  * el formulario.
  *
- * Reutiliza `BuscadorMedicamento` (Tarea 9) una vez por línea de compra,
+ * Reutiliza `BuscadorMedicamento` una vez por línea de compra,
  * igual que `FormularioDetalle`: el medicamento elegido se muestra como
  * texto y preselecciona su presentación si la trae. Al elegir "Cita o
  * control médico" el `FormArray` de líneas se deshabilita (y viceversa con
@@ -216,6 +224,12 @@ export class NuevaTarea implements OnInit {
     );
   }
 
+  /** id del error de un campo de la línea `indice` mientras hay error; null si no lo hay. */
+  protected idErrorLinea(indice: number, campo: CampoLinea): string | null {
+    if (!this.mensajeLinea(indice, campo)) return null;
+    return `nueva-tarea-compra-${indice}-${SUFIJO_ERROR_LINEA[campo]}-error`;
+  }
+
   protected mensajeLinea(indice: number, campo: CampoLinea): string | null {
     const control = this.compra.at(indice).controls[campo];
     const mensaje = mensajeDeCampo(
@@ -247,7 +261,7 @@ export class NuevaTarea implements OnInit {
     controles.idMedicamento.setValue(medicamento.idMedicamento);
     // Siempre se fija (incluso a `null`): si no, un medicamento sin
     // presentación propia conserva la del anterior y se pide la compra
-    // equivocada (riesgo de datos, hallazgo T12-1).
+    // equivocada.
     controles.idPresentacion.setValue(medicamento.idPresentacion ?? null);
   }
 

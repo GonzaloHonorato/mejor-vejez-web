@@ -11,6 +11,7 @@ import { RespuestaEstadoCatalogo, ServicioCatalogos } from '../../nucleo/catalog
 import { RespuestaGrupo } from '../../nucleo/grupos/modelos-grupos';
 import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
+import { fechaHoraLegible } from '../../nucleo/fecha-legible';
 
 const ID_ESTADO_ABIERTA = 30;
 const ID_ESTADO_CERRADA = 31;
@@ -194,19 +195,25 @@ describe('Alerta', () => {
     expect(items[1].textContent).not.toContain('El envío de correo no está configurado.');
   });
 
-  it('insigniaDeIntentoFallidoYDeAlertaAbiertaUsanElModificadorDeAvisoOError', async () => {
+  it('chipDeIntentoFallidoYDeAlertaAbiertaUsanElTonoDePeligroODeAlerta', async () => {
     const datos = detalle({
       alerta: alerta({ idEstado: ID_ESTADO_ABIERTA, idEstadoTarea: 10 }),
       intentos: [intento({ idEstadoEnvio: ID_ESTADO_FALLIDO })],
     });
     const { elemento } = await configurar({ obtenerImpl: () => of(datos) });
 
-    const insignias = elemento.querySelectorAll('.insignia');
-    const [insigniaAlerta, insigniaTarea, insigniaIntento] = Array.from(insignias);
+    const chipAlerta = elemento.querySelector('[data-prueba="estado-alerta"]')!;
+    const chipTarea = elemento.querySelector('[data-prueba="estado-tarea"]')!;
+    const chipIntento = elemento.querySelector('[data-prueba="estado-envio"]')!;
 
-    expect(insigniaAlerta.classList.contains('insignia--aviso')).toBe(true);
-    expect(insigniaTarea.classList.contains('insignia--neutro')).toBe(true);
-    expect(insigniaIntento.classList.contains('insignia--error')).toBe(true);
+    expect(chipAlerta.textContent).toContain('Abierta');
+    expect(chipAlerta.classList.contains('mv-chip--alerta')).toBe(true);
+    expect(chipAlerta.classList.contains('mv-chip--exito')).toBe(false);
+    expect(chipTarea.textContent).toContain('Pendiente');
+    expect(chipTarea.className.trim()).toBe('mv-chip');
+    expect(chipIntento.textContent).toContain('Fallido');
+    expect(chipIntento.classList.contains('mv-chip--peligro')).toBe(true);
+    expect(chipIntento.classList.contains('mv-chip--exito')).toBe(false);
   });
 
   it('insigniaDeAlertaCerradaYDeIntentoEnviadoNoUsanLosModificadoresDeAvisoNiError', async () => {
@@ -220,11 +227,67 @@ describe('Alerta', () => {
     });
     const { elemento } = await configurar({ obtenerImpl: () => of(datos) });
 
-    const insignias = elemento.querySelectorAll('.insignia');
-    const [insigniaAlerta, , insigniaIntento] = Array.from(insignias);
+    const chipAlerta = elemento.querySelector('[data-prueba="estado-alerta"]')!;
+    const chipIntento = elemento.querySelector('[data-prueba="estado-envio"]')!;
 
-    expect(insigniaAlerta.classList.contains('insignia--aviso')).toBe(false);
-    expect(insigniaIntento.classList.contains('insignia--error')).toBe(false);
+    expect(chipAlerta.classList.contains('mv-chip--alerta')).toBe(false);
+    expect(chipIntento.classList.contains('mv-chip--peligro')).toBe(false);
+  });
+
+  it('encabezadoTieneEnlaceVolverTituloDelTipoYChipDeEstado', async () => {
+    const { elemento } = await configurar();
+
+    const volver = elemento.querySelector<HTMLAnchorElement>('a.volver');
+    expect(volver?.textContent).toContain('Volver a alertas');
+    expect(volver?.getAttribute('href')).toBe('/alertas');
+    expect(volver?.querySelector('app-icono')?.getAttribute('aria-hidden')).toBe('true');
+
+    const encabezado = elemento.querySelector('header.mv-encabezado')!;
+    expect(encabezado.querySelector('h1')?.textContent).toContain('Tarea atrasada');
+    expect(encabezado.querySelector('[data-prueba="estado-alerta"]')?.textContent).toContain(
+      'Abierta',
+    );
+  });
+
+  it('datosEnListaDeDefinicionConEtiquetaDeTipoYFechasLegibles', async () => {
+    const datos = detalle({
+      alerta: alerta({ tipoAlerta: 'REPOSICION_MEDICAMENTO', nombreMedicamento: 'Losartán' }),
+    });
+    const { elemento } = await configurar({ obtenerImpl: () => of(datos) });
+
+    const filas = Array.from(elemento.querySelectorAll('dl.datos > div')).map((fila) => [
+      fila.querySelector('dt')?.textContent?.trim(),
+      fila.querySelector('dd')?.textContent?.trim(),
+    ]);
+    expect(filas).toContainEqual(['Tipo', 'Reposición de medicamento']);
+    expect(filas).toContainEqual(['Adulto mayor', 'Rosa González']);
+    expect(filas).toContainEqual([
+      'Fecha programada',
+      fechaHoraLegible('2026-11-02T08:00:00-03:00'),
+    ]);
+    expect(filas).toContainEqual(['Medicamento', 'Losartán']);
+  });
+
+  it('intentosMuestranLaFechaLegible', async () => {
+    const { elemento } = await configurar();
+
+    const fila = elemento.querySelector('[data-prueba="intento-item"]')!;
+    expect(fila.textContent).toContain(fechaHoraLegible('2026-11-02T09:05:00-03:00'));
+  });
+
+  it('errorDeCargaOfreceReintentarYVuelveAPedirElDetalle', async () => {
+    const obtenerImpl = vi
+      .fn()
+      .mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 500 })))
+      .mockReturnValueOnce(of(detalle()));
+    const { fixture, elemento, servicioAlertas } = await configurar({ obtenerImpl });
+
+    expect(elemento.querySelector('.mv-aviso--error[role="alert"]')).not.toBeNull();
+    botonConTexto(elemento, 'Reintentar')!.click();
+    await fixture.whenStable();
+
+    expect(servicioAlertas.obtener).toHaveBeenCalledTimes(2);
+    expect(elemento.querySelector('[data-prueba="intento-item"]')).not.toBeNull();
   });
 
   it('sinIntentosMuestraElMensajeDeVacio', async () => {

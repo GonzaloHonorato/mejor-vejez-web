@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
-/** Nombres de los íconos disponibles (barra inferior, panel "Más" y acciones del marco). */
+/** Nombres de los íconos disponibles (navegación, acciones del marco y de las páginas). */
 export const NOMBRES_ICONO = [
   'panel',
   'tareas',
@@ -14,6 +14,8 @@ export const NOMBRES_ICONO = [
   'mas',
   'cerrar',
   'salir',
+  'flecha-izquierda',
+  'flecha-derecha',
 ] as const;
 
 export type NombreIcono = (typeof NOMBRES_ICONO)[number];
@@ -108,6 +110,14 @@ export type NombreIcono = (typeof NOMBRES_ICONO)[number];
           <path d="M14 4H6v16h8" />
           <path d="M10 12h11" />
           <path d="M18 9l3 3-3 3" />
+        }
+        @case ('flecha-izquierda') {
+          <path d="M19 12H5" />
+          <path d="M11 6l-6 6 6 6" />
+        }
+        @case ('flecha-derecha') {
+          <path d="M5 12h14" />
+          <path d="M13 6l6 6-6 6" />
         }
       }
     </svg>

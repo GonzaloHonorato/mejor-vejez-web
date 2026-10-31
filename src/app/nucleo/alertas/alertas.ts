@@ -1,10 +1,10 @@
 import { RespuestaAlerta, TipoAlerta } from './modelos-alertas';
 
-/** Etiquetas de `TipoAlerta` para mostrar en la bandeja y en el asunto del correo (regla 6/16 del plan). */
+/** Etiquetas de `TipoAlerta` que ve el usuario en la web: bandeja, detalle y panel. */
 export const ETIQUETA_TIPO_ALERTA: Record<TipoAlerta, string> = {
-  ATRASO_TAREA: 'Tarea sin confirmar',
+  ATRASO_TAREA: 'Tarea atrasada',
   REPOSICION_MEDICAMENTO: 'Reposición de medicamento',
-  CITA_PROXIMA: 'Cita médica próxima',
+  CITA_PROXIMA: 'Cita próxima',
 };
 
 /** Quién pide cerrar la alerta: el usuario autenticado y su rol en el grupo activo. */
@@ -14,7 +14,7 @@ export interface QuienCierra {
 }
 
 /**
- * Si `quien` puede cerrar `alerta` (regla 13 del plan): el coordinador del
+ * Si `quien` puede cerrar `alerta`: el coordinador del
  * grupo o el administrador, y solo mientras la alerta está ABIERTA
  * (`idEstadoAbierta`). Una alerta ya cerrada nunca se puede volver a cerrar.
  */
@@ -27,11 +27,11 @@ export function puedeCerrarAlerta(
   return esCoordinadorOAdministrador && alerta.idEstado === idEstadoAbierta;
 }
 
-/** Máximo de caracteres de la observación de cierre (regla 13 del plan). */
+/** Máximo de caracteres de la observación de cierre. */
 export const MAXIMO_CARACTERES_OBSERVACION = 500;
 
 /**
- * Si `texto` es una observación de cierre válida (regla 13 del plan): no
+ * Si `texto` es una observación de cierre válida: no
  * está en blanco después de `trim` y tiene a lo sumo
  * `MAXIMO_CARACTERES_OBSERVACION` caracteres.
  */

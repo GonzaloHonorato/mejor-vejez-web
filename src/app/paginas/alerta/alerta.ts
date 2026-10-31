@@ -13,16 +13,16 @@ import {
 import { RespuestaAlertaDetallada } from '../../nucleo/alertas/modelos-alertas';
 import { ServicioAlertas } from '../../nucleo/alertas/servicio-alertas';
 import { RespuestaEstadoCatalogo, ServicioCatalogos } from '../../nucleo/catalogos/servicio-catalogos';
-import { fechaEnSantiago, formatearFecha, formatearHora } from '../../nucleo/fechas';
+import { fechaHoraLegible } from '../../nucleo/fecha-legible';
 import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
 import { mensajeDeError } from '../../nucleo/http/mensaje-de-error';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
+import { Icono } from '../../compartido/icono/icono';
 
 /**
  * Página "Detalle de la alerta" (`/alertas/:idAlerta`): datos de la alerta,
  * sus intentos de notificación y, para el coordinador o el administrador
- * mientras está ABIERTA, el formulario de cierre (`puedeCerrarAlerta`,
- * Tarea 11).
+ * mientras está ABIERTA, el formulario de cierre (`puedeCerrarAlerta`).
  *
  * Sigue el mismo patrón de `paginas/tarea`/`paginas/ficha-adulto`: el
  * `idAlerta` viene fijo de la URL (`ActivatedRoute.snapshot`), y un
@@ -30,15 +30,15 @@ import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
  * el detalle; si el grupo activo cambia de verdad mientras se está viendo,
  * se vuelve a `/alertas` (nunca se muestran datos del grupo anterior).
  *
- * El enlace del correo (regla 16 del plan) manda `?grupo={idGrupo}`: si ese
- * grupo es distinto del activo pero está entre los grupos de la persona, se
- * selecciona antes de cargar (brief de la Tarea 11). Si no está entre sus
+ * El enlace del correo manda `?grupo={idGrupo}`: si ese grupo es distinto
+ * del activo pero está entre los grupos de la persona, se selecciona antes
+ * de cargar. Si no está entre sus
  * grupos, se deja el grupo activo igual: la API responde 404 para un id de
  * alerta de un grupo ajeno, y se muestra el mismo mensaje de "no existe".
  */
 @Component({
   selector: 'app-alerta',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, Icono],
   templateUrl: './alerta.html',
   styleUrl: './alerta.scss',
 })
@@ -54,6 +54,7 @@ export class Alerta implements OnInit {
   protected readonly activo = this.grupoActivo.activo;
   protected readonly etiquetaTipoAlerta = ETIQUETA_TIPO_ALERTA;
   protected readonly maximoCaracteresObservacion = MAXIMO_CARACTERES_OBSERVACION;
+  protected readonly fechaHoraLegible = fechaHoraLegible;
 
   private readonly idAlerta = Number(this.ruta.snapshot.paramMap.get('idAlerta'));
 
@@ -70,7 +71,7 @@ export class Alerta implements OnInit {
     () => this.estadosAlerta().find((estado) => estado.codigo === 'ABIERTA')?.idEstado ?? null,
   );
 
-  /** idEstado de "FALLIDO" en `INTENTO_NOTIFICACION/ESTADO_ENVIO"; null hasta que llegue el catálogo (corrección I2). */
+  /** idEstado de "FALLIDO" en `INTENTO_NOTIFICACION/ESTADO_ENVIO`; null hasta que llegue el catálogo. */
   private readonly idEstadoEnvioFallido = computed(
     () => this.estadosEnvio().find((estado) => estado.codigo === 'FALLIDO')?.idEstado ?? null,
   );
@@ -83,7 +84,7 @@ export class Alerta implements OnInit {
     esAdministrador: this.esAdministrador(),
   }));
 
-  /** Sólo el coordinador del grupo o el administrador, y sólo mientras la alerta está ABIERTA (regla 13 del plan). */
+  /** Sólo el coordinador del grupo o el administrador, y sólo mientras la alerta está ABIERTA. */
   protected readonly puedeCerrar = computed(() => {
     const alerta = this.detalle()?.alerta ?? null;
     const idAbierta = this.idEstadoAbierta();
@@ -175,19 +176,21 @@ export class Alerta implements OnInit {
     return this.estadosEnvio().find((estado) => estado.idEstado === idEstado)?.descripcion ?? '';
   }
 
-  /** La alerta está ABIERTA: la insignia de estado sale en tono de aviso, no de éxito (corrección I2). */
-  protected esEstadoAlertaAbierta(idEstado: number): boolean {
-    return idEstado === this.idEstadoAbierta();
+  /** Una alerta ABIERTA nunca sale en verde: no es un estado resuelto. */
+  protected tonoEstadoAlerta(idEstado: number): string {
+    if (this.idEstadoAbierta() === null) return '';
+    return idEstado === this.idEstadoAbierta() ? 'mv-chip--alerta' : 'mv-chip--exito';
   }
 
-  /** El intento de notificación FALLÓ: la insignia sale en tono de error, no de éxito (corrección I2). */
-  protected esEstadoEnvioFallido(idEstado: number): boolean {
-    return idEstado === this.idEstadoEnvioFallido();
+  /** Un intento FALLIDO sale en tono de peligro; los demás, de éxito. */
+  protected tonoEstadoEnvio(idEstado: number): string {
+    if (this.idEstadoEnvioFallido() === null) return '';
+    return idEstado === this.idEstadoEnvioFallido() ? 'mv-chip--peligro' : 'mv-chip--exito';
   }
 
-  /** Fecha y hora de Santiago de un instante ISO, listas para mostrar juntas (ver `Tarea.fechaHora`). */
-  protected fechaHora(iso: string): string {
-    return `${formatearFecha(fechaEnSantiago(iso))} ${formatearHora(iso)}`;
+  protected reintentar(): void {
+    const grupo = this.activo();
+    if (grupo) this.cargar(grupo.idGrupo);
   }
 
   protected contadorObservacion(): string {

@@ -1,75 +1,140 @@
-<div class="pagina">
-  <header class="cabecera">
-    <h1>Grupos</h1>
-  </header>
+<header class="mv-encabezado">
+  <div>
+    <p class="mv-encabezado__rotulo">Administración familiar</p>
+    <h1 class="mv-encabezado__titulo">Grupos</h1>
+    <p class="mv-encabezado__bajada">Elige el grupo con el que quieres trabajar.</p>
+  </div>
+  <div class="mv-encabezado__accion">
+    <button
+      id="grupos-abrir-crear"
+      type="button"
+      class="mv-boton mv-boton--primario"
+      aria-controls="grupos-crear"
+      [attr.aria-expanded]="formularioAbierto()"
+      (click)="alternarFormulario()"
+    >
+      Crear grupo
+    </button>
+  </div>
+</header>
 
-  <div class="contenido">
-    @if (error(); as mensaje) {
-      <p class="error" role="alert">{{ mensaje }}</p>
-    }
-    @if (grupoActivo.error(); as mensaje) {
-      <p class="error" role="alert">{{ mensaje }}</p>
-    }
+<div class="contenido">
+  @if (error(); as mensaje) {
+    <p class="mv-aviso mv-aviso--error" role="alert">{{ mensaje }}</p>
+  }
 
-    @if (esAdministrador()) {
-      <label class="interruptor">
-        <input
-          id="grupos-ver-todos"
-          class="interruptor__control"
-          type="checkbox"
-          [checked]="verTodos()"
-          (change)="alternarVerTodos()"
-        />
-        <span class="interruptor__etiqueta">Ver todos los grupos</span>
-      </label>
-    }
+  <div id="grupos-crear" class="registro">
+    @if (formularioAbierto()) {
+      <section class="mv-tarjeta" aria-labelledby="grupos-crear-titulo">
+        <div class="mv-tarjeta__cabecera">
+          <h2 id="grupos-crear-titulo" class="mv-tarjeta__titulo">Crear grupo</h2>
+        </div>
+        <form
+          class="mv-tarjeta__cuerpo formulario"
+          [formGroup]="formulario"
+          (ngSubmit)="crear()"
+          novalidate
+        >
+          @if (errorCrear(); as mensaje) {
+            <p class="mv-aviso mv-aviso--error" role="alert">{{ mensaje }}</p>
+          }
 
-    <ul class="lista">
-      @for (grupo of lista(); track grupo.idGrupo) {
-        <li class="grupo" [class.grupo--activo]="grupo.idGrupo === activo()?.idGrupo">
-          <div class="grupo__principal">
-            <p class="grupo__nombre">{{ grupo.nombreGrupo }}</p>
-            <p class="grupo__rol">
-              {{ grupo.miRol ? (grupo.miRol | titlecase) : 'Sin membresía' }}
-            </p>
+          <div class="mv-campo">
+            <label class="mv-campo__etiqueta" for="grupo-nombre">Nombre del grupo</label>
+            <input
+              id="grupo-nombre"
+              class="mv-campo__control"
+              type="text"
+              formControlName="nombreGrupo"
+            />
           </div>
 
-          <div class="grupo__acciones">
+          <p class="ayuda">Podrás agregar integrantes después de crear el grupo.</p>
+
+          <div class="botones">
+            <button type="button" class="mv-boton" (click)="cerrarFormulario()">Cancelar</button>
+            <button type="submit" class="mv-boton mv-boton--primario" [disabled]="creando()">
+              {{ creando() ? 'Creando…' : 'Crear grupo' }}
+            </button>
+          </div>
+        </form>
+      </section>
+    }
+  </div>
+
+  @if (esAdministrador()) {
+    <label class="mv-campo mv-campo--casilla">
+      <input
+        id="grupos-ver-todos"
+        type="checkbox"
+        [checked]="verTodos()"
+        (change)="alternarVerTodos()"
+      />
+      <span class="mv-campo__etiqueta">Ver todos los grupos</span>
+    </label>
+  }
+
+  @if (grupoActivo.error(); as mensaje) {
+    <div class="mv-aviso mv-aviso--error" role="alert">
+      <p>{{ mensaje }}</p>
+      <button type="button" class="mv-boton" (click)="reintentar()">Reintentar</button>
+    </div>
+  }
+
+  @if (cargando()) {
+    <div role="status" aria-live="polite">
+      <span class="oculto">Cargando grupos…</span>
+      <div class="esqueleto" aria-hidden="true">
+        <span class="mv-esqueleto mv-esqueleto--bloque"></span>
+        <span class="mv-esqueleto mv-esqueleto--bloque"></span>
+      </div>
+    </div>
+  } @else if (!grupoActivo.error() && lista().length === 0) {
+    <div class="mv-vacio" role="status">
+      <p class="mv-vacio__titulo">Todavía no perteneces a ningún grupo.</p>
+      <p class="mv-vacio__texto">Crea un grupo para empezar a organizar el cuidado.</p>
+    </div>
+  }
+
+  @if (lista().length > 0) {
+    <ul class="mv-lista lista-grupos" aria-label="Grupos familiares">
+      @for (grupo of lista(); track grupo.idGrupo) {
+        <li class="mv-fila grupo" [class.grupo--activo]="grupo.idGrupo === activo()?.idGrupo">
+          <div class="mv-fila__principal">
+            <p class="mv-fila__titulo">{{ grupo.nombreGrupo }}</p>
+            <p class="mv-fila__meta">{{ creadoEl(grupo) }}</p>
+          </div>
+
+          <span class="rol">
+            <span class="oculto">Mi rol: </span>
+            <span class="mv-chip">{{ grupo.miRol ? etiquetaRol(grupo.miRol) : 'Sin membresía' }}</span>
+          </span>
+
+          <div class="mv-fila__acciones">
             @if (grupo.idGrupo === activo()?.idGrupo) {
-              <span class="insignia">Grupo activo</span>
+              <span class="mv-chip mv-chip--info">Grupo activo</span>
             } @else if (grupo.miRol) {
-              <button type="button" class="boton boton--contorno" (click)="usar(grupo.idGrupo)">
-                Usar este grupo
+              <button
+                type="button"
+                class="mv-boton"
+                [attr.aria-label]="'Usar el grupo ' + grupo.nombreGrupo"
+                (click)="usar(grupo.idGrupo)"
+              >
+                Usar grupo
               </button>
             }
-            <a class="enlace" [routerLink]="['/grupos', grupo.idGrupo]">Ver integrantes</a>
+            <a
+              class="mv-boton mv-boton--texto"
+              [routerLink]="['/grupos', grupo.idGrupo]"
+              [attr.aria-label]="'Integrantes de ' + grupo.nombreGrupo"
+            >
+              Integrantes
+              <app-icono nombre="flecha-derecha" aria-hidden="true" />
+            </a>
           </div>
         </li>
       }
     </ul>
-
-    <section class="tarjeta" aria-labelledby="grupos-crear-titulo">
-      <h2 id="grupos-crear-titulo">Crear grupo</h2>
-
-      @if (errorCrear(); as mensaje) {
-        <p class="error" role="alert">{{ mensaje }}</p>
-      }
-
-      <form [formGroup]="formulario" (ngSubmit)="crear()" novalidate>
-        <div class="campo">
-          <label class="campo__etiqueta" for="grupo-nombre">Nombre del grupo</label>
-          <input
-            id="grupo-nombre"
-            class="campo__control"
-            type="text"
-            formControlName="nombreGrupo"
-          />
-        </div>
-
-        <button type="submit" class="boton boton--primario" [disabled]="creando()">
-          {{ creando() ? 'Creando…' : 'Crear grupo' }}
-        </button>
-      </form>
-    </section>
-  </div>
+    <p class="ayuda">Cada persona puede pertenecer a varios grupos y tener un rol distinto en cada uno.</p>
+  }
 </div>

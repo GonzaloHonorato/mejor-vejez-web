@@ -3,18 +3,22 @@
 
   @switch (estado()) {
     @case ('cargando') {
-      <p class="seccion-panel__mensaje" role="status">Cargando…</p>
+      <div role="status">
+        <span class="oculto">Cargando…</span>
+        <div class="seccion-panel__esqueleto" aria-hidden="true">
+          <span class="mv-esqueleto mv-esqueleto--bloque"></span>
+          <span class="mv-esqueleto"></span>
+        </div>
+      </div>
     }
     @case ('error') {
-      <div class="seccion-panel__aviso" role="alert">
-        <p class="seccion-panel__mensaje">No se pudo cargar esta sección.</p>
-        <button type="button" class="boton boton--contorno" (click)="alReintentar()">
-          Reintentar
-        </button>
+      <div class="mv-aviso mv-aviso--error" role="alert">
+        <p>No se pudo cargar esta sección.</p>
+        <button type="button" class="mv-boton" (click)="alReintentar()">Reintentar</button>
       </div>
     }
     @case ('vacio') {
-      <p class="seccion-panel__mensaje" role="status">{{ mensajeVacio() }}</p>
+      <p class="seccion-panel__vacio" role="status">{{ mensajeVacio() }}</p>
     }
     @case ('datos') {
       <ng-content></ng-content>
@@ -22,11 +26,9 @@
   }
 
   @if (desactualizada()) {
-    <div class="seccion-panel__aviso" role="alert">
-      <p class="seccion-panel__mensaje">No se pudo actualizar.</p>
-      <button type="button" class="boton boton--contorno" (click)="alReintentar()">
-        Reintentar
-      </button>
+    <div class="mv-aviso mv-aviso--alerta" role="alert">
+      <p>No se pudo actualizar.</p>
+      <button type="button" class="mv-boton" (click)="alReintentar()">Reintentar</button>
     </div>
   }
 </section>

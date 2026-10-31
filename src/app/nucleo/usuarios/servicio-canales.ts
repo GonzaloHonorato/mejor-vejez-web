@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 
 import { configuracionEjecucion } from '../configuracion/configuracion-ejecucion';
 
-/** Canales de notificación soportados (regla 17 del plan: CORREO siempre, WHATSAPP solo si tiene fila). */
+/** Canales de notificación soportados: CORREO siempre, WHATSAPP solo si tiene fila. */
 export type CanalNotificacion = 'CORREO' | 'WHATSAPP';
 
 /** Un canal operativo de `GET /api/yo/canales`. */
@@ -12,7 +12,7 @@ export interface RespuestaCanal {
   canal: CanalNotificacion;
   destino: string;
   habilitado: boolean;
-  /** `true` cuando el valor sale de la cuenta (`USUARIO.EMAIL`) y no de una fila propia (regla 17). */
+  /** `true` cuando el valor sale de la cuenta (`USUARIO.EMAIL`) y no de una fila propia. */
   predeterminado: boolean;
 }
 

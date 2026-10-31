@@ -1,0 +1,19 @@
+// Puntos de quiebre, celular primero: los estilos base son para celular
+// (390px) y estos mixins agregan reglas al crecer. Uso desde cualquier hoja:
+//   @use 'estilos/puntos-quiebre' as pq;
+//   .algo { @include pq.desde-tableta { … } }
+// No generan CSS por sí solos.
+$tableta: 768px;
+$escritorio: 1024px;
+
+@mixin desde-tableta {
+  @media (min-width: $tableta) {
+    @content;
+  }
+}
+
+@mixin desde-escritorio {
+  @media (min-width: $escritorio) {
+    @content;
+  }
+}

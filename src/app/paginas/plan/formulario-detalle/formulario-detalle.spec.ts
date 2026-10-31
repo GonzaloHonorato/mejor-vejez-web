@@ -16,7 +16,7 @@ import { ServicioMedicamentos } from '../../../nucleo/planificacion/servicio-med
 import { ServicioPlanes } from '../../../nucleo/planificacion/servicio-planes';
 
 const AVISO =
-  'Registra la indicación entregada por un profesional o cuidador autorizado. Mejor Vejez no prescribe ni recomienda dosis.';
+  'Registra la indicación entregada por un profesional o cuidador autorizado. Cuida+ no prescribe ni recomienda dosis.';
 
 const PRESENTACIONES: RespuestaOpcionCatalogo[] = [
   { idOpcion: 211, codigo: 'COMPRIMIDO', descripcion: 'Comprimido', orden: 1 },

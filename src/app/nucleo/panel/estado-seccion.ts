@@ -2,16 +2,16 @@ import { signal } from '@angular/core';
 import { Observable, Subscription } from 'rxjs';
 
 /**
- * Intervalo de refresco silencioso del panel (regla 10 del plan): cada 2
+ * Intervalo de refresco silencioso del panel: cada 2
  * minutos, y solo mientras la pestaña está visible.
  */
 export const INTERVALO_REFRESCO_MS = 120_000;
 
-/** Estado de carga de una sección del panel (regla 9 del plan). */
+/** Estado de carga de una sección del panel. */
 export type EstadoCarga = 'cargando' | 'datos' | 'vacio' | 'error';
 
 /**
- * Estado de una sección del panel familiar (regla 9 del plan). NO es un
+ * Estado de una sección del panel familiar. NO es un
  * servicio: se instancia sin inyección (`new EstadoSeccion<T>()`), una por
  * sección, porque cada sección tiene su propia fuente de datos.
  *
@@ -53,7 +53,7 @@ export class EstadoSeccion<T> {
    * Repite la última fuente pasada a `cargar` (botón "Reintentar"). Si la
    * sección ya tiene datos (estado `'datos'` o `'vacio'`, es decir, está
    * `desactualizada` tras un refresco fallido), delega en `refrescar()`: así
-   * nunca borra los datos que el refresco silencioso conservó (I-1). Si no
+   * nunca borra los datos que el refresco silencioso conservó. Si no
    * hay datos (estado `'error'`), repite desde cero como `cargar`.
    */
   reintentar(): void {
@@ -69,7 +69,7 @@ export class EstadoSeccion<T> {
   }
 
   /**
-   * Refresco silencioso (regla 10 del plan): si ya hay datos ('datos' o
+   * Refresco silencioso: si ya hay datos ('datos' o
    * 'vacio'), no cambia a "cargando" mientras espera. Si falla, conserva los
    * datos actuales y marca `desactualizada`; si tiene éxito, la quita.
    */
@@ -82,7 +82,7 @@ export class EstadoSeccion<T> {
 
   /**
    * Vuelve a "cargando", borra los datos, invalida las respuestas en vuelo y
-   * olvida la última fuente (M-2): sin una `cargar()` posterior, `refrescar()`
+   * olvida la última fuente: sin una `cargar()` posterior, `refrescar()`
    * y `reintentar()` no deben repetir la fuente del grupo/adulto anterior.
    */
   limpiar(): void {
@@ -104,7 +104,7 @@ export class EstadoSeccion<T> {
    * `desactualizada` en vez de pasar a "error").
    *
    * OJO: no lee ninguna señal propia antes de suscribirse (solo escribe). Si
-   * `cargar()` corre dentro del `effect()` de la página (regla 11), leer una
+   * `cargar()` corre dentro del `effect()` de la página, leer una
    * señal acá quedaría registrada como dependencia de ESE effect, y una
    * escritura posterior (p.ej. el error de esta misma carga) lo volvería a
    * disparar: reiniciaría las 5 secciones en bucle. Por eso `teniaDatos` se

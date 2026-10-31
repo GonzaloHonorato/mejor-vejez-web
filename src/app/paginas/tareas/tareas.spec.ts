@@ -258,7 +258,7 @@ describe('Tareas', () => {
     expect(elemento.textContent).toContain('Atrasada');
   });
 
-  it('verDetalleTieneNombreAccesibleUnicoConElTituloYLaHora', async () => {
+  it('elTituloEnlazaAlDetalleConNombreAccesibleUnicoConElTituloYLaHora', async () => {
     const { elemento } = await configurar({
       tareasIniciales: [
         tarea({ idTarea: 1, titulo: 'Comprar Losartán', fechaHorario: '2026-11-02T11:00:00Z' }),
@@ -266,12 +266,16 @@ describe('Tareas', () => {
       ],
     });
 
-    const enlaces = Array.from(elemento.querySelectorAll('a')).filter((a) =>
-      a.textContent?.includes('Ver detalle'),
-    );
+    const enlaces = Array.from(elemento.querySelectorAll<HTMLAnchorElement>('.lista-tareas a.mv-fila__titulo'));
     expect(enlaces).toHaveLength(2);
-    expect(enlaces[0].getAttribute('aria-label')).toBe('Ver detalle: Comprar Losartán, 08:00');
-    expect(enlaces[1].getAttribute('aria-label')).toBe('Ver detalle: Control con geriatra, 10:00');
+    expect(enlaces[0].textContent?.trim()).toBe('Comprar Losartán');
+    expect(enlaces[0].getAttribute('href')).toBe('/tareas/1');
+    expect(enlaces[0].getAttribute('aria-label')).toBe('Comprar Losartán, 08:00');
+    expect(enlaces[1].getAttribute('href')).toBe('/tareas/2');
+    expect(enlaces[1].getAttribute('aria-label')).toBe('Control con geriatra, 10:00');
+    expect(Array.from(elemento.querySelectorAll('a')).some((a) => a.textContent?.includes('Ver detalle'))).toBe(
+      false,
+    );
   });
 
   it('nuevaTareaVisibleSoloParaElCoordinador', async () => {
@@ -288,5 +292,243 @@ describe('Tareas', () => {
       a.textContent?.includes('Nueva tarea'),
     );
     expect(enlaceColaborador).toBeUndefined();
+  });
+
+  it('fechaGrandeLegibleConElDiaYElMes', async () => {
+    const { elemento } = await configurar({ queryParams: { fecha: '2026-10-31' } });
+
+    const titulo = elemento.querySelector('.navegador-fecha h2')!;
+    expect(titulo.textContent).toContain('Sábado, 31 de octubre');
+  });
+
+  it('marcaHoyCuandoLaFechaEsLaDeHoy', async () => {
+    const hoy = await configurar({});
+    expect(hoy.elemento.querySelector('.navegador-fecha h2')?.textContent).toContain('Hoy');
+
+    TestBed.resetTestingModule();
+    const otroDia = await configurar({ queryParams: { fecha: sumarDias(hoyEnSantiago(), 3) } });
+    expect(otroDia.elemento.querySelector('.navegador-fecha h2')?.textContent).not.toContain('Hoy');
+  });
+
+  it('anteriorYSiguienteLlevanIconoDeFlecha', async () => {
+    const { elemento } = await configurar({});
+    const botones = Array.from(elemento.querySelectorAll('.navegador-fecha button'));
+    const anterior = botones.find((b) => b.textContent?.trim() === 'Anterior')!;
+    const siguiente = botones.find((b) => b.textContent?.trim() === 'Siguiente')!;
+
+    expect(anterior.querySelector('app-icono svg')).toBeTruthy();
+    expect(siguiente.querySelector('app-icono svg')).toBeTruthy();
+  });
+
+  it('indicadoresCuentanPendientesAtrasadasCompletadasYTotalDeLaListaCargada', async () => {
+    const { elemento } = await configurar({
+      tareasIniciales: [
+        tarea({ idTarea: 1, idEstado: 10, atrasada: true }),
+        tarea({ idTarea: 2, idEstado: 10 }),
+        tarea({ idTarea: 3, idEstado: 11, atrasada: true }),
+        tarea({ idTarea: 4, idEstado: 12 }),
+        tarea({ idTarea: 5, idEstado: 13 }),
+      ],
+    });
+
+    const indicadores = Array.from(elemento.querySelectorAll('.mv-indicadores li')).map((li) =>
+      li.textContent?.replace(/\s+/g, ' ').trim(),
+    );
+    expect(indicadores).toEqual(['2 pendientes', '2 atrasadas', '1 completada', '5 en total del día']);
+  });
+
+  it('filtroDeEstadoEsLocalYUsaLosCodigosDelCatalogo', async () => {
+    const { fixture, elemento, servicioTareas } = await configurar({
+      tareasIniciales: [
+        tarea({ idTarea: 1, idEstado: 10, titulo: 'Tarea pendiente' }),
+        tarea({ idTarea: 2, idEstado: 11, titulo: 'Tarea en curso' }),
+      ],
+    });
+    servicioTareas.listar.mockClear();
+
+    const select = elemento.querySelector<HTMLSelectElement>('#tareas-filtro-estado')!;
+    const opciones = Array.from(select.options).map((o) => o.value);
+    expect(opciones).toEqual(['', 'PENDIENTE', 'EN_CURSO', 'COMPLETADA', 'NO_REALIZADA', 'CANCELADA']);
+
+    select.value = 'EN_CURSO';
+    select.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+
+    const titulos = Array.from(elemento.querySelectorAll('.lista-tareas .mv-fila__titulo')).map((p) =>
+      p.textContent?.trim(),
+    );
+    expect(titulos).toEqual(['Tarea en curso']);
+    expect(servicioTareas.listar).not.toHaveBeenCalled();
+  });
+
+  it('busquedaLocalPorTituloAdultoOResponsableSinAcentosNiMayusculas', async () => {
+    const { fixture, elemento, servicioTareas } = await configurar({
+      tareasIniciales: [
+        tarea({ idTarea: 1, titulo: 'Comprar Losartán', nombreAdulto: 'Rosa González' }),
+        tarea({
+          idTarea: 2,
+          titulo: 'Control con geriatra',
+          nombreAdulto: 'Carlos Muñoz',
+          responsable: { idUsuario: 7, nombre: 'Patricia Silva' },
+        }),
+      ],
+    });
+    servicioTareas.listar.mockClear();
+    const buscar = elemento.querySelector<HTMLInputElement>('#tareas-buscar')!;
+    const titulosVisibles = () =>
+      Array.from(elemento.querySelectorAll('.lista-tareas .mv-fila__titulo')).map((p) => p.textContent?.trim());
+
+    for (const [texto, esperado] of [
+      ['LOSARTAN', ['Comprar Losartán']],
+      ['munoz', ['Control con geriatra']],
+      ['patricia', ['Control con geriatra']],
+      ['gonzalez', ['Comprar Losartán']],
+    ] as const) {
+      buscar.value = texto;
+      buscar.dispatchEvent(new Event('input'));
+      await fixture.whenStable();
+      expect(titulosVisibles(), texto).toEqual(esperado);
+    }
+    expect(servicioTareas.listar).not.toHaveBeenCalled();
+  });
+
+  it('filtrosSinResultadosOfrecenLimpiarFiltros', async () => {
+    const { fixture, elemento } = await configurar({
+      tareasIniciales: [tarea({ idTarea: 1, titulo: 'Comprar Losartán' })],
+    });
+    const buscar = elemento.querySelector<HTMLInputElement>('#tareas-buscar')!;
+    buscar.value = 'nada que coincida';
+    buscar.dispatchEvent(new Event('input'));
+    await fixture.whenStable();
+
+    expect(elemento.textContent).toContain('Ninguna tarea coincide con los filtros.');
+    expect(elemento.textContent).not.toContain('No hay tareas para este día.');
+    const limpiar = Array.from(elemento.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Limpiar filtros',
+    )!;
+    limpiar.click();
+    await fixture.whenStable();
+
+    expect(buscar.value).toBe('');
+    expect(elemento.querySelectorAll('.lista-tareas .mv-fila')).toHaveLength(1);
+  });
+
+  it('limpiarFiltrosTambienQuitaAdultoYSoloMisTareas', async () => {
+    const hoy = hoyEnSantiago();
+    const { fixture, elemento, servicioTareas, router } = await configurar({
+      tareasIniciales: [],
+      queryParams: { idAdulto: '1' },
+    });
+    const navegar = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    elemento.querySelector<HTMLInputElement>('#tareas-solo-mias')!.click();
+    await fixture.whenStable();
+    servicioTareas.listar.mockClear();
+
+    const limpiar = Array.from(elemento.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Limpiar filtros',
+    )!;
+    limpiar.click();
+    await fixture.whenStable();
+
+    expect(servicioTareas.listar).toHaveBeenLastCalledWith(1, {
+      desde: hoy,
+      hasta: hoy,
+      idAdulto: undefined,
+      soloMias: false,
+    });
+    expect(navegar).toHaveBeenCalledWith([], expect.objectContaining({ queryParams: { idAdulto: null } }));
+  });
+
+  it('mientrasCargaMuestraElEsqueleto', async () => {
+    const { elemento } = await configurar({ listarImpl: () => new Subject<RespuestaTarea[]>() });
+
+    const estado = elemento.querySelector('[role="status"]')!;
+    expect(estado.textContent).toContain('Cargando tareas');
+    expect(estado.querySelector('.mv-esqueleto')).toBeTruthy();
+  });
+
+  it('cadaTareaMuestraHoraTipoAdultoResponsableYChipAtrasadaEnPeligro', async () => {
+    const { elemento } = await configurar({
+      tareasIniciales: [
+        tarea({
+          fechaHorario: '2026-11-02T11:00:00Z',
+          tipoTarea: 'CITAS_CONTROLES_MEDICOS',
+          responsable: { idUsuario: 7, nombre: 'Patricia Silva' },
+          atrasada: true,
+        }),
+      ],
+    });
+
+    const fila = elemento.querySelector('.lista-tareas .mv-fila')!;
+    expect(fila.querySelector('.mv-fila__dato')?.textContent?.trim()).toBe('08:00');
+    expect(fila.textContent).toContain('Cita o control médico');
+    expect(fila.textContent).toContain('Rosa González');
+    expect(fila.textContent).toContain('Patricia Silva');
+    expect(fila.querySelector('.mv-chip--peligro')?.textContent?.trim()).toBe('Atrasada');
+    expect(fila.querySelector('.mv-chip--alerta')?.textContent?.trim()).toBe('Pendiente');
+    const detalle = fila.querySelector<HTMLAnchorElement>('a.mv-fila__titulo')!;
+    expect(detalle.getAttribute('href')).toBe('/tareas/1');
+  });
+
+  it('nuevaTareaEsElBotonPrincipalDelEncabezado', async () => {
+    const { elemento } = await configurar({ activo: grupo(1, 'COORDINADOR') });
+
+    const enlace = elemento.querySelector<HTMLAnchorElement>('.mv-encabezado a.mv-boton--primario');
+    expect(enlace?.textContent).toContain('Nueva tarea');
+  });
+
+  it('enCelularLosFiltrosSecundariosSeAbrenConElBotonFiltros', async () => {
+    const { fixture, elemento } = await configurar({});
+    const boton = Array.from(elemento.querySelectorAll('button')).find((b) =>
+      b.textContent?.trim().startsWith('Filtros'),
+    )!;
+    const panel = elemento.querySelector<HTMLElement>(`#${boton.getAttribute('aria-controls')}`)!;
+
+    expect(elemento.querySelector('#tareas-buscar')!.closest('#' + panel.id)).toBeNull();
+    expect(panel.querySelector('#tareas-filtro-adulto')).toBeTruthy();
+    expect(panel.querySelector('#tareas-filtro-estado')).toBeTruthy();
+    expect(panel.querySelector('#tareas-solo-mias')).toBeTruthy();
+    expect(boton.getAttribute('aria-expanded')).toBe('false');
+    expect(panel.classList).not.toContain('abierto');
+
+    boton.click();
+    await fixture.whenStable();
+    expect(boton.getAttribute('aria-expanded')).toBe('true');
+    expect(panel.classList).toContain('abierto');
+
+    boton.click();
+    await fixture.whenStable();
+    expect(boton.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('elBotonFiltrosCuentaLosFiltrosActivosQueEsconde', async () => {
+    const { fixture, elemento } = await configurar({ queryParams: { idAdulto: '1' } });
+    const textoBoton = () =>
+      Array.from(elemento.querySelectorAll('button'))
+        .find((b) => b.textContent?.trim().startsWith('Filtros'))!
+        .textContent?.replace(/\s+/g, ' ')
+        .trim();
+    expect(textoBoton()).toBe('Filtros (1)');
+
+    const estado = elemento.querySelector<HTMLSelectElement>('#tareas-filtro-estado')!;
+    estado.value = 'PENDIENTE';
+    estado.dispatchEvent(new Event('change'));
+    elemento.querySelector<HTMLInputElement>('#tareas-solo-mias')!.click();
+    await fixture.whenStable();
+    expect(textoBoton()).toBe('Filtros (3)');
+
+    const buscar = elemento.querySelector<HTMLInputElement>('#tareas-buscar')!;
+    buscar.value = 'losartan';
+    buscar.dispatchEvent(new Event('input'));
+    await fixture.whenStable();
+    expect(textoBoton()).toBe('Filtros (3)');
+  });
+
+  it('sinFiltrosActivosElBotonDiceSoloFiltros', async () => {
+    const { elemento } = await configurar({});
+    const boton = Array.from(elemento.querySelectorAll('button')).find((b) =>
+      b.textContent?.trim().startsWith('Filtros'),
+    )!;
+    expect(boton.textContent?.trim()).toBe('Filtros');
   });
 });

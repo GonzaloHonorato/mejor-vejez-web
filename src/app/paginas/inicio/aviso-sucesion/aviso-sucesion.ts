@@ -9,11 +9,11 @@ import { ServicioSucesion } from '../../../nucleo/sucesion/servicio-sucesion';
 import { ServicioYo } from '../../../nucleo/usuarios/servicio-yo';
 
 /**
- * Aviso de sucesión en Inicio (regla 25 del plan, HU-13): solo se muestra
+ * Aviso de sucesión en Inicio: solo se muestra
  * si la persona es el candidato de una propuesta PENDIENTE del grupo
  * activo, con Aceptar y Rechazar. Al responder, los botones se ocultan (la
  * propuesta deja de estar PENDIENTE) y se deja una confirmación en
- * `role="status"` en su lugar (M-8 de la revisión: sin ella, la persona no
+ * `role="status"` en su lugar (sin ella, la persona no
  * sabe si se guardó); el resto del flujo vive en la sección de sucesión de
  * Integrantes.
  *
@@ -39,7 +39,7 @@ export class AvisoSucesion {
   private readonly idUsuario = signal<number | null>(null);
   protected readonly procesando = signal(false);
   protected readonly error = signal<string | null>(null);
-  /** Confirmación tras Aceptar/Rechazar (M-8); se limpia en cada `cargar()` (grupo nuevo). */
+  /** Confirmación tras Aceptar/Rechazar; se limpia en cada `cargar()` (grupo nuevo). */
   protected readonly confirmacion = signal<string | null>(null);
 
   /** La propuesta a mostrar: PENDIENTE y con la persona como candidato. */

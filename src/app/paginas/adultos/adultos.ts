@@ -1,19 +1,34 @@
-import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
+import {
+  Component,
+  Injector,
+  OnInit,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 
-import { edadEnAnios } from '../../nucleo/adultos/edad';
+import { inicialesDe } from '../../compartido/marco-app/identidad-usuario';
 import { RespuestaAdultoMayor } from '../../nucleo/adultos/modelos-adultos';
 import { AVISO_OPERATIVO, puedeAdministrarGrupo } from '../../nucleo/adultos/permisos-adultos';
 import { ServicioAdultos } from '../../nucleo/adultos/servicio-adultos';
 import { ServicioCatalogos } from '../../nucleo/catalogos/servicio-catalogos';
 import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
-import { erroresDeCampos, mensajeDeCampo, mensajeDeError } from '../../nucleo/http/mensaje-de-error';
+import { detalleAdulto } from './detalle-adulto';
+import {
+  erroresDeCampos,
+  mensajeDeCampo,
+  mensajeDeError,
+} from '../../nucleo/http/mensaje-de-error';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
 
 /**
  * Página "Adultos mayores" (`/adultos`): lista de perfiles del grupo activo,
- * con su contacto principal, y el formulario de alta para quien administra.
+ * con su contacto principal, y el formulario de alta (plegado tras la acción
+ * principal) para quien administra.
  * Siempre trabaja sobre `ServicioGrupoActivo.activo()`: un `effect` recarga
  * la lista (o la limpia) cada vez que el grupo activo o el filtro de
  * inactivos cambian.
@@ -30,6 +45,7 @@ export class Adultos implements OnInit {
   private readonly servicioCatalogos = inject(ServicioCatalogos);
   private readonly router = inject(Router);
   private readonly fb = inject(NonNullableFormBuilder);
+  private readonly injector = inject(Injector);
 
   protected readonly grupoActivo = inject(ServicioGrupoActivo);
   protected readonly activo = this.grupoActivo.activo;
@@ -41,6 +57,7 @@ export class Adultos implements OnInit {
   protected readonly mostrarInactivos = signal(false);
   protected readonly esAdministrador = signal(false);
   protected readonly creando = signal(false);
+  protected readonly formularioAbierto = signal(false);
   protected readonly errorGeneral = signal<string | null>(null);
   protected readonly erroresCampos = signal<Record<string, string>>({});
 
@@ -51,6 +68,11 @@ export class Adultos implements OnInit {
   protected readonly puedeAdministrar = computed(() =>
     puedeAdministrarGrupo(this.activo()?.miRol, this.esAdministrador()),
   );
+
+  protected readonly cuenta = computed(() => {
+    const total = this.adultos().length;
+    return `${total} ${total === 1 ? 'adulto mayor' : 'adultos mayores'}`;
+  });
 
   protected readonly formulario = this.fb.group({
     nombreCompleto: ['', Validators.required],
@@ -96,13 +118,49 @@ export class Adultos implements OnInit {
     });
   }
 
-  protected edad(adulto: RespuestaAdultoMayor): number | null {
-    return edadEnAnios(adulto.fechaNacimiento);
+  protected iniciales(adulto: RespuestaAdultoMayor): string {
+    return inicialesDe(adulto.nombreCompleto);
+  }
+
+  protected readonly detalle = detalleAdulto;
+
+  /** Nombre accesible del enlace a la ficha; el código lo distingue de un homónimo. */
+  protected etiquetaFicha(adulto: RespuestaAdultoMayor): string {
+    const codigo = adulto.codigoInterno ? `, código ${adulto.codigoInterno}` : '';
+    return `Ver ficha de ${adulto.nombreCompleto}${codigo}`;
   }
 
   protected estaInactivo(adulto: RespuestaAdultoMayor): boolean {
     const idEstadoInactivo = this.idEstadoInactivo();
     return idEstadoInactivo !== null && adulto.idEstado === idEstadoInactivo;
+  }
+
+  /** Sin el catálogo no se sabe qué idEstado es "inactivo": no se afirma ningún estado. */
+  protected conoceEstado(): boolean {
+    return this.idEstadoInactivo() !== null;
+  }
+
+  protected alternarFormulario(): void {
+    const abrir = !this.formularioAbierto();
+    this.formularioAbierto.set(abrir);
+    this.enfocar(abrir ? 'adulto-nombre' : 'adultos-abrir-alta');
+  }
+
+  protected cerrarFormulario(): void {
+    this.formularioAbierto.set(false);
+    this.formulario.reset();
+    this.errorGeneral.set(null);
+    this.erroresCampos.set({});
+    this.enfocar('adultos-abrir-alta');
+  }
+
+  private enfocar(id: string): void {
+    afterNextRender(() => document.getElementById(id)?.focus(), { injector: this.injector });
+  }
+
+  protected reintentar(): void {
+    const grupo = this.activo();
+    if (grupo) this.cargar(grupo.idGrupo, this.mostrarInactivos());
   }
 
   protected alternarMostrarInactivos(): void {

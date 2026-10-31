@@ -1,137 +1,214 @@
-<div class="pagina">
-  <header class="cabecera">
-    <h1>Adultos mayores</h1>
-  </header>
+<header class="mv-encabezado">
+  <div>
+    <p class="mv-encabezado__rotulo">Cuidado familiar</p>
+    <h1 class="mv-encabezado__titulo">Adultos mayores</h1>
+    <p class="mv-encabezado__bajada">
+      Consulta y administra los perfiles de las personas a tu cuidado.
+    </p>
+  </div>
+  @if (activo() && puedeAdministrar()) {
+    <div class="mv-encabezado__accion">
+      <button
+        id="adultos-abrir-alta"
+        type="button"
+        class="mv-boton mv-boton--primario"
+        aria-controls="adultos-alta"
+        [attr.aria-expanded]="formularioAbierto()"
+        (click)="alternarFormulario()"
+      >
+        Agregar adulto mayor
+      </button>
+    </div>
+  }
+</header>
 
-  <div class="contenido">
-    @if (!activo()) {
-      <section class="tarjeta tarjeta--suave" aria-labelledby="adultos-sin-grupo-titulo">
-        <h2 id="adultos-sin-grupo-titulo" class="tarjeta__titulo">Primero crea o elige un grupo.</h2>
-        <a class="boton boton--contorno" routerLink="/grupos">Ir a grupos</a>
-      </section>
-    } @else {
-      @if (error(); as mensaje) {
-        <p class="error" role="alert">{{ mensaje }}</p>
-      }
+<div class="contenido">
+  @if (!activo()) {
+    <section class="mv-tarjeta" aria-labelledby="adultos-sin-grupo-titulo">
+      <div class="mv-tarjeta__cuerpo sin-grupo">
+        <h2 id="adultos-sin-grupo-titulo" class="mv-tarjeta__titulo">
+          Primero crea o elige un grupo.
+        </h2>
+        <a class="mv-boton" routerLink="/grupos">Ir a grupos</a>
+      </div>
+    </section>
+  } @else {
+    <div id="adultos-alta" class="alta">
+      @if (puedeAdministrar() && formularioAbierto()) {
+        <section class="mv-tarjeta" aria-labelledby="adultos-agregar-titulo">
+          <div class="mv-tarjeta__cabecera">
+            <h2 id="adultos-agregar-titulo" class="mv-tarjeta__titulo">Nuevo adulto mayor</h2>
+          </div>
+          <div class="mv-tarjeta__cuerpo">
+            <form class="formulario" [formGroup]="formulario" (ngSubmit)="crear()" novalidate>
+              <div class="mv-aviso mv-aviso--alerta">
+                <p>{{ avisoOperativo }}</p>
+              </div>
 
-      <label class="interruptor">
-        <input
-          id="adultos-mostrar-inactivos"
-          class="interruptor__control"
-          type="checkbox"
-          [checked]="mostrarInactivos()"
-          (change)="alternarMostrarInactivos()"
-        />
-        <span class="interruptor__etiqueta">Mostrar inactivos</span>
-      </label>
+              @if (errorGeneral(); as mensaje) {
+                <p class="mv-aviso mv-aviso--error" role="alert">{{ mensaje }}</p>
+              }
 
-      @if (!cargando() && adultos().length === 0) {
-        <p class="vacio">Aún no hay adultos mayores registrados en este grupo.</p>
-      }
-
-      <ul class="lista">
-        @for (adulto of adultos(); track adulto.idAdultoMayor) {
-          <li class="tarjeta-adulto" [class.tarjeta-adulto--inactivo]="estaInactivo(adulto)">
-            <div class="tarjeta-adulto__principal">
-              <p class="tarjeta-adulto__nombre">
-                {{ adulto.nombreCompleto }}
-                @if (edad(adulto) !== null) {
-                  <span class="tarjeta-adulto__edad">· {{ edad(adulto) }} años</span>
+              <div class="mv-campo">
+                <label class="mv-campo__etiqueta" for="adulto-nombre">Nombre completo</label>
+                <input
+                  id="adulto-nombre"
+                  class="mv-campo__control"
+                  type="text"
+                  formControlName="nombreCompleto"
+                  [attr.aria-invalid]="mensajeCampoNombre() ? true : null"
+                  [attr.aria-describedby]="mensajeCampoNombre() ? 'adulto-nombre-error' : null"
+                />
+                @if (mensajeCampoNombre(); as mensaje) {
+                  <p id="adulto-nombre-error" class="mv-campo__error" role="alert">
+                    {{ mensaje }}
+                  </p>
                 }
-              </p>
+              </div>
 
-              @if (adulto.contactoPrincipal; as contacto) {
-                <p class="tarjeta-adulto__contacto">
-                  {{ contacto.nombreContacto }}
-                  @if (contacto.parentesco) {
-                    <span class="tarjeta-adulto__parentesco">({{ contacto.parentesco }})</span>
-                  }
-                  <a class="tarjeta-adulto__telefono" [href]="'tel:' + contacto.telefono">{{
-                    contacto.telefono
-                  }}</a>
-                </p>
-              } @else {
-                <p class="tarjeta-adulto__contacto tarjeta-adulto__contacto--vacio">
-                  Sin contacto principal
-                </p>
-              }
-            </div>
+              <div class="mv-campo">
+                <label class="mv-campo__etiqueta" for="adulto-codigo">Código interno</label>
+                <input
+                  id="adulto-codigo"
+                  class="mv-campo__control"
+                  type="text"
+                  formControlName="codigoInterno"
+                  [attr.aria-invalid]="erroresCampos()['codigoInterno'] ? true : null"
+                  [attr.aria-describedby]="
+                    erroresCampos()['codigoInterno'] ? 'adulto-codigo-error' : null
+                  "
+                />
+                @if (erroresCampos()['codigoInterno']; as mensaje) {
+                  <p id="adulto-codigo-error" class="mv-campo__error" role="alert">
+                    {{ mensaje }}
+                  </p>
+                }
+              </div>
 
-            <div class="tarjeta-adulto__acciones">
-              @if (estaInactivo(adulto)) {
-                <span class="insignia insignia--inactiva">Inactivo</span>
-              }
-              <a class="enlace" [routerLink]="['/adultos', adulto.idAdultoMayor]">Ver ficha</a>
-            </div>
-          </li>
-        }
-      </ul>
+              <div class="mv-campo">
+                <label class="mv-campo__etiqueta" for="adulto-fecha-nacimiento"
+                  >Fecha de nacimiento</label
+                >
+                <input
+                  id="adulto-fecha-nacimiento"
+                  class="mv-campo__control"
+                  type="date"
+                  formControlName="fechaNacimiento"
+                  [attr.aria-invalid]="erroresCampos()['fechaNacimiento'] ? true : null"
+                  [attr.aria-describedby]="
+                    erroresCampos()['fechaNacimiento'] ? 'adulto-fecha-nacimiento-error' : null
+                  "
+                />
+                @if (erroresCampos()['fechaNacimiento']; as mensaje) {
+                  <p
+                    id="adulto-fecha-nacimiento-error"
+                    class="mv-campo__error"
+                    role="alert"
+                  >
+                    {{ mensaje }}
+                  </p>
+                }
+              </div>
 
-      @if (puedeAdministrar()) {
-        <section class="tarjeta" aria-labelledby="adultos-agregar-titulo">
-          <h2 id="adultos-agregar-titulo">Agregar adulto mayor</h2>
-          <p class="aviso">{{ avisoOperativo }}</p>
-
-          @if (errorGeneral(); as mensaje) {
-            <p class="error" role="alert">{{ mensaje }}</p>
-          }
-
-          <form [formGroup]="formulario" (ngSubmit)="crear()" novalidate>
-            <div class="campo">
-              <label class="campo__etiqueta" for="adulto-nombre">Nombre completo</label>
-              <input
-                id="adulto-nombre"
-                class="campo__control"
-                type="text"
-                formControlName="nombreCompleto"
-                [attr.aria-invalid]="mensajeCampoNombre() ? true : null"
-                [attr.aria-describedby]="mensajeCampoNombre() ? 'adulto-nombre-error' : null"
-              />
-              @if (mensajeCampoNombre(); as mensaje) {
-                <p id="adulto-nombre-error" class="error" role="alert">{{ mensaje }}</p>
-              }
-            </div>
-
-            <div class="campo">
-              <label class="campo__etiqueta" for="adulto-codigo">Código interno</label>
-              <input
-                id="adulto-codigo"
-                class="campo__control"
-                type="text"
-                formControlName="codigoInterno"
-                [attr.aria-invalid]="erroresCampos()['codigoInterno'] ? true : null"
-                [attr.aria-describedby]="
-                  erroresCampos()['codigoInterno'] ? 'adulto-codigo-error' : null
-                "
-              />
-              @if (erroresCampos()['codigoInterno']; as mensaje) {
-                <p id="adulto-codigo-error" class="error" role="alert">{{ mensaje }}</p>
-              }
-            </div>
-
-            <div class="campo">
-              <label class="campo__etiqueta" for="adulto-fecha-nacimiento">Fecha de nacimiento</label>
-              <input
-                id="adulto-fecha-nacimiento"
-                class="campo__control"
-                type="date"
-                formControlName="fechaNacimiento"
-                [attr.aria-invalid]="erroresCampos()['fechaNacimiento'] ? true : null"
-                [attr.aria-describedby]="
-                  erroresCampos()['fechaNacimiento'] ? 'adulto-fecha-nacimiento-error' : null
-                "
-              />
-              @if (erroresCampos()['fechaNacimiento']; as mensaje) {
-                <p id="adulto-fecha-nacimiento-error" class="error" role="alert">{{ mensaje }}</p>
-              }
-            </div>
-
-            <button type="submit" class="boton boton--primario" [disabled]="creando()">
-              {{ creando() ? 'Agregando…' : 'Agregar adulto mayor' }}
-            </button>
-          </form>
+              <div class="botones">
+                <button
+                  type="button"
+                  class="mv-boton"
+                  [disabled]="creando()"
+                  (click)="cerrarFormulario()"
+                >
+                  Cancelar
+                </button>
+                <button type="submit" class="mv-boton mv-boton--primario" [disabled]="creando()">
+                  {{ creando() ? 'Agregando…' : 'Guardar adulto mayor' }}
+                </button>
+              </div>
+            </form>
+          </div>
         </section>
       }
-    }
-  </div>
+    </div>
+
+    <label class="mv-campo mv-campo--casilla">
+      <input
+        id="adultos-mostrar-inactivos"
+        type="checkbox"
+        [checked]="mostrarInactivos()"
+        (change)="alternarMostrarInactivos()"
+      />
+      <span class="mv-campo__etiqueta">Mostrar adultos inactivos</span>
+    </label>
+
+    <section class="listado" aria-labelledby="adultos-lista-titulo">
+      <div class="listado__cabecera">
+        <h2 id="adultos-lista-titulo">Perfiles del grupo</h2>
+        @if (!cargando() && !error()) {
+          <span class="cuenta">{{ cuenta() }}</span>
+        }
+      </div>
+
+      @if (cargando()) {
+        <div role="status" aria-live="polite">
+          <span class="oculto">Cargando adultos mayores…</span>
+          <div class="esqueleto" aria-hidden="true">
+            <span class="mv-esqueleto mv-esqueleto--bloque"></span>
+            <span class="mv-esqueleto mv-esqueleto--bloque"></span>
+          </div>
+        </div>
+      } @else if (error(); as mensaje) {
+        <div class="mv-aviso mv-aviso--error" role="alert">
+          <p>{{ mensaje }}</p>
+          <button type="button" class="mv-boton" (click)="reintentar()">Reintentar</button>
+        </div>
+      } @else if (adultos().length === 0) {
+        <div class="mv-vacio" role="status">
+          <p class="mv-vacio__titulo">Aún no hay adultos mayores registrados en este grupo.</p>
+        </div>
+      } @else {
+        <ul class="mv-lista lista-adultos">
+          @for (adulto of adultos(); track adulto.idAdultoMayor) {
+            <li class="mv-fila" [class.inactivo]="estaInactivo(adulto)">
+              <span class="mv-avatar" aria-hidden="true">{{ iniciales(adulto) }}</span>
+              <div class="mv-fila__principal">
+                <a
+                  class="mv-fila__titulo mv-fila__enlace"
+                  [routerLink]="['/adultos', adulto.idAdultoMayor]"
+                  [attr.aria-label]="etiquetaFicha(adulto)"
+                  >{{ adulto.nombreCompleto }}</a
+                >
+                @if (detalle(adulto); as texto) {
+                  <p class="mv-fila__meta">{{ texto }}</p>
+                }
+              </div>
+              <div class="contacto">
+                <p class="contacto__rotulo">Contacto principal</p>
+                @if (adulto.contactoPrincipal; as contacto) {
+                  <p class="contacto__nombre">
+                    {{ contacto.nombreContacto }}
+                    @if (contacto.parentesco) {
+                      <span class="contacto__parentesco">· {{ contacto.parentesco }}</span>
+                    }
+                  </p>
+                  <a class="contacto__telefono" [href]="'tel:' + contacto.telefono">{{
+                    contacto.telefono
+                  }}</a>
+                } @else {
+                  <p class="mv-fila__meta">Sin contacto principal</p>
+                }
+              </div>
+              @if (conoceEstado()) {
+                <span class="estado">
+                  @if (estaInactivo(adulto)) {
+                    <span class="mv-chip">Inactivo</span>
+                  } @else {
+                    <span class="mv-chip mv-chip--exito">Activo</span>
+                  }
+                </span>
+              }
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  }
 </div>

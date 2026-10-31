@@ -9,10 +9,9 @@ import {
 } from '../../../nucleo/usuarios/servicio-canales';
 
 /**
- * "Canales de notificación" en Mi perfil (Tarea 12, regla 17 del plan):
- * correo (siempre aparece, con el predeterminado de la cuenta si no hay fila
- * propia) y WhatsApp (solo aparece si tiene fila; aún no envía mensajes —
- * regla 15 — se guarda igual su configuración). `guardar()` reemplaza el
+ * "Canales de notificación" en Mi perfil: correo (siempre aparece, con el
+ * predeterminado de la cuenta si no hay fila propia) y WhatsApp (aún no envía
+ * mensajes, pero se guarda igual su configuración). `guardar()` reemplaza el
  * conjunto completo con `PUT /api/yo/canales`; si el número de WhatsApp
  * queda vacío, no se envía ese canal.
  */
@@ -26,7 +25,7 @@ export class CanalesNotificacion implements OnInit {
   private readonly servicioCanales = inject(ServicioCanales);
 
   protected readonly cargando = signal(true);
-  /** `true` cuando la carga inicial falló: oculta el formulario para que un `guardar()` no reemplace (PUT, regla 17) la configuración real con uno vacío (corrección M1). */
+  /** `true` cuando la carga inicial falló: oculta el formulario para que un `guardar()` no reemplace (PUT) la configuración real con una vacía. */
   protected readonly cargaFallida = signal(false);
   protected readonly guardando = signal(false);
   protected readonly confirmacion = signal(false);
@@ -44,7 +43,7 @@ export class CanalesNotificacion implements OnInit {
     this.cargar();
   }
 
-  /** Vuelve a pedir la configuración tras una carga fallida (botón "Reintentar", corrección M1). */
+  /** Vuelve a pedir la configuración tras una carga fallida (botón "Reintentar"). */
   protected reintentar(): void {
     this.cargar();
   }
@@ -68,7 +67,7 @@ export class CanalesNotificacion implements OnInit {
   /**
    * Mensaje del correo de notificación: el error local de "requerido" (igual
    * que `integrantes.html`) o, si no, "correo inválido" cuando el formato no
-   * calza — el mismo texto que la API devuelve en el 422 (corrección I1).
+   * calza — el mismo texto que la API devuelve en el 422.
    */
   protected mensajeCampoCorreo(): string | null {
     const control = this.formulario.controls.correoDestino;

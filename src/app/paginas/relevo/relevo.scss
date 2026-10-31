@@ -1,102 +1,94 @@
-// Detalle del relevo — opción C. Sólo var(--mv-...).
+// Detalle del relevo, celular primero. Sólo var(--mv-...); lo común son las clases `mv-`.
+@use 'estilos/puntos-quiebre' as pq;
 
 :host {
   display: block;
-}
-
-.pagina {
-  display: flex;
-  flex-direction: column;
-}
-
-.cabecera {
-  display: flex;
-  flex-direction: column;
-  gap: var(--mv-espacio-2);
   padding: var(--mv-espacio-4);
-  background: var(--mv-color-fondo);
+
+  @include pq.desde-tableta {
+    padding: var(--mv-espacio-6) var(--mv-espacio-8);
+  }
 }
 
-.enlace-volver,
-.enlace {
-  display: inline-flex;
+.volver {
+  margin-bottom: var(--mv-espacio-2);
+  padding-inline: 0;
+}
+
+.personas {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  min-height: var(--mv-espacio-12);
-  color: var(--mv-color-primario);
-  font-weight: var(--mv-texto-peso-negrita);
+  gap: var(--mv-espacio-1) var(--mv-espacio-2);
+  overflow-wrap: anywhere;
 }
 
-h1 {
-  margin: 0;
+.mv-encabezado__titulo {
+  overflow-wrap: anywhere;
 }
 
-.contenido {
-  display: flex;
-  flex-direction: column;
+.contenido,
+.foto {
+  display: grid;
   gap: var(--mv-espacio-4);
-  padding: var(--mv-espacio-4);
 }
 
-.tarjeta {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--mv-espacio-3);
-  padding: var(--mv-espacio-4);
-  border: 2px solid var(--mv-color-borde);
-  border-radius: var(--mv-radio-md);
-  background: var(--mv-color-superficie);
-  max-width: var(--mv-ancho-lectura);
+.columnas {
+  display: grid;
+  gap: var(--mv-espacio-4);
+  align-items: start;
 
-  &--suave {
-    border-color: transparent;
-    background: var(--mv-color-fondo);
+  @include pq.desde-escritorio {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+
+    > :only-child {
+      grid-column: 1 / -1;
+    }
+  }
+}
+
+.sin-datos,
+.cancelar {
+  display: grid;
+  justify-items: start;
+  gap: var(--mv-espacio-3);
+}
+
+.foto__titulo {
+  margin: 0;
+  font-size: var(--mv-texto-grande);
+}
+
+.datos {
+  display: grid;
+  gap: var(--mv-espacio-3);
+  margin: 0;
+
+  > div {
+    display: grid;
+    gap: var(--mv-espacio-1);
+    overflow-wrap: anywhere;
   }
 
-  &__titulo {
+  dt {
+    color: var(--mv-color-secundario);
+    font-size: var(--mv-texto-pequeno);
+  }
+
+  dd {
     margin: 0;
-    font-size: var(--mv-texto-grande);
+    font-weight: var(--mv-texto-peso-negrita);
+  }
+
+  @include pq.desde-tableta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-.lista-datos {
-  display: flex;
-  flex-direction: column;
-  gap: var(--mv-espacio-2);
+.notas {
   margin: 0;
-  width: 100%;
-
-  &__fila {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: var(--mv-espacio-2);
-
-    dt {
-      font-weight: var(--mv-texto-peso-negrita);
-    }
-
-    dd {
-      margin: 0;
-      color: var(--mv-color-secundario);
-    }
-  }
-}
-
-.lista-simple {
-  display: flex;
-  flex-direction: column;
-  gap: var(--mv-espacio-3);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.tarjeta-item {
-  padding: var(--mv-espacio-3);
-  border: 2px solid var(--mv-color-borde);
-  border-radius: var(--mv-radio-md);
-  background: var(--mv-color-fondo);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
 }
 
 .vacio {
@@ -104,76 +96,26 @@ h1 {
   color: var(--mv-color-secundario);
 }
 
-.aviso {
+.lista-resumen {
+  display: grid;
+  gap: var(--mv-espacio-2);
   margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item-resumen {
   padding: var(--mv-espacio-2) var(--mv-espacio-3);
-  border-radius: var(--mv-radio-sm);
-  background: var(--mv-color-alerta-fondo);
-  color: var(--mv-color-alerta-texto);
-  font-size: var(--mv-texto-pequeno);
+  border: 1px solid var(--mv-color-borde);
+  border-radius: var(--mv-radio-md);
+  background: var(--mv-color-fondo);
+  overflow-wrap: anywhere;
 }
 
-.insignia {
-  padding: var(--mv-espacio-1) var(--mv-espacio-3);
-  border-radius: var(--mv-radio-completo);
-  background: var(--mv-color-exito-fondo);
-  color: var(--mv-color-exito);
-  font-size: var(--mv-texto-pequeno);
-  font-weight: var(--mv-texto-peso-negrita);
-
-  // "Cancelada" no es un éxito: usa el mismo tono de advertencia que
-  // `insignia--alerta` en `tarea.scss`/`tareas.scss`.
-  &--cancelada {
-    background: var(--mv-color-alerta-fondo);
-    color: var(--mv-color-alerta-texto);
-  }
-}
-
-.error {
-  margin: 0;
-  padding: var(--mv-espacio-2) var(--mv-espacio-3);
-  border-radius: var(--mv-radio-sm);
-  background: var(--mv-color-error-fondo);
-  color: var(--mv-color-error);
-  font-size: var(--mv-texto-pequeno);
-  font-weight: var(--mv-texto-peso-negrita);
-}
-
-.boton {
+.enlace {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
   min-height: var(--mv-espacio-12);
-  padding: 0 var(--mv-espacio-4);
-  border-radius: var(--mv-radio-md);
+  color: var(--mv-color-primario);
   font-weight: var(--mv-texto-peso-negrita);
-  cursor: pointer;
-  text-decoration: none;
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  &--contorno {
-    border: 2px solid var(--mv-color-primario);
-    background: var(--mv-color-superficie);
-    color: var(--mv-color-primario);
-  }
-
-  &--peligro {
-    border: 2px solid var(--mv-color-error);
-    background: var(--mv-color-superficie);
-    color: var(--mv-color-error);
-  }
-}
-
-@media (min-width: 768px) {
-  .cabecera {
-    padding: var(--mv-espacio-6) var(--mv-espacio-8);
-  }
-
-  .contenido {
-    padding: var(--mv-espacio-5) var(--mv-espacio-8);
-  }
 }

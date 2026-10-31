@@ -1,7 +1,9 @@
 // Punto de entrada de estilos globales. Capas (de abajo hacia arriba):
 // primitivos (valores crudos) → tema (tokens semánticos, el único archivo a
 // editar para cambiar de diseño) → base (reset usando solo tokens
-// semánticos). Nada de valores literales acá: ver `src/estilos/`.
+// semánticos) → componentes (clases globales `mv-`). Nada de valores
+// literales acá: ver `src/estilos/`.
 @use 'estilos/primitivos';
 @use 'estilos/tema';
 @use 'estilos/base';
+@use 'estilos/componentes';

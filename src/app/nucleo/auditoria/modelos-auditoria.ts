@@ -1,6 +1,6 @@
 /**
  * Contratos de la consulta de auditoría (`/api/grupos/{idGrupo}/auditoria`,
- * `/api/auditoria`; Fase 7, Tarea 1 de la API, HU-12). Interfaces idénticas
+ * `/api/auditoria`). Interfaces idénticas
  * a los records de la API, con los mismos nombres, sin el prefijo de
  * paquete. Las fechas y los instantes llegan como `string`
  * (`OffsetDateTime` serializado por Jackson, con el offset de Santiago).
@@ -20,10 +20,10 @@ export interface RespuestaPersona {
 }
 
 /**
- * Lista fija de tipos de entidad auditados (regla 28 del plan), para el
+ * Lista fija de tipos de entidad auditados, para el
  * selector de filtro de la página de auditoría ("Todas" + esta lista).
  * Verificada con `grep -rn 'TIPO_ENTIDAD.*=.*"' mejor-vejez-api/src/main/java`
- * sobre los `EventoARegistrar` reales (Tarea 7, corrección ronda 1):
+ * sobre los `EventoARegistrar` reales:
  * incluye `EJECUCION_PROCESO` (`CodigosTareas.TABLA_EJECUCION_PROCESO`),
  * que audita cada corrida automática de generación de tareas/alertas
  * (`ServicioGeneracionTareas`, `CorridaAlertas`) y no tiene grupo
@@ -47,11 +47,11 @@ export const TIPOS_ENTIDAD_AUDITORIA = [
 
 export type TipoEntidadAuditoria = (typeof TIPOS_ENTIDAD_AUDITORIA)[number];
 
-/** `EVENTO_AUDITORIA.RESULTADO` (regla 9 del plan); cualquier otro valor da 422 en la API. */
+/** `EVENTO_AUDITORIA.RESULTADO`; cualquier otro valor da 422 en la API. */
 export type CodigoResultadoAuditoria = 'EXITO' | 'FALLO' | 'RECHAZADA';
 
 /**
- * Contrato de un evento de `EVENTO_AUDITORIA` (HU-12, TSA-52). `actor ===
+ * Contrato de un evento de `EVENTO_AUDITORIA`. `actor ===
  * null` es un proceso automático. `detalles` ya pasó por el filtro de
  * datos sensibles del backend; si `DETALLES_JSON` no se pudo interpretar
  * como JSON, es `null`.

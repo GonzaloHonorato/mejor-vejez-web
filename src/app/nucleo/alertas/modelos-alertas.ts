@@ -1,11 +1,11 @@
 /**
- * Contratos de `/api/grupos/{idGrupo}/alertas` (Tareas 3 y 7 de la API, Fase 5).
+ * Contratos de `/api/grupos/{idGrupo}/alertas`.
  * Interfaces idénticas a los records de la API, con los mismos nombres, sin
  * el prefijo de paquete. Las fechas y los instantes llegan como `string`
  * (`OffsetDateTime` serializado por Jackson, con el offset de Santiago).
  */
 
-/** Tipos de alerta (regla 1 del plan: `ATR-`, `CIT-` y `REP-` como prefijo de clave). */
+/** Tipos de alerta (`ATR-`, `CIT-` y `REP-` como prefijo de clave). */
 export type TipoAlerta = 'ATRASO_TAREA' | 'REPOSICION_MEDICAMENTO' | 'CITA_PROXIMA';
 
 /** Quién revisó (cerró) la alerta. */
@@ -34,7 +34,7 @@ export interface RespuestaAlerta {
   observacionCierre: string | null;
 }
 
-/** Un intento de notificación (regla 9 del plan) de una alerta. */
+/** Un intento de notificación de una alerta. */
 export interface RespuestaIntento {
   idIntento: number;
   idUsuarioDestinatario: number;

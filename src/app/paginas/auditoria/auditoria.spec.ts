@@ -8,6 +8,7 @@ import { RespuestaEstadoCatalogo, ServicioCatalogos } from '../../nucleo/catalog
 import { RespuestaEventoAuditoria } from '../../nucleo/auditoria/modelos-auditoria';
 import { FiltroAuditoria, ServicioAuditoria } from '../../nucleo/auditoria/servicio-auditoria';
 import { RespuestaPagina } from '../../nucleo/usuarios/modelos-usuarios';
+import { fechaHoraLegible } from '../../nucleo/fecha-legible';
 
 // idResultado > 127 a propósito: la comparación de estado debe ser por valor.
 const RESULTADOS: RespuestaEstadoCatalogo[] = [
@@ -119,8 +120,8 @@ describe('Auditoria', () => {
     expect(elemento.querySelector('.tarjeta-evento')).toBeTruthy();
   });
 
-  // Corrección ronda 1: EJECUCION_PROCESO (CorridaAlertas/ServicioGeneracionTareas)
-  // también se audita en la API y debe poder filtrarse en la página.
+  // EJECUCION_PROCESO (corrida de alertas y generación de tareas) también se
+  // audita en la API y debe poder filtrarse en la página.
   it('listaDeTiposDeEntidadIncluyeEjecucionProceso', async () => {
     const { elemento } = await configurar();
 
@@ -210,7 +211,7 @@ describe('Auditoria', () => {
 
   it('vacioYErrorConReintento', async () => {
     const { elemento } = await configurar({ consultarGrupoImpl: () => of(pagina([])) });
-    expect(elemento.querySelector('.vacio')?.textContent).toContain(
+    expect(elemento.querySelector('.mv-vacio')?.textContent).toContain(
       'No hay eventos para estos filtros.',
     );
 
@@ -226,7 +227,7 @@ describe('Auditoria', () => {
       'Ocurrió un error inesperado.',
     );
 
-    elementoError.querySelector<HTMLButtonElement>('.error button')!.click();
+    elementoError.querySelector<HTMLButtonElement>('.mv-aviso--error button')!.click();
     await fixture.whenStable();
 
     expect(servicioAuditoria.consultarGrupo).toHaveBeenCalledTimes(2);
@@ -348,22 +349,26 @@ describe('Auditoria', () => {
     });
 
     const tarjetas = elemento.querySelectorAll('.tarjeta-evento');
+    // La fila muestra la frase; el código crudo queda en el detalle desplegable.
     expect(tarjetas[0].querySelector('.tarjeta-evento__accion')?.textContent?.trim()).toBe(
       'Registró un relevo',
     );
-    expect(tarjetas[0].querySelector('.tarjeta-evento__codigo')?.textContent?.trim()).toBe(
+    expect(tarjetas[0].querySelector('.mv-fila__principal')?.textContent).not.toContain(
       'REGISTRAR_RELEVO',
     );
+    expect(
+      tarjetas[0].querySelector('details.detalles .tarjeta-evento__codigo')?.textContent?.trim(),
+    ).toBe('REGISTRAR_RELEVO');
     expect(tarjetas[0].querySelector('.tarjeta-evento__entidad')?.textContent?.trim()).toBe(
       'Relevo · 42',
     );
-    // Código desconocido: frase de respaldo, y el código crudo igual queda visible.
+    // Código desconocido: frase de respaldo en la fila y el código crudo en el detalle.
     expect(tarjetas[1].querySelector('.tarjeta-evento__accion')?.textContent?.trim()).toBe(
       'Algo nuevo',
     );
-    expect(tarjetas[1].querySelector('.tarjeta-evento__codigo')?.textContent?.trim()).toBe(
-      'ALGO_NUEVO',
-    );
+    expect(
+      tarjetas[1].querySelector('details.detalles .tarjeta-evento__codigo')?.textContent?.trim(),
+    ).toBe('ALGO_NUEVO');
   });
 
   it('selectAccionEnviaCodigo', async () => {
@@ -390,33 +395,62 @@ describe('Auditoria', () => {
     );
   });
 
-  it('summaryCuentaFiltrosAplicados', async () => {
+  it('botonFiltrosCuentaLosFiltrosAplicadosYAbreElFormulario', async () => {
     const { fixture, elemento } = await configurar();
 
-    const filtros = elemento.querySelector<HTMLDetailsElement>('details.filtros')!;
-    const summary = filtros.querySelector('summary')!;
-    expect(summary.textContent?.trim()).toBe('Filtros');
-    // jsdom no tiene matchMedia: se comporta como móvil y empieza cerrado.
-    expect(filtros.open).toBe(false);
+    const boton = Array.from(elemento.querySelectorAll('button')).find((b) =>
+      b.textContent?.trim().startsWith('Filtros'),
+    )!;
+    const texto = () => boton.textContent?.replace(/\s+/g, ' ').trim();
+    const formulario = elemento.querySelector<HTMLFormElement>(
+      `#${boton.getAttribute('aria-controls')}`,
+    )!;
+    expect(formulario.tagName).toBe('FORM');
+    expect(boton.classList).toContain('alternar-filtros');
+    expect(texto()).toBe('Filtros');
+    // Empieza plegado en celular; desde tableta el CSS lo muestra siempre.
+    expect(boton.getAttribute('aria-expanded')).toBe('false');
+    expect(formulario.classList).not.toContain('abierto');
 
-    filtros.open = true;
+    boton.click();
+    await fixture.whenStable();
+    expect(boton.getAttribute('aria-expanded')).toBe('true');
+    expect(formulario.classList).toContain('abierto');
+
     elegirOpcion(porId(elemento, 'auditoria-accion'), 'Registró un relevo');
     escribir(porId(elemento, 'auditoria-desde'), '2026-11-01');
     // Sin aplicar todavía: el contador sigue al filtro aplicado, no al formulario.
     await fixture.whenStable();
-    expect(summary.textContent?.trim()).toBe('Filtros');
+    expect(texto()).toBe('Filtros');
 
     elemento.querySelector<HTMLFormElement>('.filtros form')!.dispatchEvent(new Event('submit'));
     await fixture.whenStable();
 
-    expect(summary.textContent?.trim()).toBe('Filtros (2 activos)');
+    expect(texto()).toBe('Filtros (2)');
     // "Aplicar filtros" no cierra el panel.
-    expect(filtros.open).toBe(true);
+    expect(boton.getAttribute('aria-expanded')).toBe('true');
+    expect(formulario.classList).toContain('abierto');
 
     elegirOpcion(porId(elemento, 'auditoria-accion'), 'Todas');
     elemento.querySelector<HTMLFormElement>('.filtros form')!.dispatchEvent(new Event('submit'));
     await fixture.whenStable();
-    expect(summary.textContent?.trim()).toBe('Filtros (1 activo)');
+    expect(texto()).toBe('Filtros (1)');
+
+    boton.click();
+    await fixture.whenStable();
+    expect(boton.getAttribute('aria-expanded')).toBe('false');
+    expect(formulario.classList).not.toContain('abierto');
+  });
+
+  it('formularioDeFiltrosSiempreEstaEnElDomAunqueEstePlegado', async () => {
+    const { elemento } = await configurar();
+
+    // Desde tableta lo muestra el CSS sin tocar el botón: tiene que existir plegado.
+    const formulario = elemento.querySelector<HTMLFormElement>('#auditoria-filtros')!;
+    expect(formulario).toBeTruthy();
+    expect(formulario.classList).toContain('mv-filtros');
+    expect(formulario.querySelector('#auditoria-tipo-entidad')).toBeTruthy();
+    expect(elemento.querySelector('details.filtros')).toBeFalsy();
   });
 
   it('paginacionOcultaMientrasCargaYSinResultados', async () => {
@@ -436,17 +470,85 @@ describe('Auditoria', () => {
     expect(elemento.querySelector('.paginacion')).toBeFalsy();
   });
 
-  it('filtrosEmpiezanAbiertosEnEscritorio', async () => {
-    const original = window.matchMedia;
-    window.matchMedia = vi.fn((consulta: string) => ({
-      matches: consulta.includes('min-width: 768px'),
-      media: consulta,
-    })) as unknown as typeof window.matchMedia;
-    try {
-      const { elemento } = await configurar();
-      expect(elemento.querySelector<HTMLDetailsElement>('details.filtros')!.open).toBe(true);
-    } finally {
-      window.matchMedia = original;
-    }
+  it('encabezadoYAvisoDePrivacidadSegunElModo', async () => {
+    const { elemento } = await configurar();
+
+    expect(elemento.querySelector('.mv-encabezado__rotulo')?.textContent?.trim()).toBe(
+      'Administración y trazabilidad',
+    );
+    expect(elemento.querySelector('h1')?.textContent?.trim()).toBe('Auditoría del grupo');
+    expect(elemento.querySelector('.mv-aviso--info')?.textContent).toContain(
+      'no se modifican desde aquí',
+    );
+
+    TestBed.resetTestingModule();
+    const { elemento: global } = await configurar({ modo: 'global' });
+    expect(global.querySelector('h1')?.textContent?.trim()).toBe('Auditoría');
+  });
+
+  it('filaMuestraFechaLegibleQuienYResultadoConTono', async () => {
+    const iso = '2026-11-02T08:00:00-03:00';
+    const { elemento } = await configurar({
+      consultarGrupoImpl: () =>
+        of(
+          pagina([
+            evento(1, { fechaEvento: iso }),
+            evento(2, { idResultado: 201, codigoResultado: 'FALLO' }),
+            evento(3, { idResultado: 202, codigoResultado: 'RECHAZADA' }),
+          ]),
+        ),
+    });
+
+    const filas = elemento.querySelectorAll('.tarjeta-evento');
+    const fecha = filas[0].querySelector('time.tarjeta-evento__fecha')!;
+    expect(fecha.textContent?.trim()).toBe(fechaHoraLegible(iso));
+    expect(fecha.getAttribute('datetime')).toBe(iso);
+    expect(filas[0].querySelector('.tarjeta-evento__actor')?.textContent?.trim()).toBe('Ana Rojas');
+
+    const chips = Array.from(filas).map((fila) => fila.querySelector('.mv-chip')!);
+    expect(chips.map((chip) => chip.textContent?.trim())).toEqual(['Éxito', 'Fallo', 'Rechazada']);
+    expect(chips[0].classList).toContain('mv-chip--exito');
+    expect(chips[1].classList).toContain('mv-chip--peligro');
+    expect(chips[2].classList).toContain('mv-chip--alerta');
+  });
+
+  it('muestraCuantosEventosHay', async () => {
+    const { elemento } = await configurar({
+      consultarGrupoImpl: () => of(pagina([evento(1)], 45)),
+    });
+
+    expect(elemento.querySelector('.resumen-eventos')?.textContent?.trim()).toBe('45 eventos');
+
+    TestBed.resetTestingModule();
+    const { elemento: uno } = await configurar();
+    expect(uno.querySelector('.resumen-eventos')?.textContent?.trim()).toBe('1 evento');
+  });
+
+  it('detalleDesplegableTieneNombreAccesibleUnico', async () => {
+    const { elemento } = await configurar({
+      consultarGrupoImpl: () =>
+        of(
+          pagina([
+            evento(1, { detalles: { a: 1 } }),
+            evento(2, { codigoAccion: 'REGISTRAR_RELEVO', detalles: { b: 2 } }),
+          ]),
+        ),
+    });
+
+    const nombres = Array.from(elemento.querySelectorAll('details.detalles summary')).map((s) =>
+      s.getAttribute('aria-label'),
+    );
+    expect(nombres).toHaveLength(2);
+    expect(new Set(nombres).size).toBe(2);
+    expect(nombres[1]).toContain('Registró un relevo');
+  });
+
+  it('cargandoMuestraEsqueletoConEstadoParaLectores', async () => {
+    const sujeto = new Subject<RespuestaPagina<RespuestaEventoAuditoria>>();
+    const { elemento } = await configurar({ consultarGrupoImpl: () => sujeto.asObservable() });
+
+    const estado = elemento.querySelector('[role="status"]');
+    expect(estado?.textContent).toContain('Cargando eventos');
+    expect(estado?.querySelector('.mv-esqueleto')).toBeTruthy();
   });
 });

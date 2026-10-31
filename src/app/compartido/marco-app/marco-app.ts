@@ -25,6 +25,8 @@ import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
 import { Icono, NombreIcono } from '../icono/icono';
 import { SelectorGrupo } from '../selector-grupo/selector-grupo';
+import { etiquetaRol } from '../../nucleo/grupos/etiqueta-rol';
+import { inicialesDe } from './identidad-usuario';
 import { EntradaMas, PanelMas, rutaCoincide } from './panel-mas/panel-mas';
 
 const TITULO_POR_DEFECTO = 'Panel familiar';
@@ -83,10 +85,11 @@ const MAS_ADMINISTRACION: EntradaMas = {
 };
 
 /**
- * Marco de la aplicación autenticada (opción C): barra lateral oscura en
- * escritorio y barra de pestañas inferior en móvil (4 pestañas fijas +
- * "Más", que abre `PanelMas` con el resto de accesos, el correo y "Cerrar
- * sesión").
+ * Marco de la aplicación autenticada, celular primero. En celular: cabecera
+ * con la marca, el grupo activo y el avatar, y barra de pestañas inferior
+ * (4 fijas + "Más", que abre `PanelMas` con el resto de accesos, el correo y
+ * "Cerrar sesión"). Desde tableta: barra lateral oscura y cabecera con el
+ * título de la página, el grupo, el usuario con su rol y "Cerrar sesión".
  */
 @Component({
   selector: 'app-marco-app',
@@ -105,13 +108,14 @@ export class MarcoApp implements OnInit {
   protected readonly error = signal<string | null>(null);
   protected readonly tituloRuta = signal(TITULO_POR_DEFECTO);
   private readonly correoYo = signal('');
+  private readonly nombreYo = signal('');
   /** URL actual (se actualiza en cada `NavigationEnd`): decide si "Más" está activo. */
   protected readonly urlActual = signal('');
   protected readonly masAbierto = signal(false);
   /**
    * Con "Más" abierto, todo lo de detrás (salto, lateral, cabecera, main y
-   * pie) queda `inert` (corrección ronda 1). La barra de pestañas no, para
-   * que al cerrar el foco pueda volver al botón "Más" de inmediato.
+   * pie) queda `inert`. La barra de pestañas no, para que al cerrar el foco
+   * pueda volver al botón "Más" de inmediato.
    */
   protected readonly inerteDetras = computed(() => (this.masAbierto() ? '' : null));
   private readonly botonMas = viewChild.required<ElementRef<HTMLButtonElement>>('botonMas');
@@ -127,10 +131,17 @@ export class MarcoApp implements OnInit {
   protected readonly masActivo = computed(() =>
     this.entradasMas().some((entrada) => rutaCoincide(this.urlActual(), entrada.prefijoActivo)),
   );
+  /**
+   * Nombre de la cabecera y del avatar: el del núcleo (`GET /api/yo`) cuando
+   * llega; mientras tanto, o si falla, el de Firebase y luego el correo.
+   */
   protected readonly nombreUsuario = computed(() => {
     const usuario = this.auth.usuario();
-    return usuario?.displayName || usuario?.email || '';
+    return this.nombreYo() || usuario?.displayName || usuario?.email || '';
   });
+  protected readonly iniciales = computed(() => inicialesDe(this.nombreUsuario()));
+  /** Rol en el grupo activo ("Coordinador/a", "Colaborador/a"); vacío si no hay. */
+  protected readonly rolActivo = computed(() => etiquetaRol(this.grupoActivo.activo()?.miRol));
   protected readonly correoUsuario = computed(() => this.auth.usuario()?.email || this.correoYo());
 
   ngOnInit(): void {
@@ -139,6 +150,7 @@ export class MarcoApp implements OnInit {
       next: (yo) => {
         this.esAdministrador.set(yo.esAdministrador);
         this.correoYo.set(yo.email ?? '');
+        this.nombreYo.set(yo.nombre?.trim() ?? '');
       },
       error: (error: unknown) =>
         this.error.set(mensajeDeError(error, 'No pudimos verificar tus permisos.')),
@@ -171,7 +183,7 @@ export class MarcoApp implements OnInit {
     this.botonMas().nativeElement.focus();
   }
 
-  /** URL actual y título del encabezado (opción C): el de la ruta hija activa, no uno fijo (ver hallazgo A11y). */
+  /** URL actual y título del encabezado: el de la ruta hija activa, no uno fijo. */
   private actualizarTituloRuta(): void {
     this.urlActual.set(this.router.url);
     let ruta: ActivatedRouteSnapshot = this.router.routerState.snapshot.root;
@@ -183,8 +195,8 @@ export class MarcoApp implements OnInit {
 
   /** Navega a /ingreso solo si Firebase cerró la sesión; si falla, lo registra y no navega. */
   protected async cerrarSesion(): Promise<void> {
-    // Corrección ronda 2: se cierra "Más" antes de intentar, para que un
-    // fallo de `signOut` o de la navegación no deje el fondo `inert`.
+    // Se cierra "Más" antes de intentar, para que un fallo de `signOut` o
+    // de la navegación no deje el fondo `inert`.
     this.cerrarMas();
     try {
       await this.auth.cerrarSesion();

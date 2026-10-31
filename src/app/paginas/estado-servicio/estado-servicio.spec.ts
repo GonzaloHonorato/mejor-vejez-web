@@ -58,4 +58,31 @@ describe('EstadoServicio', () => {
     expect(elemento.textContent).not.toContain('Estamos construyendo');
     fixture.destroy();
   });
+
+  it('cadaServicioMuestraUnChipConElTonoDeSuEstado', async () => {
+    const fixture = TestBed.createComponent(EstadoServicio);
+    fixture.detectChanges();
+    TestBed.inject(HttpTestingController)
+      .expectOne((req) => req.url.endsWith('/api/salud'))
+      .flush({
+        estado: 'DEGRADADO',
+        servicio: 'mejor-vejez-api',
+        version: '1.0.0',
+        fechaHora: new Date().toISOString(),
+        baseDatos: { estado: 'NO_DISPONIBLE', latenciaMs: null },
+      });
+    await fixture.whenStable();
+    const elemento = fixture.nativeElement as HTMLElement;
+
+    const chips = Array.from(elemento.querySelectorAll('.estado__fila .mv-chip'));
+    expect(chips.map((chip) => chip.textContent?.trim())).toEqual(['Disponible', 'No disponible']);
+    expect(chips[0].classList.contains('mv-chip--exito')).toBe(true);
+    expect(chips[1].classList.contains('mv-chip--peligro')).toBe(true);
+    const volver = elemento.querySelector('a.volver');
+    expect(volver?.querySelector('app-icono')?.getAttribute('aria-hidden')).toBe('true');
+    expect(elemento.querySelector('h1.mv-encabezado__titulo')?.textContent).toContain(
+      'Estado del servicio',
+    );
+    fixture.destroy();
+  });
 });

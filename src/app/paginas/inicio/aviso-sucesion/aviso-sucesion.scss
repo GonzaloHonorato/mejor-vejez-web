@@ -1,4 +1,4 @@
-// Aviso de sucesión en Inicio — opción C. Sólo var(--mv-...).
+// Aviso de propuesta de coordinación en Inicio.
 
 :host {
   display: block;
@@ -37,46 +37,4 @@
   min-height: var(--mv-espacio-12);
   color: var(--mv-color-primario);
   font-weight: var(--mv-texto-peso-negrita);
-}
-
-.error {
-  margin: 0;
-  padding: var(--mv-espacio-2) var(--mv-espacio-3);
-  border-radius: var(--mv-radio-sm);
-  background: var(--mv-color-error-fondo);
-  color: var(--mv-color-error);
-  font-size: var(--mv-texto-pequeno);
-  font-weight: var(--mv-texto-peso-negrita);
-}
-
-.boton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: var(--mv-espacio-12);
-  padding: 0 var(--mv-espacio-4);
-  border-radius: var(--mv-radio-md);
-  font-weight: var(--mv-texto-peso-negrita);
-  cursor: pointer;
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  &--contorno {
-    border: 2px solid var(--mv-color-primario);
-    background: var(--mv-color-superficie);
-    color: var(--mv-color-primario);
-  }
-
-  &--primario {
-    border: 0;
-    background: var(--mv-color-primario);
-    color: var(--mv-color-sobre-primario);
-
-    &:hover:not(:disabled) {
-      background: var(--mv-color-primario-hover);
-    }
-  }
 }

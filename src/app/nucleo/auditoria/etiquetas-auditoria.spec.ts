@@ -7,6 +7,9 @@ describe('etiquetas de auditoría', () => {
     expect(etiquetaAccion('CAMBIAR_ROL_INTEGRANTE')).toBe('Cambió el rol de un integrante');
     expect(etiquetaAccion('ACCESO_GRUPO')).toBe('Intento de acceso al grupo');
     expect(etiquetaAccion('EJECUTAR_DETECCION_ATRASOS')).toBe('Ejecutó la detección de atrasos');
+    expect(etiquetaAccion('CONSULTAR_AUDITORIA')).toBe('Consultó la auditoría');
+    expect(etiquetaAccion('CREAR_CUENTA')).toBe('Creó una cuenta');
+    expect(etiquetaAccion('CAMBIAR_ESTADO_TAREA')).toBe('Cambió el estado de una tarea');
     // Respaldo: código desconocido → frase legible, sin guiones bajos.
     expect(etiquetaAccion('ALGO_NUEVO')).toBe('Algo nuevo');
     expect(etiquetaAccion('')).toBe('');

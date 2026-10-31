@@ -1,0 +1,28 @@
+@if (cargando()) {
+  <div class="esqueleto-marco" role="status">
+    <span class="oculto">Cargando Cuida+…</span>
+    <div class="esqueleto-marco__lateral" aria-hidden="true">
+      <span class="mv-marca mv-marca--invertida">
+        <span class="mv-marca__isotipo">+</span>
+        Cuida+
+      </span>
+    </div>
+    <div class="esqueleto-marco__principal" aria-hidden="true">
+      <div class="esqueleto-marco__cabecera">
+        <span class="mv-marca esqueleto-marco__marca">
+          <span class="mv-marca__isotipo">+</span>
+        </span>
+        <span class="mv-esqueleto esqueleto-marco__titulo"></span>
+        <span class="mv-esqueleto esqueleto-marco__avatar"></span>
+      </div>
+      <div class="esqueleto-marco__contenido">
+        <span class="mv-esqueleto mv-esqueleto--titulo"></span>
+        <span class="mv-esqueleto"></span>
+        <span class="mv-esqueleto mv-esqueleto--bloque"></span>
+        <span class="mv-esqueleto mv-esqueleto--bloque"></span>
+      </div>
+      <div class="esqueleto-marco__pestanas"></div>
+    </div>
+  </div>
+}
+<router-outlet />

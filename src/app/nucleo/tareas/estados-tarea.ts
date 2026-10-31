@@ -4,9 +4,9 @@ import { RespuestaTarea } from './modelos-tareas';
 export type CodigoEstadoTarea = 'PENDIENTE' | 'EN_CURSO' | 'COMPLETADA' | 'NO_REALIZADA' | 'CANCELADA';
 
 /**
- * Transiciones válidas (regla 10 del plan, idéntica a la que valida la API):
+ * Transiciones válidas (idénticas a las que valida la API):
  * `PENDIENTE` va a cualquier otro estado; `EN_CURSO` solo se completa o
- * queda no realizada (TSA-40: una tarea en curso no se cancela);
+ * queda no realizada (una tarea en curso no se cancela);
  * `COMPLETADA`, `NO_REALIZADA` y `CANCELADA` son finales.
  */
 export const TRANSICIONES: Record<CodigoEstadoTarea, CodigoEstadoTarea[]> = {
@@ -17,7 +17,7 @@ export const TRANSICIONES: Record<CodigoEstadoTarea, CodigoEstadoTarea[]> = {
   CANCELADA: [],
 };
 
-/** `NO_REALIZADA` y `CANCELADA` siempre exigen una observación (regla 10). */
+/** `NO_REALIZADA` y `CANCELADA` siempre exigen una observación. */
 export function requiereObservacion(codigo: CodigoEstadoTarea): boolean {
   return codigo === 'NO_REALIZADA' || codigo === 'CANCELADA';
 }
@@ -40,7 +40,7 @@ export interface QuienConfirma {
 
 /**
  * Acciones (estados destino) que `quien` puede ejecutar sobre una tarea que
- * hoy está en `codigoActual` (regla 11 del plan):
+ * hoy está en `codigoActual`:
  * - el coordinador o el administrador pueden confirmar siempre;
  * - el responsable de la asignación ACTIVA puede confirmar su propia tarea;
  * - sin asignación activa, cualquier integrante puede confirmarla;

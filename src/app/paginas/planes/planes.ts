@@ -1,12 +1,23 @@
-import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
+import {
+  Component,
+  Injector,
+  OnInit,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
+import { Icono } from '../../compartido/icono/icono';
 import { RespuestaAdultoMayor } from '../../nucleo/adultos/modelos-adultos';
 import { puedeAdministrarGrupo } from '../../nucleo/adultos/permisos-adultos';
 import { ServicioAdultos } from '../../nucleo/adultos/servicio-adultos';
 import { ServicioCatalogos } from '../../nucleo/catalogos/servicio-catalogos';
-import { formatearFecha, hoyEnSantiago } from '../../nucleo/fechas';
+import { fechaConAnio } from '../../nucleo/fecha-legible';
+import { hoyEnSantiago } from '../../nucleo/fechas';
 import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
 import { erroresDeCampos, mensajeDeCampo, mensajeDeError } from '../../nucleo/http/mensaje-de-error';
 import { RespuestaPlan } from '../../nucleo/planificacion/modelos-planificacion';
@@ -23,7 +34,7 @@ import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
  */
 @Component({
   selector: 'app-planes',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, Icono],
   templateUrl: './planes.html',
   styleUrl: './planes.scss',
 })
@@ -35,10 +46,11 @@ export class Planes implements OnInit {
   private readonly ruta = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly fb = inject(NonNullableFormBuilder);
+  private readonly injector = inject(Injector);
 
   protected readonly grupoActivo = inject(ServicioGrupoActivo);
   protected readonly activo = this.grupoActivo.activo;
-  protected readonly formatearFecha = formatearFecha;
+  protected readonly fechaConAnio = fechaConAnio;
 
   protected readonly planes = signal<RespuestaPlan[]>([]);
   protected readonly cargando = signal(false);
@@ -51,6 +63,8 @@ export class Planes implements OnInit {
   protected readonly adultosActivos = computed(() =>
     this.adultosFiltro().filter((adulto) => !this.estaAdultoInactivo(adulto)),
   );
+  /** Formulario de alta desplegado desde la acción "Nuevo plan". */
+  protected readonly altaAbierta = signal(false);
   protected readonly creando = signal(false);
   protected readonly errorGeneral = signal<string | null>(null);
   protected readonly erroresCampos = signal<Record<string, string>>({});
@@ -63,6 +77,15 @@ export class Planes implements OnInit {
   /** Filtro "Adulto mayor"; se inicializa con el query param `idAdulto` de la URL. */
   protected readonly idAdultoFiltro = signal<number | null>(this.leerIdAdultoDeLaUrl());
   protected readonly controlFiltroAdulto = this.fb.control<number | null>(this.idAdultoFiltro());
+
+  /** Planes activos de la lista cargada y la suma de sus medicamentos activos. */
+  protected readonly conteos = computed(() => {
+    const activos = this.planes().filter((plan) => !this.estaInactivo(plan));
+    return {
+      planes: activos.length,
+      medicamentos: activos.reduce((suma, plan) => suma + plan.medicamentosActivos, 0),
+    };
+  });
 
   /** Sin grupo activo no hay nada que administrar, aunque la persona sea admin. */
   protected readonly puedeAdministrar = computed(() =>
@@ -179,6 +202,36 @@ export class Planes implements OnInit {
   protected estaAdultoInactivo(adulto: RespuestaAdultoMayor): boolean {
     const idEstadoInactivoAdulto = this.idEstadoInactivoAdulto();
     return idEstadoInactivoAdulto !== null && adulto.idEstado === idEstadoInactivoAdulto;
+  }
+
+  /** Singular o plural de un conteo ("1 plan activo", "2 planes activos"). */
+  protected plural(cantidad: number, singular: string, plural: string): string {
+    return cantidad === 1 ? singular : plural;
+  }
+
+  protected reintentar(): void {
+    const grupo = this.activo();
+    if (!grupo) return;
+    this.cargar(grupo.idGrupo, this.mostrarInactivos(), this.idAdultoFiltro());
+  }
+
+  protected alternarAlta(): void {
+    if (this.altaAbierta()) this.cerrarAlta();
+    else this.abrirAlta();
+  }
+
+  protected abrirAlta(): void {
+    this.altaAbierta.set(true);
+    this.enfocar('plan-adulto');
+  }
+
+  protected cerrarAlta(): void {
+    this.altaAbierta.set(false);
+    this.enfocar('planes-abrir-alta');
+  }
+
+  private enfocar(id: string): void {
+    afterNextRender(() => document.getElementById(id)?.focus(), { injector: this.injector });
   }
 
   protected alternarMostrarInactivos(): void {

@@ -3,9 +3,10 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import { Observable, of, throwError } from 'rxjs';
+import { Observable, Subject, of, throwError } from 'rxjs';
 
 import { Relevo } from './relevo';
+import { fechaHoraLegible } from '../../nucleo/fecha-legible';
 import {
   RespuestaEstadoCatalogo,
   ServicioCatalogos,
@@ -107,7 +108,7 @@ async function configurar(opciones: Opciones = {}) {
     imports: [Relevo],
     providers: [
       provideRouter([]),
-      // ServicioTareas real contra HttpTestingController: se verifica el PUT de HU-06 tal cual.
+      // ServicioTareas real contra HttpTestingController: se verifica el PUT de asignación tal cual.
       provideHttpClient(),
       provideHttpClientTesting(),
       {
@@ -174,7 +175,7 @@ function relevoConTresTareas(datos: Partial<RespuestaRelevo> = {}): RespuestaRel
 }
 
 function filaDeTarea(elemento: HTMLElement, resumen: string): HTMLElement {
-  const fila = Array.from(elemento.querySelectorAll<HTMLElement>('.tarjeta-item')).find((li) =>
+  const fila = Array.from(elemento.querySelectorAll<HTMLElement>('.item-resumen')).find((li) =>
     li.textContent?.includes(resumen),
   );
   if (!fila) throw new Error(`Sin fila "${resumen}"`);
@@ -220,21 +221,24 @@ describe('Relevo', () => {
     expect(elemento.textContent).not.toContain('COMPLETADA');
   });
 
-  it('insigniaCanceladaUsaElColorDeAdvertenciaNoElDeExito', async () => {
+  it('chipCanceladaUsaElColorDeAdvertenciaNoElDeExito', async () => {
     const { elemento } = await configurar({
       obtenerImpl: () => of(relevo({ idEstado: ID_ESTADO_CANCELADA, codigoEstado: 'CANCELADA' })),
     });
 
-    const insignia = elemento.querySelector('.insignia')!;
-    expect(insignia.textContent?.trim()).toBe('Cancelada');
-    expect(insignia.classList.contains('insignia--cancelada')).toBe(true);
+    const chip = elemento.querySelector('.mv-encabezado .mv-chip')!;
+    expect(chip.textContent?.trim()).toBe('Cancelada');
+    expect(chip.classList.contains('mv-chip--alerta')).toBe(true);
+    expect(chip.classList.contains('mv-chip--exito')).toBe(false);
   });
 
-  it('insigniaCompletadaNoUsaElColorDeCancelada', async () => {
+  it('chipCompletadaNoUsaElColorDeCancelada', async () => {
     const { elemento } = await configurar();
 
-    const insignia = elemento.querySelector('.insignia')!;
-    expect(insignia.classList.contains('insignia--cancelada')).toBe(false);
+    const chip = elemento.querySelector('.mv-encabezado .mv-chip')!;
+    expect(chip.textContent?.trim()).toBe('Completada');
+    expect(chip.classList.contains('mv-chip--alerta')).toBe(false);
+    expect(chip.classList.contains('mv-chip--exito')).toBe(true);
   });
 
   it('cancelarSoloVisibleParaCreadorOCoordinador', async () => {
@@ -253,9 +257,8 @@ describe('Relevo', () => {
     expect(botonConTexto(otro.elemento, 'Cancelar relevo')).toBeFalsy();
   });
 
-  // Corrección ronda 1 (ruling del controlador): la regla 7 de la API
-  // también deja cancelar a un administrador, aunque no sea el creador ni
-  // el coordinador del grupo (incluso sin membresía: `miRol` null).
+  // La API también deja cancelar a un administrador, aunque no sea el
+  // creador ni el coordinador del grupo (incluso sin membresía: `miRol` null).
   it('administradorTambienVeCancelarRelevo', async () => {
     const { elemento } = await configurar({
       activo: grupo(1, null),
@@ -270,7 +273,7 @@ describe('Relevo', () => {
     const { elemento: elementoVacio } = await configurar({
       obtenerImpl: () => of(relevo({ totalTareas: 0, totalAlertas: 0, detalles: [] })),
     });
-    expect(elementoVacio.querySelector('[role="status"].vacio')?.textContent).toContain(
+    expect(elementoVacio.querySelector('[role="status"].mv-vacio')?.textContent).toContain(
       'Sin tareas ni alertas pendientes en este resumen.',
     );
     expect(elementoVacio.querySelector('[role="alert"]')).toBeNull();
@@ -285,7 +288,79 @@ describe('Relevo', () => {
       'Sin tareas ni alertas pendientes en este resumen.',
     );
   });
-  describe('reasignar tareas (HU-11 → HU-06)', () => {
+  describe('presentación', () => {
+    it('encabezadoConVolverTituloYEstado', async () => {
+      const { elemento } = await configurar();
+
+      const volver = elemento.querySelector<HTMLAnchorElement>('.volver')!;
+      expect(volver.textContent?.trim()).toBe('Volver a relevos');
+      expect(volver.getAttribute('href')).toBe('/relevos');
+      expect(elemento.querySelector('h1')?.textContent?.trim()).toBe('Relevo de Rosa González');
+      expect(
+        elemento.querySelector('.mv-encabezado__bajada')?.textContent?.replace(/\s+/g, ' ').trim(),
+      ).toBe('Ana Rojas entrega a Beto Díaz');
+    });
+
+    it('seccionesClarasConNotasSoloSiExisten', async () => {
+      const titulos = (elemento: HTMLElement) =>
+        Array.from(elemento.querySelectorAll('h2, h3')).map((h) => h.textContent?.trim());
+
+      const conNotas = await configurar({ obtenerImpl: () => of(relevo({ notas: 'Dejé la cena lista.' })) });
+      expect(titulos(conNotas.elemento)).toEqual([
+        'Datos del relevo',
+        'Notas',
+        'Resumen al momento del relevo',
+        'Tareas pendientes (1)',
+        'Alertas abiertas (1)',
+        'Cancelar relevo',
+      ]);
+      expect(conNotas.elemento.textContent).toContain('Dejé la cena lista.');
+
+      TestBed.resetTestingModule();
+      const sinNotas = await configurar();
+      expect(titulos(sinNotas.elemento)).not.toContain('Notas');
+    });
+
+    it('fechaDelRelevoEsLegible', async () => {
+      const { elemento } = await configurar();
+
+      const filas = Array.from(elemento.querySelectorAll('dl > div')).map((fila) => [
+        fila.querySelector('dt')?.textContent?.trim(),
+        fila.querySelector('dd')?.textContent?.trim(),
+      ]);
+      expect(filas).toContainEqual(['Fecha', fechaHoraLegible('2026-11-02T08:00:00-03:00')]);
+      expect(filas).toContainEqual(['Registrado por', 'Ana Rojas']);
+    });
+
+    it('cargandoMuestraEsqueleto', async () => {
+      const { elemento } = await configurar({ obtenerImpl: () => new Subject() });
+
+      const estado = elemento.querySelector('[role="status"]')!;
+      expect(estado.textContent).toContain('Cargando relevo…');
+      expect(estado.querySelector('.mv-esqueleto')).toBeTruthy();
+    });
+
+    it('errorDeCargaPermiteReintentar', async () => {
+      let llamadas = 0;
+      const { fixture, elemento, servicioRelevos } = await configurar({
+        obtenerImpl: () =>
+          ++llamadas === 1
+            ? (throwError(() => new HttpErrorResponse({ status: 500, error: {} })) as never)
+            : of(relevo()),
+      });
+
+      const aviso = elemento.querySelector<HTMLElement>('.mv-aviso--error[role="alert"]')!;
+      expect(aviso).toBeTruthy();
+      botonConTexto(aviso, 'Reintentar')!.click();
+      await fixture.whenStable();
+
+      expect(servicioRelevos.obtener).toHaveBeenCalledTimes(2);
+      expect(elemento.querySelector('.mv-aviso--error')).toBeNull();
+      expect(elemento.textContent).toContain('Resumen tarea');
+    });
+  });
+
+  describe('reasignar tareas', () => {
     afterEach(() => TestBed.inject(HttpTestingController).verify());
 
     it('coordinadorVeReasignarPorTarea', async () => {
@@ -296,7 +371,7 @@ describe('Relevo', () => {
       // Las alertas no se reasignan.
       expect(botonConTexto(filaDeTarea(elemento, 'Resumen alerta'), 'Reasignar')).toBeFalsy();
       expect(elemento.textContent).toContain(
-        'Reasignar usa la misma operación de Tareas (HU-06) y queda registrado en la auditoría.',
+        'Cada reasignación cambia el responsable de la tarea y queda registrada en la auditoría.',
       );
       // Se mantiene el aviso de foto.
       expect(elemento.textContent).toContain('Este resumen es una foto del momento del relevo');
@@ -316,7 +391,7 @@ describe('Relevo', () => {
       const { elemento } = await configurar({ activo: grupo(1, 'COLABORADOR'), idUsuario: 300 });
 
       expect(botonConTexto(elemento, 'Reasignar')).toBeFalsy();
-      expect(elemento.textContent).not.toContain('HU-06');
+      expect(elemento.textContent).not.toContain('queda registrada en la auditoría');
       expect(elemento.textContent).toContain('Resumen tarea');
     });
 
@@ -328,7 +403,7 @@ describe('Relevo', () => {
       expect(botonConTexto(elemento, 'Reasignar')).toBeFalsy();
     });
 
-    it('reasignarLlamaAlEndpointDeHu06ConEntranteYMotivo', async () => {
+    it('reasignarLlamaAlEndpointDeAsignacionConEntranteYMotivo', async () => {
       const { fixture, elemento, http } = await configurar();
 
       botonConTexto(filaDeTarea(elemento, 'Resumen tarea'), 'Reasignar a Beto Díaz')!.click();

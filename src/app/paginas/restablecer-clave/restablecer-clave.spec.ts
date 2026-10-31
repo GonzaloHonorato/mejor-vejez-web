@@ -135,4 +135,19 @@ describe('RestablecerClave', () => {
     expect(enlace?.textContent).toContain('Ir a iniciar sesión');
     expect(enlace?.getAttribute('href')).toBe('/ingreso');
   });
+
+  it('restablecerUsaCamposMvYElBotonPrincipalAlAnchoCompleto', async () => {
+    configurar({ codigo: 'codigo-123' });
+
+    const { elemento } = await crear();
+
+    for (const id of ['restablecer-clave', 'restablecer-confirmacion']) {
+      const control = elemento.querySelector(`#${id}`)!;
+      expect(control.classList.contains('mv-campo__control')).toBe(true);
+      expect(control.closest('.mv-campo')?.querySelector(`label[for="${id}"]`)).not.toBeNull();
+    }
+    const boton = elemento.querySelector('button[type="submit"]')!;
+    expect(boton.classList.contains('mv-boton--primario')).toBe(true);
+    expect(boton.classList.contains('mv-boton--bloque')).toBe(true);
+  });
 });

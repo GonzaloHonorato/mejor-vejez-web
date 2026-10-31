@@ -1,163 +1,267 @@
-<div class="pagina">
-  <header class="cabecera">
-    <h1>Medicamentos</h1>
-  </header>
+<header class="mv-encabezado">
+  <div>
+    <p class="mv-encabezado__rotulo">Planificación del cuidado</p>
+    <h1 class="mv-encabezado__titulo">Medicamentos</h1>
+    <p class="mv-encabezado__bajada">
+      Planes y horarios registrados para cada adulto mayor del grupo.
+    </p>
+  </div>
+  @if (activo() && puedeAdministrar()) {
+    <div class="mv-encabezado__accion">
+      <button
+        id="planes-abrir-alta"
+        type="button"
+        class="mv-boton mv-boton--primario"
+        aria-controls="planes-alta"
+        [attr.aria-expanded]="altaAbierta()"
+        (click)="alternarAlta()"
+      >
+        Nuevo plan
+      </button>
+    </div>
+  }
+</header>
 
-  <div class="contenido">
-    @if (!activo()) {
-      <section class="tarjeta tarjeta--suave" aria-labelledby="planes-sin-grupo-titulo">
-        <h2 id="planes-sin-grupo-titulo" class="tarjeta__titulo">Primero crea o elige un grupo.</h2>
-        <a class="boton boton--contorno" routerLink="/grupos">Ir a grupos</a>
-      </section>
-    } @else {
-      @if (error(); as mensaje) {
-        <p class="error" role="alert">{{ mensaje }}</p>
-      }
-
-      <div class="filtros">
-        <div class="campo campo--filtro">
-          <label class="campo__etiqueta" for="planes-filtro-adulto">Adulto mayor</label>
-          <select
-            id="planes-filtro-adulto"
-            class="campo__control"
-            [formControl]="controlFiltroAdulto"
-            (change)="cambiarFiltroAdulto()"
-          >
-            <option [ngValue]="null">Todos</option>
-            @for (adulto of adultosFiltro(); track adulto.idAdultoMayor) {
-              <option [ngValue]="adulto.idAdultoMayor">
-                {{ adulto.nombreCompleto }}{{ estaAdultoInactivo(adulto) ? ' (inactivo)' : '' }}
-              </option>
-            }
-          </select>
-        </div>
-
-        <label class="interruptor">
-          <input
-            id="planes-mostrar-inactivos"
-            class="interruptor__control"
-            type="checkbox"
-            [checked]="mostrarInactivos()"
-            (change)="alternarMostrarInactivos()"
-          />
-          <span class="interruptor__etiqueta">Mostrar inactivos</span>
-        </label>
+<div class="contenido">
+  @if (!activo()) {
+    <section class="mv-tarjeta" aria-labelledby="planes-sin-grupo-titulo">
+      <div class="mv-tarjeta__cuerpo sin-grupo">
+        <h2 id="planes-sin-grupo-titulo" class="mv-tarjeta__titulo">
+          Primero crea o elige un grupo.
+        </h2>
+        <a class="mv-boton" routerLink="/grupos">Ir a grupos</a>
       </div>
+    </section>
+  } @else {
+    <div id="planes-alta" class="alta">
+      @if (puedeAdministrar() && altaAbierta()) {
+        <section class="mv-tarjeta" aria-labelledby="planes-nuevo-titulo">
+          <div class="mv-tarjeta__cabecera">
+            <h2 id="planes-nuevo-titulo" class="mv-tarjeta__titulo">Nuevo plan</h2>
+          </div>
+          <div class="mv-tarjeta__cuerpo">
+            @if (errorGeneral(); as mensaje) {
+              <p class="mv-aviso mv-aviso--error" role="alert">{{ mensaje }}</p>
+            }
 
-      @if (!cargando() && planes().length === 0) {
-        <p class="vacio">Aún no hay planes de medicamentos en este grupo.</p>
-      }
-
-      <ul class="lista">
-        @for (plan of planes(); track plan.idPlan) {
-          <li class="tarjeta-plan" [class.tarjeta-plan--inactivo]="estaInactivo(plan)">
-            <div class="tarjeta-plan__principal">
-              <p class="tarjeta-plan__nombre">{{ plan.nombrePlan }}</p>
-              <p class="tarjeta-plan__adulto">{{ plan.nombreAdulto }}</p>
-              <p class="tarjeta-plan__vigencia">
-                Vigente desde {{ formatearFecha(plan.vigenteDesde) }}
-                @if (plan.vigenteHasta) {
-                  hasta {{ formatearFecha(plan.vigenteHasta) }}
+            <form class="formulario" [formGroup]="formulario" (ngSubmit)="crear()" novalidate>
+              <div class="mv-campo">
+                <label class="mv-campo__etiqueta" for="plan-adulto">Adulto mayor</label>
+                <select
+                  id="plan-adulto"
+                  class="mv-campo__control"
+                  formControlName="idAdultoMayor"
+                  [attr.aria-invalid]="mensajeCampoAdulto() ? true : null"
+                  [attr.aria-describedby]="mensajeCampoAdulto() ? 'plan-adulto-error' : null"
+                >
+                  <option [ngValue]="null">Selecciona un adulto mayor</option>
+                  @for (adulto of adultosActivos(); track adulto.idAdultoMayor) {
+                    <option [ngValue]="adulto.idAdultoMayor">{{ adulto.nombreCompleto }}</option>
+                  }
+                </select>
+                @if (mensajeCampoAdulto(); as mensaje) {
+                  <p id="plan-adulto-error" class="mv-campo__error" role="alert">{{ mensaje }}</p>
                 }
-              </p>
-              <p class="tarjeta-plan__medicamentos">
-                {{ plan.medicamentosActivos }} medicamento{{ plan.medicamentosActivos === 1 ? '' : 's' }} activo{{
-                  plan.medicamentosActivos === 1 ? '' : 's'
-                }}
-              </p>
-            </div>
+              </div>
 
-            <div class="tarjeta-plan__acciones">
-              @if (estaInactivo(plan)) {
-                <span class="insignia insignia--inactiva">Inactivo</span>
-              }
-              <a class="enlace" [routerLink]="['/planes', plan.idPlan]">Ver plan</a>
-            </div>
-          </li>
-        }
-      </ul>
-
-      @if (puedeAdministrar()) {
-        <section class="tarjeta" aria-labelledby="planes-nuevo-titulo">
-          <h2 id="planes-nuevo-titulo">Nuevo plan</h2>
-
-          @if (errorGeneral(); as mensaje) {
-            <p class="error" role="alert">{{ mensaje }}</p>
-          }
-
-          <form [formGroup]="formulario" (ngSubmit)="crear()" novalidate>
-            <div class="campo">
-              <label class="campo__etiqueta" for="plan-adulto">Adulto mayor</label>
-              <select
-                id="plan-adulto"
-                class="campo__control"
-                formControlName="idAdultoMayor"
-                [attr.aria-invalid]="mensajeCampoAdulto() ? true : null"
-                [attr.aria-describedby]="mensajeCampoAdulto() ? 'plan-adulto-error' : null"
-              >
-                <option [ngValue]="null">Selecciona un adulto mayor</option>
-                @for (adulto of adultosActivos(); track adulto.idAdultoMayor) {
-                  <option [ngValue]="adulto.idAdultoMayor">{{ adulto.nombreCompleto }}</option>
+              <div class="mv-campo">
+                <label class="mv-campo__etiqueta" for="plan-nombre">Nombre del plan</label>
+                <input
+                  id="plan-nombre"
+                  class="mv-campo__control"
+                  type="text"
+                  formControlName="nombrePlan"
+                  [attr.aria-invalid]="mensajeCampoNombre() ? true : null"
+                  [attr.aria-describedby]="mensajeCampoNombre() ? 'plan-nombre-error' : null"
+                />
+                @if (mensajeCampoNombre(); as mensaje) {
+                  <p id="plan-nombre-error" class="mv-campo__error" role="alert">{{ mensaje }}</p>
                 }
-              </select>
-              @if (mensajeCampoAdulto(); as mensaje) {
-                <p id="plan-adulto-error" class="error" role="alert">{{ mensaje }}</p>
-              }
-            </div>
+              </div>
 
-            <div class="campo">
-              <label class="campo__etiqueta" for="plan-nombre">Nombre del plan</label>
-              <input
-                id="plan-nombre"
-                class="campo__control"
-                type="text"
-                formControlName="nombrePlan"
-                [attr.aria-invalid]="mensajeCampoNombre() ? true : null"
-                [attr.aria-describedby]="mensajeCampoNombre() ? 'plan-nombre-error' : null"
-              />
-              @if (mensajeCampoNombre(); as mensaje) {
-                <p id="plan-nombre-error" class="error" role="alert">{{ mensaje }}</p>
-              }
-            </div>
+              <div class="fechas">
+                <div class="mv-campo">
+                  <label class="mv-campo__etiqueta" for="plan-vigente-desde">Vigente desde</label>
+                  <input
+                    id="plan-vigente-desde"
+                    class="mv-campo__control"
+                    type="date"
+                    formControlName="vigenteDesde"
+                    [attr.aria-invalid]="mensajeCampoVigenteDesde() ? true : null"
+                    [attr.aria-describedby]="
+                      mensajeCampoVigenteDesde() ? 'plan-vigente-desde-error' : null
+                    "
+                  />
+                  @if (mensajeCampoVigenteDesde(); as mensaje) {
+                    <p id="plan-vigente-desde-error" class="mv-campo__error" role="alert">
+                      {{ mensaje }}
+                    </p>
+                  }
+                </div>
 
-            <div class="campo">
-              <label class="campo__etiqueta" for="plan-vigente-desde">Vigente desde</label>
-              <input
-                id="plan-vigente-desde"
-                class="campo__control"
-                type="date"
-                formControlName="vigenteDesde"
-                [attr.aria-invalid]="mensajeCampoVigenteDesde() ? true : null"
-                [attr.aria-describedby]="mensajeCampoVigenteDesde() ? 'plan-vigente-desde-error' : null"
-              />
-              @if (mensajeCampoVigenteDesde(); as mensaje) {
-                <p id="plan-vigente-desde-error" class="error" role="alert">{{ mensaje }}</p>
-              }
-            </div>
+                <div class="mv-campo">
+                  <label class="mv-campo__etiqueta" for="plan-vigente-hasta"
+                    >Vigente hasta (opcional)</label
+                  >
+                  <input
+                    id="plan-vigente-hasta"
+                    class="mv-campo__control"
+                    type="date"
+                    formControlName="vigenteHasta"
+                    [attr.aria-invalid]="erroresCampos()['vigenteHasta'] ? true : null"
+                    [attr.aria-describedby]="
+                      erroresCampos()['vigenteHasta'] ? 'plan-vigente-hasta-error' : null
+                    "
+                  />
+                  @if (erroresCampos()['vigenteHasta']; as mensaje) {
+                    <p id="plan-vigente-hasta-error" class="mv-campo__error" role="alert">
+                      {{ mensaje }}
+                    </p>
+                  }
+                </div>
+              </div>
 
-            <div class="campo">
-              <label class="campo__etiqueta" for="plan-vigente-hasta">Vigente hasta (opcional)</label>
-              <input
-                id="plan-vigente-hasta"
-                class="campo__control"
-                type="date"
-                formControlName="vigenteHasta"
-                [attr.aria-invalid]="erroresCampos()['vigenteHasta'] ? true : null"
-                [attr.aria-describedby]="
-                  erroresCampos()['vigenteHasta'] ? 'plan-vigente-hasta-error' : null
-                "
-              />
-              @if (erroresCampos()['vigenteHasta']; as mensaje) {
-                <p id="plan-vigente-hasta-error" class="error" role="alert">{{ mensaje }}</p>
-              }
-            </div>
-
-            <button type="submit" class="boton boton--primario" [disabled]="creando()">
-              {{ creando() ? 'Creando…' : 'Crear plan' }}
-            </button>
-          </form>
+              <div class="botones">
+                <button
+                  type="button"
+                  class="mv-boton"
+                  [disabled]="creando()"
+                  (click)="cerrarAlta()"
+                >
+                  Cancelar
+                </button>
+                <button type="submit" class="mv-boton mv-boton--primario" [disabled]="creando()">
+                  {{ creando() ? 'Creando…' : 'Crear plan' }}
+                </button>
+              </div>
+            </form>
+          </div>
         </section>
       }
+    </div>
+
+    <div class="mv-aviso mv-aviso--info">
+      <p>
+        Registra la información según las indicaciones del profesional de salud. Cuida+ organiza
+        horarios y tareas; no diagnostica ni recomienda medicamentos ni dosis.
+      </p>
+    </div>
+
+    @if (error(); as mensaje) {
+      <div class="mv-aviso mv-aviso--error" role="alert">
+        <p>{{ mensaje }}</p>
+        <button type="button" class="mv-boton" (click)="reintentar()">Reintentar</button>
+      </div>
+    } @else if (!cargando()) {
+      @let conteo = conteos();
+      <ul class="mv-indicadores indicadores-dos" aria-label="Resumen de planes">
+        <li class="mv-indicador mv-indicador--exito">
+          <span class="mv-indicador__icono" aria-hidden="true"
+            ><app-icono nombre="remedios"
+          /></span>
+          <span class="mv-indicador__valor">{{ conteo.planes }}</span>
+          <span class="mv-indicador__etiqueta"
+            >{{ ' ' }}{{ plural(conteo.planes, 'plan activo', 'planes activos') }}</span
+          >
+        </li>
+        <li class="mv-indicador">
+          <span class="mv-indicador__icono" aria-hidden="true"><app-icono nombre="tareas" /></span>
+          <span class="mv-indicador__valor">{{ conteo.medicamentos }}</span>
+          <span class="mv-indicador__etiqueta"
+            >{{ ' '
+            }}{{ plural(conteo.medicamentos, 'medicamento activo', 'medicamentos activos') }}</span
+          >
+        </li>
+      </ul>
     }
-  </div>
+
+    <div class="mv-filtros" role="group" aria-label="Filtros">
+      <div class="mv-campo">
+        <label class="mv-campo__etiqueta" for="planes-filtro-adulto">Adulto mayor</label>
+        <select
+          id="planes-filtro-adulto"
+          class="mv-campo__control"
+          [formControl]="controlFiltroAdulto"
+          (change)="cambiarFiltroAdulto()"
+        >
+          <option [ngValue]="null">Todos</option>
+          @for (adulto of adultosFiltro(); track adulto.idAdultoMayor) {
+            <option [ngValue]="adulto.idAdultoMayor">
+              {{ adulto.nombreCompleto }}{{ estaAdultoInactivo(adulto) ? ' (inactivo)' : '' }}
+            </option>
+          }
+        </select>
+      </div>
+      <label class="mv-campo mv-campo--casilla">
+        <input
+          id="planes-mostrar-inactivos"
+          type="checkbox"
+          [checked]="mostrarInactivos()"
+          (change)="alternarMostrarInactivos()"
+        />
+        <span class="mv-campo__etiqueta">Mostrar inactivos</span>
+      </label>
+    </div>
+
+    <section class="planes" aria-labelledby="planes-lista-titulo">
+      <div class="planes__cabecera">
+        <h2 id="planes-lista-titulo">Planes de medicamentos</h2>
+        @if (!cargando() && !error()) {
+          <span class="cuenta"
+            >{{ planes().length }} {{ plural(planes().length, 'plan', 'planes') }}</span
+          >
+        }
+      </div>
+
+      @if (cargando()) {
+        <div role="status" aria-live="polite">
+          <span class="oculto">Cargando planes…</span>
+          <div class="esqueleto" aria-hidden="true">
+            <span class="mv-esqueleto mv-esqueleto--bloque"></span>
+            <span class="mv-esqueleto mv-esqueleto--bloque"></span>
+          </div>
+        </div>
+      } @else if (!error() && planes().length === 0) {
+        <div class="mv-vacio" role="status">
+          <p class="mv-vacio__titulo">Aún no hay planes de medicamentos en este grupo.</p>
+          <p class="mv-vacio__texto">Los planes que registres aparecerán aquí.</p>
+        </div>
+      }
+
+      @if (planes().length > 0) {
+        <ul class="mv-lista lista-planes">
+          @for (plan of planes(); track plan.idPlan) {
+            <li class="mv-fila">
+              <div class="mv-fila__principal">
+                <a
+                  class="mv-fila__titulo mv-fila__enlace"
+                  [routerLink]="['/planes', plan.idPlan]"
+                  [attr.aria-label]="plan.nombrePlan + ', ' + plan.nombreAdulto"
+                  >{{ plan.nombrePlan }}</a
+                >
+                <p class="mv-fila__meta adulto">{{ plan.nombreAdulto }}</p>
+              </div>
+              <p class="mv-fila__meta">
+                Desde {{ fechaConAnio(plan.vigenteDesde) }}
+                @if (plan.vigenteHasta) {
+                  hasta {{ fechaConAnio(plan.vigenteHasta) }}
+                }
+              </p>
+              <p class="mv-fila__meta">
+                {{ plan.medicamentosActivos }}
+                {{ plural(plan.medicamentosActivos, 'medicamento activo', 'medicamentos activos') }}
+              </p>
+              <span class="estado">
+                @if (estaInactivo(plan)) {
+                  <span class="mv-chip">Inactivo</span>
+                } @else {
+                  <span class="mv-chip mv-chip--exito">Activo</span>
+                }
+              </span>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  }
 </div>

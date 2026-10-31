@@ -1,9 +1,8 @@
 import { RespuestaPersona } from '../auditoria/modelos-auditoria';
 
 /**
- * Contratos de `/api/grupos/{idGrupo}/relevos` (Fase 7, Tarea 2 de la API,
- * HU-11). Interfaces idénticas a los records de la API, con los mismos
- * nombres, sin el prefijo de paquete. Las fechas y los instantes llegan
+ * Contratos de `/api/grupos/{idGrupo}/relevos`. Interfaces idénticas a
+ * los records de la API, con los mismos nombres, sin el prefijo de paquete. Las fechas y los instantes llegan
  * como `string` (`OffsetDateTime` serializado por Jackson, con el offset
  * de Santiago). `RespuestaPersona` (`comun/RespuestaPersona` en la API) se
  * define en `nucleo/auditoria`, que es donde la introduce la API, y se
@@ -14,7 +13,7 @@ import { RespuestaPersona } from '../auditoria/modelos-auditoria';
 export type TipoElementoRelevo = 'TAREA' | 'ALERTA';
 
 /**
- * Un elemento de la foto de un relevo (regla 4 del plan). `resumen` es el
+ * Un elemento de la foto de un relevo. `resumen` es el
  * texto que armó el backend al registrar el relevo: una foto, no se
  * vuelve a calcular, así que el estado actual de la tarea o la alerta
  * puede haber cambiado desde entonces.

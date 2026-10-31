@@ -9,7 +9,7 @@ import { mensajeDeError } from '../../../nucleo/http/mensaje-de-error';
 import { RespuestaDetalleRelevo } from '../../../nucleo/relevos/modelos-relevos';
 import { ServicioTareas } from '../../../nucleo/tareas/servicio-tareas';
 
-/** `detail` del 422 de HU-06 cuando la tarea ya es de esa persona (`ServicioAsignacionTareas.MENSAJE_MISMO_RESPONSABLE`). */
+/** `detail` del 422 de la reasignación cuando la tarea ya es de esa persona (`ServicioAsignacionTareas.MENSAJE_MISMO_RESPONSABLE`). */
 const MENSAJE_MISMO_RESPONSABLE = 'ya está asignada a ese integrante';
 
 /** Estados HTTP definitivos: reintentar no cambia el resultado, el botón queda deshabilitado. */
@@ -28,7 +28,7 @@ type EstadoFila =
 
 /**
  * Tareas pendientes del relevo con la acción "Reasignar a {quien recibe}"
- * (decisión de Gonzalo 2026-10-27, HU-11 → HU-06). El relevo sigue sin
+ * (decisión de Gonzalo 2026-10-27). El relevo sigue sin
  * modificar nada solo: cada reasignación es una acción explícita que usa
  * `ServicioTareas.asignar` (`PUT .../tareas/{id}/asignacion`) tal como
  * existe, así que la API aplica sus permisos, su auditoría

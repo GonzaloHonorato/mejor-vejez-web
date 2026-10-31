@@ -27,10 +27,10 @@ function alerta(cambios: Partial<RespuestaAlerta> = {}): RespuestaAlerta {
 }
 
 describe('ETIQUETA_TIPO_ALERTA', () => {
-  it('tieneLasEtiquetasExactasDeLaRegla6', () => {
-    expect(ETIQUETA_TIPO_ALERTA.ATRASO_TAREA).toBe('Tarea sin confirmar');
+  it('tieneLasEtiquetasQueVeElUsuario', () => {
+    expect(ETIQUETA_TIPO_ALERTA.ATRASO_TAREA).toBe('Tarea atrasada');
     expect(ETIQUETA_TIPO_ALERTA.REPOSICION_MEDICAMENTO).toBe('Reposición de medicamento');
-    expect(ETIQUETA_TIPO_ALERTA.CITA_PROXIMA).toBe('Cita médica próxima');
+    expect(ETIQUETA_TIPO_ALERTA.CITA_PROXIMA).toBe('Cita próxima');
   });
 });
 

@@ -1,4 +1,13 @@
-import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
+import {
+  Component,
+  Injector,
+  OnInit,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
@@ -13,7 +22,7 @@ import { RespuestaAdultoMayor } from '../../nucleo/adultos/modelos-adultos';
 import { ServicioAdultos } from '../../nucleo/adultos/servicio-adultos';
 import { descripcionEstado } from '../../nucleo/catalogos/descripcion-estado';
 import { RespuestaEstadoCatalogo, ServicioCatalogos } from '../../nucleo/catalogos/servicio-catalogos';
-import { formatearFecha, formatearHora } from '../../nucleo/fechas';
+import { fechaHoraLegible } from '../../nucleo/fecha-legible';
 import { RespuestaIntegrante } from '../../nucleo/grupos/modelos-grupos';
 import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
 import { ServicioGrupos } from '../../nucleo/grupos/servicio-grupos';
@@ -21,9 +30,10 @@ import { erroresDeCampos, mensajeDeCampo, mensajeDeError } from '../../nucleo/ht
 import { RespuestaRelevoResumen, SolicitudRegistrarRelevo } from '../../nucleo/relevos/modelos-relevos';
 import { ServicioRelevos } from '../../nucleo/relevos/servicio-relevos';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
+import { Icono } from '../../compartido/icono/icono';
 
 const TAMANO_PAGINA = 20;
-/** `notas` admite hasta 2000 caracteres (regla 2 del plan, `@Size` de la API). */
+/** `notas` admite hasta 2000 caracteres (`@Size` de la API). */
 export const MAXIMO_CARACTERES_NOTAS = 2000;
 
 /** Campos del formulario cuyo aviso se arma con `mensajeDeCampo`. */
@@ -43,29 +53,28 @@ function textoONulo(valor: string): string | null {
 
 /**
  * Página "Relevos" (`/relevos?idAdulto=`): lista de relevos del grupo
- * activo, con filtro por adulto, y el formulario "Registrar relevo"
- * (HU-11, Tarea 6). Sigue el mismo patrón de reacción al grupo activo de
- * `paginas/alertas`/`paginas/adultos`: un `effect()` con contador de
- * generación recarga (o limpia) la lista cada vez que el grupo activo o el
- * filtro de adulto cambian, descartando respuestas tardías de una
- * combinación ya obsoleta.
+ * activo, con filtro por adulto, y el formulario "Registrar relevo", que
+ * queda plegado tras la acción principal del encabezado. Sigue el mismo
+ * patrón de reacción al grupo activo de `paginas/alertas`/`paginas/adultos`:
+ * un `effect()` con contador de generación recarga (o limpia) la lista cada
+ * vez que el grupo activo o el filtro de adulto cambian, descartando
+ * respuestas tardías de una combinación ya obsoleta.
  *
  * El query param `idAdulto` (enlace "Registrar relevo" de `FichaAdulto`)
- * inicializa tanto el filtro de la lista como el adulto del formulario
- * (regla 25/29 del plan), pero solo vale para la primera carga: si el grupo
- * activo cambia de verdad, el filtro y los campos del formulario vuelven a
- * `null` y se quita el `idAdulto` de la URL (igual que `inicio.ts:116-149`),
- * porque el adulto o los integrantes elegidos pueden no existir en el grupo
- * nuevo.
+ * inicializa el filtro de la lista y el adulto del formulario, y abre el
+ * formulario, pero solo vale para la primera carga: si el grupo activo
+ * cambia de verdad, el filtro y los campos del formulario vuelven a `null`
+ * y se quita el `idAdulto` de la URL (igual que `inicio.ts`), porque el
+ * adulto o los integrantes elegidos pueden no existir en el grupo nuevo.
  *
- * Un COLABORADOR solo puede registrarse a sí mismo como "quien entrega"
- * (regla 6 del plan): el control queda fijo y deshabilitado en cuanto se
- * conoce su `idUsuario` (`ServicioYo`) y su rol en el grupo activo. "Quien
- * recibe" siempre excluye a quien ya está elegido como "quien entrega".
+ * Un COLABORADOR solo puede registrarse a sí mismo como "quien entrega": el
+ * control queda fijo y deshabilitado en cuanto se conoce su `idUsuario`
+ * (`ServicioYo`) y su rol en el grupo activo. "Quien recibe" siempre excluye
+ * a quien ya está elegido como "quien entrega".
  */
 @Component({
   selector: 'app-relevos',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, Icono],
   templateUrl: './relevos.html',
   styleUrl: './relevos.scss',
 })
@@ -78,11 +87,11 @@ export class Relevos implements OnInit {
   private readonly ruta = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly fb = inject(NonNullableFormBuilder);
+  private readonly injector = inject(Injector);
 
   protected readonly grupoActivo = inject(ServicioGrupoActivo);
   protected readonly activo = this.grupoActivo.activo;
-  protected readonly formatearFecha = formatearFecha;
-  protected readonly formatearHora = formatearHora;
+  protected readonly fechaHoraLegible = fechaHoraLegible;
   protected readonly maximoCaracteresNotas = MAXIMO_CARACTERES_NOTAS;
 
   protected readonly elementos = signal<RespuestaRelevoResumen[]>([]);
@@ -104,7 +113,7 @@ export class Relevos implements OnInit {
   });
 
   protected readonly idUsuario = signal<number | null>(null);
-  /** Regla 6 del plan: sólo este rol queda fijo como "quien entrega" en sí mismo. */
+  /** Sólo este rol queda fijo como "quien entrega" en sí mismo. */
   protected readonly esColaborador = computed(() => this.activo()?.miRol === 'COLABORADOR');
 
   /** Filtro "Adulto mayor" de la lista, inicializado con el query param `idAdulto`. */
@@ -112,6 +121,11 @@ export class Relevos implements OnInit {
   protected readonly controlFiltroAdulto = this.fb.control<number | null>(this.idAdultoFiltro());
 
   protected readonly hayMas = computed(() => this.elementos().length < this.total());
+  /** La API entrega los relevos del más reciente al más antiguo. */
+  protected readonly ultimo = computed(() => this.elementos()[0] ?? null);
+
+  /** El formulario "Registrar relevo" se abre desde el encabezado; ya viene abierto desde la ficha del adulto. */
+  protected readonly formularioAbierto = signal(this.leerIdAdultoDeLaUrl() !== null);
 
   protected readonly formulario = this.fb.group({
     idAdulto: this.fb.control<number | null>(this.leerIdAdultoDeLaUrl(), Validators.required),
@@ -126,7 +140,7 @@ export class Relevos implements OnInit {
     { initialValue: this.formulario.controls.idUsuarioSaliente.value },
   );
 
-  /** Integrantes ACTIVOS para "quien recibe": nunca incluye a quien ya entrega (regla 6/29 del plan). */
+  /** Integrantes ACTIVOS para "quien recibe": nunca incluye a quien ya entrega. */
   protected readonly integrantesParaEntrante = computed(() => {
     const idSaliente = this.idSalienteElegido();
     return this.integrantesActivos().filter((integrante) => integrante.idUsuario !== idSaliente);
@@ -228,7 +242,7 @@ export class Relevos implements OnInit {
       });
     });
 
-    // Regla 6 del plan: un colaborador siempre entrega su propio turno; el
+    // Un colaborador siempre entrega su propio turno; el
     // control queda fijo en su id y deshabilitado. Si deja de ser colaborador
     // (cambio de grupo activo), se vuelve a habilitar.
     effect(() => {
@@ -265,6 +279,39 @@ export class Relevos implements OnInit {
 
   protected descripcionEstadoRelevo(idEstado: number): string {
     return descripcionEstado(this.estadosRelevo(), idEstado);
+  }
+
+  /** "Cancelada" no es un éxito: usa el tono de advertencia. */
+  protected tonoEstado(relevo: RespuestaRelevoResumen): string {
+    return relevo.codigoEstado === 'CANCELADA' ? 'mv-chip--alerta' : 'mv-chip--exito';
+  }
+
+  /** Nombre accesible único del enlace al detalle. */
+  protected etiquetaEnlace(relevo: RespuestaRelevoResumen): string {
+    return (
+      `Relevo de ${relevo.nombreAdulto}: ${relevo.saliente.nombre} entrega a ` +
+      `${relevo.entrante.nombre}, ${fechaHoraLegible(relevo.fechaTraspaso)}`
+    );
+  }
+
+  /** Singular o plural de un conteo ("1 relevo registrado", "2 relevos registrados"). */
+  protected plural(cantidad: number, singular: string, plural: string): string {
+    return cantidad === 1 ? singular : plural;
+  }
+
+  protected abrirFormulario(): void {
+    this.formularioAbierto.set(true);
+    this.enfocar('relevos-adulto');
+  }
+
+  protected cerrarFormulario(): void {
+    this.formularioAbierto.set(false);
+    this.enfocar('relevos-abrir-registro');
+  }
+
+  protected alternarFormulario(): void {
+    if (this.formularioAbierto()) this.cerrarFormulario();
+    else this.abrirFormulario();
   }
 
   protected mensaje(campo: CampoRelevo): string | null {
@@ -359,6 +406,7 @@ export class Relevos implements OnInit {
 
   private cargar(idGrupo: number, idAdulto: number | null): void {
     const generacion = ++this.generacionCarga;
+    this.error.set(null);
     this.cargando.set(true);
     this.servicioRelevos
       .listar(idGrupo, { idAdulto: idAdulto ?? undefined, pagina: 0, tamano: TAMANO_PAGINA })
@@ -375,6 +423,10 @@ export class Relevos implements OnInit {
           this.cargando.set(false);
         },
       });
+  }
+
+  private enfocar(id: string): void {
+    afterNextRender(() => document.getElementById(id)?.focus(), { injector: this.injector });
   }
 
   private leerIdAdultoDeLaUrl(): number | null {

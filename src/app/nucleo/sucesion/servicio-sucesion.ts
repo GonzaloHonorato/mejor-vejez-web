@@ -11,7 +11,7 @@ import {
   SolicitudReasignacion,
 } from './modelos-sucesion';
 
-/** Acceso a los endpoints de sucesión de la coordinación (`/api/grupos/{idGrupo}/sucesion`, HU-13). */
+/** Acceso a los endpoints de sucesión de la coordinación (`/api/grupos/{idGrupo}/sucesion`). */
 @Injectable({ providedIn: 'root' })
 export class ServicioSucesion {
   private readonly http = inject(HttpClient);

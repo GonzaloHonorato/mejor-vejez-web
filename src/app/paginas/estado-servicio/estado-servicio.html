@@ -1,54 +1,85 @@
 <div class="pagina">
   <header class="cabecera">
     <div class="contenedor cabecera__fila">
-      <span class="marca">
-        <span class="marca__isotipo" aria-hidden="true"></span>
-        Mejor Vejez
+      <span class="mv-marca">
+        <span class="mv-marca__isotipo" aria-hidden="true">+</span>
+        Cuida+
       </span>
     </div>
   </header>
 
   <main class="contenedor contenido">
-    <a class="volver" routerLink="/">Volver al panel</a>
-    <h1>Estado del servicio</h1>
-    <p class="bajada">Revisa si la aplicación y la base de datos están funcionando.</p>
+    <a class="mv-boton mv-boton--texto volver" routerLink="/">
+      <app-icono nombre="flecha-izquierda" aria-hidden="true" />
+      Volver al panel
+    </a>
 
-    <section class="estado" aria-labelledby="estado-titulo" aria-live="polite">
-      <h2 id="estado-titulo" class="estado__titulo">Revisión actual</h2>
-      <p class="estado__resumen" [attr.data-estado]="estado()">{{ resumen() }}</p>
+    <header class="mv-encabezado">
+      <div>
+        <h1 class="mv-encabezado__titulo">Estado del servicio</h1>
+        <p class="mv-encabezado__bajada">
+          Revisa si la aplicación y la base de datos están funcionando.
+        </p>
+      </div>
+    </header>
+
+    <section class="mv-tarjeta estado" aria-labelledby="estado-titulo" aria-live="polite">
+      <div class="mv-tarjeta__cabecera">
+        <div>
+          <h2 id="estado-titulo" class="mv-tarjeta__titulo">Revisión actual</h2>
+          <p class="estado__resumen" [attr.data-estado]="estado()">{{ resumen() }}</p>
+        </div>
+      </div>
 
       <ul class="estado__lista">
         <li class="estado__fila">
           <span>API</span>
           @switch (apiAlcanzable()) {
-            @case (true) { <span class="pastilla pastilla--ok">Disponible</span> }
-            @case (false) { <span class="pastilla pastilla--error">Sin conexión</span> }
-            @default { <span class="pastilla">Revisando</span> }
+            @case (true) {
+              <span class="mv-chip mv-chip--exito">Disponible</span>
+            }
+            @case (false) {
+              <span class="mv-chip mv-chip--peligro">Sin conexión</span>
+            }
+            @default {
+              <span class="mv-chip">Revisando</span>
+            }
           }
         </li>
         <li class="estado__fila">
           <span>Base de datos</span>
           @if (salud(); as s) {
             @if (s.baseDatos.estado === 'DISPONIBLE') {
-              <span class="pastilla pastilla--ok">
+              <span class="mv-chip mv-chip--exito">
                 Disponible
-                @if (s.baseDatos.latenciaMs !== null) { · {{ s.baseDatos.latenciaMs }} ms }
+                @if (s.baseDatos.latenciaMs !== null) {
+                  · {{ s.baseDatos.latenciaMs }} ms
+                }
               </span>
             } @else {
-              <span class="pastilla pastilla--error">No disponible</span>
+              <span class="mv-chip mv-chip--peligro">No disponible</span>
             }
           } @else {
-            <span class="pastilla">{{ apiAlcanzable() === false ? 'Desconocido' : 'Revisando' }}</span>
+            <span class="mv-chip">{{ apiAlcanzable() === false ? 'Desconocido' : 'Revisando' }}</span>
           }
         </li>
       </ul>
 
-      <div class="estado__pie">
+      <div class="mv-tarjeta__pie">
         <p class="estado__meta">
-          @if (salud(); as s) { Versión {{ s.version }} · }
-          @if (ultimaRevision(); as fecha) { Revisado a las {{ fecha | date: 'HH:mm:ss' }} }
+          @if (salud(); as s) {
+            Versión {{ s.version }} ·
+          }
+          @if (ultimaRevision(); as fecha) {
+            Revisado a las {{ fecha | date: 'HH:mm:ss' }}
+          }
         </p>
-        <button type="button" class="boton" (click)="revisar()" [disabled]="revisando()">
+        <button
+          type="button"
+          class="mv-boton mv-boton--primario revisar"
+          (click)="revisar()"
+          [disabled]="revisando()"
+        >
           {{ revisando() ? 'Revisando…' : 'Revisar de nuevo' }}
         </button>
       </div>

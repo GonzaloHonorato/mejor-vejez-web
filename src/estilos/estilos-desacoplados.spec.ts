@@ -6,6 +6,13 @@ import { encontrarValoresVisualesLiterales } from './detectar-valores-literales'
 
 const directorioActual = dirname(fileURLToPath(import.meta.url));
 const directorioApp = resolve(directorioActual, '..', 'app');
+// La capa de componentes globales vive fuera de `src/app` pero sigue la misma
+// regla: sólo tokens semánticos.
+const archivoComponentesGlobales = resolve(directorioActual, '_componentes.scss');
+
+function archivosVigilados(): string[] {
+  return [...listarArchivosScss(directorioApp), archivoComponentesGlobales];
+}
 
 function listarArchivosScss(directorio: string): string[] {
   const encontrados: string[] = [];
@@ -22,7 +29,7 @@ function listarArchivosScss(directorio: string): string[] {
 
 describe('Estilos desacoplados', () => {
   it('componentesNoUsanValoresVisualesLiterales', () => {
-    const archivos = listarArchivosScss(directorioApp);
+    const archivos = archivosVigilados();
     expect(archivos.length).toBeGreaterThan(0);
 
     const violaciones = archivos.flatMap((archivo) =>
@@ -32,6 +39,20 @@ describe('Estilos desacoplados', () => {
     );
 
     expect(violaciones, violaciones.join('\n')).toEqual([]);
+  });
+
+  it('vigilaLaCapaDeComponentesGlobales', () => {
+    expect(archivosVigilados()).toContain(archivoComponentesGlobales);
+
+    const contenido = readFileSync(archivoComponentesGlobales, 'utf-8');
+    expect(contenido).toContain('.mv-boton');
+    expect(encontrarValoresVisualesLiterales(contenido)).toEqual([]);
+  });
+
+  it('componentesGlobalesNoUsanPrimitivos', () => {
+    // Los primitivos (`--mv-p-…`) sólo se leen desde `_tema.scss`.
+    const contenido = readFileSync(archivoComponentesGlobales, 'utf-8');
+    expect(contenido.match(/var\(\s*--mv-p-[\w-]+/g) ?? []).toEqual([]);
   });
 });
 
@@ -90,5 +111,33 @@ describe('detectarValoresVisualesLiterales (helper puro)', () => {
     `);
 
     expect(violaciones).toEqual([]);
+  });
+
+  it('detectaSombraConColorLiteralYPermiteTonoLocalConToken', () => {
+    // Patrones propios de la capa de componentes: una sombra con rgba()
+    // debe venir de un token, y los tonos locales (`--tono-texto`) sólo
+    // pueden apuntar a tokens.
+    const conSombraLiteral = encontrarValoresVisualesLiterales(`
+      .mv-tarjeta {
+        box-shadow: 0 2px 8px rgba(11, 37, 69, 0.06);
+      }
+    `);
+    const conTonoLocal = encontrarValoresVisualesLiterales(`
+      .mv-chip {
+        --tono-texto: var(--mv-color-exito);
+        color: var(--tono-texto);
+        box-shadow: var(--mv-sombra-suave);
+      }
+    `);
+    const conTonoLiteral = encontrarValoresVisualesLiterales(`
+      .mv-chip {
+        --tono-fondo: #e3f1e8;
+      }
+    `);
+
+    expect(conSombraLiteral).toHaveLength(1);
+    expect(conSombraLiteral[0]).toContain('box-shadow');
+    expect(conTonoLocal).toEqual([]);
+    expect(conTonoLiteral).toHaveLength(1);
   });
 });

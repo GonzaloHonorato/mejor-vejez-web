@@ -42,11 +42,19 @@ describe('SeccionPanel', () => {
     expect(elemento.querySelector('.contenido-prueba')).toBeNull();
   });
 
+  it('cargandoMuestraEsqueletoDecorativo', () => {
+    const { elemento } = crear('cargando');
+
+    const esqueleto = elemento.querySelector('[role="status"] [aria-hidden="true"]');
+    expect(esqueleto?.querySelector('.mv-esqueleto')).toBeTruthy();
+  });
+
   it('errorMuestraElAvisoConRoleAlertYEmiteReintentoAlHacerClick', () => {
     const { fixture, elemento } = crear('error');
 
     const aviso = elemento.querySelector('[role="alert"]');
     expect(aviso?.textContent).toContain('No se pudo cargar esta sección.');
+    expect(aviso?.classList).toContain('mv-aviso--error');
     expect(elemento.querySelector('.contenido-prueba')).toBeNull();
 
     aviso!.querySelector('button')!.click();
@@ -75,7 +83,7 @@ describe('SeccionPanel', () => {
   it('desactualizadaMuestraNoSePudoActualizarJuntoConLosDatosYEmiteReintento', () => {
     const { fixture, elemento } = crear('datos', true);
 
-    // Los datos siguen visibles (regla 9: `refrescar()` conserva los datos al fallar).
+    // Los datos siguen visibles (`refrescar()` conserva los datos al fallar).
     expect(elemento.querySelector('.contenido-prueba')).toBeTruthy();
 
     const avisos = elemento.querySelectorAll('[role="alert"]');
@@ -94,7 +102,7 @@ describe('SeccionPanel', () => {
   });
 
   it('elTituloEsUnH3PorqueColgaDelH2DelPanel', () => {
-    // M-4: las 5 secciones cuelgan del `<h2>` "Tu panel" (`inicio.html`); si
+    // Las 5 secciones cuelgan del `<h2>` "Tu panel" (`inicio.html`); si
     // también fueran `<h2>` se verían 6 títulos al mismo nivel.
     const { elemento } = crear('datos');
 
@@ -103,7 +111,7 @@ describe('SeccionPanel', () => {
   });
 
   it('reintentarMueveElFocoAlTituloDeLaSeccion', () => {
-    // M-3: con teclado o lector de pantalla, al apretar "Reintentar" el foco
+    // Con teclado o lector de pantalla, al apretar "Reintentar" el foco
     // no debe caer al <body>; se mueve al título de la sección.
     const { fixture, elemento } = crear('error');
 

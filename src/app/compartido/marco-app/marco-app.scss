@@ -1,132 +1,71 @@
-// Marco de la app — opción C. Mobile-first (390px): encabezado compacto y
-// barra de pestañas inferior. Escritorio (≥ 768px): barra lateral oscura de
-// 248px y encabezado superior con la ruta y el usuario.
-// Sólo tokens semánticos (`var(--mv-...)`): ver src/estilos/_tema.scss.
+// Marco: pestañas abajo en celular, barra lateral desde tableta y
+// título, nombre y rol en la cabecera desde escritorio.
+@use 'estilos/puntos-quiebre' as pq;
 
 :host {
   display: block;
 }
 
-.saltar {
-  position: absolute;
-  left: var(--mv-espacio-2);
-  top: -100px;
-  z-index: 10;
-  padding: var(--mv-espacio-3) var(--mv-espacio-4);
-  border-radius: var(--mv-radio-md);
-  background: var(--mv-color-superficie);
-  color: var(--mv-color-primario);
-  font-weight: var(--mv-texto-peso-negrita);
-
-  &:focus {
-    top: var(--mv-espacio-2);
-  }
-}
-
 .marco {
-  min-height: 100dvh;
   display: flex;
   flex-direction: column;
+  min-height: 100dvh;
   border-top: 6px solid var(--mv-color-primario);
   background: var(--mv-color-superficie);
 }
 
-.marca {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--mv-espacio-3);
-  font-size: var(--mv-texto-grande);
-  font-weight: var(--mv-texto-peso-negrita);
-  color: var(--mv-color-texto);
-
-  &__isotipo {
-    flex: none;
-    width: 30px;
-    height: 30px;
-    border-radius: var(--mv-radio-sm);
-    background: var(--mv-color-primario);
-  }
-
-  &--invertida {
-    color: var(--mv-color-navegacion-activo-texto);
-
-    .marca__isotipo {
-      background: var(--mv-color-navegacion-activo-texto);
-    }
-  }
-}
-
-// ── Barra lateral (sólo escritorio) ─────────────────────────────────────
-.lateral {
+.lateral,
+.cabecera__ruta,
+.cabecera__salir {
   display: none;
 }
 
-// ── Columna principal ───────────────────────────────────────────────────
 .principal {
-  flex: 1;
   display: flex;
+  flex: 1;
   flex-direction: column;
   min-width: 0;
 }
 
 .cabecera {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--mv-espacio-2) var(--mv-espacio-3);
-  min-height: 60px;
+  gap: var(--mv-espacio-3);
+  min-height: 64px;
   padding: var(--mv-espacio-2) var(--mv-espacio-4);
   border-bottom: 1px solid var(--mv-color-borde);
 
-  &__ruta {
-    display: none;
-    margin: 0;
-    font-size: var(--mv-texto-pequeno);
-    color: var(--mv-color-secundario);
+  &__grupo {
+    flex: 1;
   }
 
-  // En móvil el correo y "Cerrar sesión" están en "Más".
   &__usuario {
-    display: none;
+    display: flex;
+    flex: 0 1 auto;
     align-items: center;
     gap: var(--mv-espacio-3);
     min-width: 0;
   }
 
-  &__nombre {
+  &__nombre-usuario,
+  &__rol {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     font-size: var(--mv-texto-pequeno);
+  }
+
+  &__nombre-usuario {
     font-weight: var(--mv-texto-peso-negrita);
   }
-}
 
-.boton-salir {
-  flex: none;
-  min-height: 48px;
-  padding: 0 var(--mv-espacio-3);
-  border: 2px solid var(--mv-color-primario);
-  border-radius: var(--mv-radio-md);
-  background: var(--mv-color-superficie);
-  color: var(--mv-color-primario);
-  font-size: var(--mv-texto-pequeno);
-  font-weight: var(--mv-texto-peso-negrita);
-  cursor: pointer;
-
-  &:hover {
-    background: var(--mv-color-primario-suave);
+  &__rol {
+    color: var(--mv-color-secundario);
   }
 }
 
 .aviso-global {
-  margin: 0;
-  padding: var(--mv-espacio-2) var(--mv-espacio-4);
-  background: var(--mv-color-error-fondo);
-  color: var(--mv-color-error);
-  font-size: var(--mv-texto-pequeno);
-  font-weight: var(--mv-texto-peso-negrita);
+  border-radius: 0;
 }
 
 .contenido {
@@ -140,23 +79,23 @@
 .pie {
   padding: var(--mv-espacio-4);
   border-top: 1px solid var(--mv-color-borde);
-  font-size: var(--mv-texto-pequeno);
   color: var(--mv-color-secundario);
+  font-size: var(--mv-texto-pequeno);
 }
 
-// ── Pestañas inferiores (sólo móvil) ────────────────────────────────────
+.pestanas__lista,
+.lateral__lista {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
 .pestanas {
   position: sticky;
   bottom: 0;
-  background: var(--mv-color-superficie);
   border-top: 1px solid var(--mv-color-borde);
-
-  &__lista {
-    display: flex;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
+  background: var(--mv-color-superficie);
 
   &__item {
     flex: 1;
@@ -175,14 +114,12 @@
   padding: 0;
   border: 0;
   background: transparent;
-  font: inherit;
+  color: var(--mv-color-secundario);
   font-size: var(--mv-texto-etiqueta);
   white-space: nowrap;
-  color: var(--mv-color-secundario);
   text-decoration: none;
   cursor: pointer;
 
-  // El ícono es `currentColor`: en la activa toma el primario.
   &--activa {
     background: var(--mv-color-primario-suave);
     color: var(--mv-color-primario);
@@ -190,8 +127,7 @@
   }
 }
 
-// ── Escritorio ──────────────────────────────────────────────────────────
-@media (min-width: 768px) {
+@include pq.desde-tableta {
   .marco {
     flex-direction: row;
     border-top: 0;
@@ -200,22 +136,19 @@
   .lateral {
     position: sticky;
     top: 0;
-    flex: none;
     display: flex;
+    flex: none;
     flex-direction: column;
     gap: var(--mv-espacio-6);
     width: 248px;
     height: 100dvh;
     padding: var(--mv-espacio-5);
+    overflow-y: auto;
     background: var(--mv-color-navegacion-fondo);
 
     &__lista {
-      display: flex;
       flex-direction: column;
       gap: var(--mv-espacio-1);
-      margin: 0;
-      padding: 0;
-      list-style: none;
     }
 
     &__enlace {
@@ -233,34 +166,60 @@
         font-weight: var(--mv-texto-peso-negrita);
       }
     }
+
+    app-selector-grupo {
+      margin-top: auto;
+    }
   }
 
   .cabecera {
-    min-height: 64px;
-    padding: var(--mv-espacio-2) var(--mv-espacio-8);
+    padding-inline: var(--mv-espacio-8);
 
     &__marca {
       display: none;
     }
 
-    &__ruta {
-      display: block;
+    &__grupo {
+      flex: 0 1 20rem;
+      margin-left: auto;
     }
 
     &__usuario {
-      display: flex;
+      padding-left: var(--mv-espacio-4);
+      border-left: 1px solid var(--mv-color-borde);
+    }
+
+    &__salir {
+      display: inline-flex;
+      white-space: nowrap;
     }
   }
 
-  .cabecera__grupo {
-    display: none;
-  }
-
   .pie {
-    padding: var(--mv-espacio-4) var(--mv-espacio-8);
+    padding-inline: var(--mv-espacio-8);
   }
 
   .pestanas {
     display: none;
+  }
+}
+
+@include pq.desde-escritorio {
+  .cabecera {
+    &__ruta {
+      display: block;
+      flex: 1;
+      min-width: 0;
+      margin: 0;
+      font-weight: var(--mv-texto-peso-negrita);
+      overflow-wrap: anywhere;
+    }
+
+    &__persona {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      max-width: 12rem;
+    }
   }
 }

@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 
 import { CanalesNotificacion } from './canales-notificacion';
 import { RespuestaCanales, ServicioCanales } from '../../../nucleo/usuarios/servicio-canales';
@@ -83,7 +83,7 @@ describe('CanalesNotificacion', () => {
   it('avisoWhatsappNoDisponible', async () => {
     const { elemento } = await configurar(respuesta({ whatsappDisponible: false }));
 
-    const aviso = elemento.querySelector('.aviso');
+    const aviso = elemento.querySelector('.mv-aviso--info');
     expect(aviso?.getAttribute('role')).toBe('status');
     expect(aviso?.textContent).toContain(
       'WhatsApp aún no envía mensajes: por ahora las alertas llegan por correo.',
@@ -189,5 +189,28 @@ describe('CanalesNotificacion', () => {
     expect(elemento.querySelector('[role="alert"]')?.textContent).toContain(
       'El correo de notificación no es válido.',
     );
+  });
+
+  it('mientrasCargaMuestraEstadoDeCargaDentroDeLaTarjeta', async () => {
+    const sujeto = new Subject<RespuestaCanales>();
+    TestBed.configureTestingModule({
+      imports: [CanalesNotificacion],
+      providers: [
+        { provide: ServicioCanales, useValue: { obtener: () => sujeto.asObservable(), actualizar: vi.fn() } },
+      ],
+    });
+    const fixture = TestBed.createComponent(CanalesNotificacion);
+    await fixture.whenStable();
+    const elemento = fixture.nativeElement as HTMLElement;
+
+    const estado = elemento.querySelector('.mv-tarjeta [role="status"]');
+    expect(estado?.textContent).toContain('Cargando tus canales');
+    expect(elemento.querySelector('form')).toBeNull();
+
+    sujeto.next(respuesta());
+    sujeto.complete();
+    await fixture.whenStable();
+    expect(elemento.textContent).not.toContain('Cargando tus canales');
+    expect(elemento.querySelector('form')).toBeTruthy();
   });
 });

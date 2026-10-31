@@ -4,13 +4,14 @@ import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angula
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { AccionesTarea } from '../tareas/acciones-tarea/acciones-tarea';
+import { Icono } from '../../compartido/icono/icono';
 import { puedeAdministrarGrupo } from '../../nucleo/adultos/permisos-adultos';
 import {
   RespuestaEstadoCatalogo,
   RespuestaOpcionCatalogo,
   ServicioCatalogos,
 } from '../../nucleo/catalogos/servicio-catalogos';
-import { fechaEnSantiago, formatearFecha, formatearHora } from '../../nucleo/fechas';
+import { fechaHoraLegible } from '../../nucleo/fecha-legible';
 import { RespuestaIntegrante } from '../../nucleo/grupos/modelos-grupos';
 import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
 import { ServicioGrupos } from '../../nucleo/grupos/servicio-grupos';
@@ -24,6 +25,12 @@ import {
 import { ServicioTareas } from '../../nucleo/tareas/servicio-tareas';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
 
+const TONO_ESTADO: Partial<Record<CodigoEstadoTarea, string>> = {
+  PENDIENTE: 'mv-chip--alerta',
+  EN_CURSO: 'mv-chip--info',
+  COMPLETADA: 'mv-chip--exito',
+};
+
 /** Texto recortado, o `null` si queda en blanco (igual que en `NuevaTarea`). */
 function textoONulo(valor: string): string | null {
   const recortado = valor.trim();
@@ -32,7 +39,7 @@ function textoONulo(valor: string): string | null {
 
 /**
  * Página "Detalle de la tarea" (`/tareas/:idTarea`): datos de la tarea,
- * historial de estados, asignaciones, `AccionesTarea` (Tarea 10) y, para el
+ * historial de estados, asignaciones, `AccionesTarea` y, para el
  * coordinador o el administrador, el formulario "Reasignar" cuando la tarea
  * todavía no es final.
  *
@@ -44,7 +51,7 @@ function textoONulo(valor: string): string | null {
  */
 @Component({
   selector: 'app-tarea',
-  imports: [ReactiveFormsModule, RouterLink, AccionesTarea],
+  imports: [ReactiveFormsModule, RouterLink, AccionesTarea, Icono],
   templateUrl: './tarea.html',
   styleUrl: './tarea.scss',
 })
@@ -59,8 +66,7 @@ export class Tarea implements OnInit {
 
   protected readonly grupoActivo = inject(ServicioGrupoActivo);
   protected readonly activo = this.grupoActivo.activo;
-  protected readonly formatearFecha = formatearFecha;
-  protected readonly formatearHora = formatearHora;
+  protected readonly fechaHoraLegible = fechaHoraLegible;
 
   private readonly idTarea = Number(this.ruta.snapshot.paramMap.get('idTarea'));
 
@@ -101,7 +107,13 @@ export class Tarea implements OnInit {
     return (estado?.codigo as CodigoEstadoTarea | undefined) ?? null;
   });
 
-  /** Una tarea es final (`COMPLETADA`/`NO_REALIZADA`/`CANCELADA`) cuando no tiene transiciones (regla 10). */
+  /** Tono del chip de estado; los estados finales sin tono propio quedan neutros. */
+  protected readonly tonoEstado = computed(() => {
+    const codigo = this.codigoActual();
+    return (codigo && TONO_ESTADO[codigo]) ?? '';
+  });
+
+  /** Una tarea es final (`COMPLETADA`/`NO_REALIZADA`/`CANCELADA`) cuando no tiene transiciones. */
   protected readonly esFinal = computed(() => {
     const codigo = this.codigoActual();
     return codigo !== null && TRANSICIONES[codigo].length === 0;
@@ -111,7 +123,7 @@ export class Tarea implements OnInit {
    * "Reasignar" sólo para quien administra el grupo y mientras la tarea no
    * sea final. Exige `codigoActual() !== null` (catálogo de estados ya
    * cargado): sin eso no se puede saber si la tarea es final, y mostrar el
-   * formulario para ocultarlo enseguida es un parpadeo (hallazgo T11-1).
+   * formulario para ocultarlo enseguida es un parpadeo.
    */
   protected readonly puedeReasignar = computed(
     () =>
@@ -207,22 +219,11 @@ export class Tarea implements OnInit {
     return this.unidades().find((opcion) => opcion.idOpcion === idUnidadCantidad)?.descripcion ?? '';
   }
 
-  /** "<anterior o Creada> → <nuevo>" de una fila del historial (regla del brief de la Tarea 11). */
+  /** "<anterior o Creada> → <nuevo>" de una fila del historial. */
   protected etiquetaTransicion(item: RespuestaHistorialEstado): string {
     const anterior =
       item.idEstadoAnterior === null ? 'Creada' : this.descripcionEstado(item.idEstadoAnterior);
     return `${anterior} → ${this.descripcionEstado(item.idEstadoNuevo)}`;
-  }
-
-  /**
-   * Fecha y hora de Santiago de un instante ISO, listas para mostrar juntas.
-   * El día se calcula con `fechaEnSantiago` (nunca con `formatearFecha`
-   * directo sobre el ISO, que corta la parte de fecha del texto y puede dar
-   * el día del offset en que llegó serializado el instante, no el de Chile;
-   * hallazgo I1).
-   */
-  protected fechaHora(iso: string): string {
-    return `${formatearFecha(fechaEnSantiago(iso))} ${formatearHora(iso)}`;
   }
 
   protected mensajeReasignar(): string | null {
@@ -234,7 +235,7 @@ export class Tarea implements OnInit {
     );
   }
 
-  /** Se llama cuando `AccionesTarea` emite `actualizada`: recarga el detalle completo (historial y asignaciones incluidos). */
+  /** Recarga el detalle completo (historial y asignaciones incluidos): tras `actualizada` o al reintentar. */
   protected recargar(): void {
     const grupo = this.activo();
     if (!grupo) return;
@@ -259,8 +260,7 @@ export class Tarea implements OnInit {
         this.reasignando.set(false);
         this.formularioReasignar.reset({ idUsuario: null, motivo: '' });
         this.confirmacionReasignar.set('Responsable actualizado.');
-        // "Al terminar recarga el detalle" (brief): vuelve a pedir el
-        // detalle completo, no sólo la tarea que devuelve `asignar()`.
+        // Vuelve a pedir el detalle completo, no sólo la tarea que devuelve `asignar()`.
         this.cargar(grupo.idGrupo);
       },
       error: (error: unknown) => {

@@ -87,7 +87,7 @@ describe('instanteSantiago', () => {
   it('enElSaltoDePrimaveraUnaHoraInexistenteAvanzaIgualQueLaApi', () => {
     // 2026-09-06 00:00-00:59 no existe (el salto adelanta el reloj a la
     // 01:00): debe AVANZAR a la 01:30 con el offset nuevo (-03:00), nunca
-    // retroceder a las 23:30 del 05-09 (regla 2 del plan).
+    // retroceder a las 23:30 del 05-09.
     expect(instanteSantiago('2026-09-06', '00:30')).toBe('2026-09-06T01:30:00-03:00');
   });
 

@@ -1,132 +1,192 @@
-<div class="pagina">
-  <header class="cabecera">
-    <h1>{{ modoGlobal ? 'Auditoría' : 'Auditoría del grupo' }}</h1>
-  </header>
+<header class="mv-encabezado">
+  <div>
+    <p class="mv-encabezado__rotulo">Administración y trazabilidad</p>
+    <h1 class="mv-encabezado__titulo">{{ modoGlobal ? 'Auditoría' : 'Auditoría del grupo' }}</h1>
+    <p class="mv-encabezado__bajada">
+      {{
+        modoGlobal
+          ? 'Consulta los cambios realizados en todos los grupos, quién los hizo y cuándo.'
+          : 'Consulta los cambios realizados en el grupo, quién los hizo y cuándo.'
+      }}
+    </p>
+  </div>
+</header>
 
-  <div class="contenido">
-    <details class="filtros" [open]="filtrosAbiertosAlIniciar">
-      <summary class="filtros__resumen">{{ textoResumenFiltros() }}</summary>
-      <form
-        class="filtros__formulario"
-        [formGroup]="formularioFiltros"
-        (ngSubmit)="aplicarFiltros()"
-        novalidate
-      >
-        <div class="campo">
-          <label class="campo__etiqueta" for="auditoria-tipo-entidad">Tipo de entidad</label>
-          <select id="auditoria-tipo-entidad" class="campo__control" formControlName="tipoEntidad">
-            <option [ngValue]="null">Todas</option>
-            @for (tipo of tiposEntidad; track tipo) {
-              <option [ngValue]="tipo">{{ etiquetaEntidad(tipo) }}</option>
-            }
-          </select>
+<div class="contenido">
+  <div class="mv-aviso mv-aviso--info">
+    <p>
+      <strong>Privacidad y permisos:</strong> solo las personas autorizadas ven estos registros. Esta
+      pantalla es de consulta; las acciones registradas no se modifican desde aquí.
+    </p>
+  </div>
+
+  <div class="filtros">
+    <button
+      type="button"
+      class="mv-boton alternar-filtros"
+      aria-controls="auditoria-filtros"
+      [attr.aria-expanded]="filtrosAbiertos()"
+      (click)="filtrosAbiertos.set(!filtrosAbiertos())"
+    >
+      Filtros{{ cantidadFiltrosAplicados() > 0 ? ' (' + cantidadFiltrosAplicados() + ')' : '' }}
+    </button>
+    <form
+      id="auditoria-filtros"
+      class="mv-filtros filtros__formulario"
+      [class.abierto]="filtrosAbiertos()"
+      role="group"
+      aria-label="Filtros"
+      [formGroup]="formularioFiltros"
+      (ngSubmit)="aplicarFiltros()"
+      novalidate
+    >
+      <div class="mv-campo">
+        <label class="mv-campo__etiqueta" for="auditoria-tipo-entidad">Tipo de entidad</label>
+        <select id="auditoria-tipo-entidad" class="mv-campo__control" formControlName="tipoEntidad">
+          <option [ngValue]="null">Todas</option>
+          @for (tipo of tiposEntidad; track tipo) {
+            <option [ngValue]="tipo">{{ etiquetaEntidad(tipo) }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="mv-campo">
+        <label class="mv-campo__etiqueta" for="auditoria-id-entidad">Id de entidad</label>
+        <input id="auditoria-id-entidad" class="mv-campo__control" type="text" formControlName="idEntidad" />
+      </div>
+
+      <div class="mv-campo">
+        <label class="mv-campo__etiqueta" for="auditoria-accion">Código de acción</label>
+        <select id="auditoria-accion" class="mv-campo__control" formControlName="codigoAccion">
+          <option [ngValue]="null">Todas</option>
+          @for (opcion of opcionesAccion; track opcion.codigo) {
+            <option [ngValue]="opcion.codigo">{{ opcion.etiqueta }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="mv-campo">
+        <label class="mv-campo__etiqueta" for="auditoria-resultado">Resultado</label>
+        <select id="auditoria-resultado" class="mv-campo__control" formControlName="codigoResultado">
+          <option [ngValue]="null">Todos</option>
+          <option [ngValue]="'EXITO'">Éxito</option>
+          <option [ngValue]="'FALLO'">Fallo</option>
+          <option [ngValue]="'RECHAZADA'">Rechazada</option>
+        </select>
+      </div>
+
+      <div class="mv-campo">
+        <label class="mv-campo__etiqueta" for="auditoria-desde">Desde</label>
+        <input id="auditoria-desde" class="mv-campo__control" type="date" formControlName="desde" />
+      </div>
+
+      <div class="mv-campo">
+        <label class="mv-campo__etiqueta" for="auditoria-hasta">Hasta</label>
+        <input id="auditoria-hasta" class="mv-campo__control" type="date" formControlName="hasta" />
+      </div>
+
+      @if (modoGlobal) {
+        <div class="mv-campo">
+          <label class="mv-campo__etiqueta" for="auditoria-id-grupo">Id de grupo</label>
+          <input id="auditoria-id-grupo" class="mv-campo__control" type="number" formControlName="idGrupo" />
         </div>
+      }
 
-        <div class="campo">
-          <label class="campo__etiqueta" for="auditoria-id-entidad">Id de entidad</label>
-          <input id="auditoria-id-entidad" class="campo__control" type="text" formControlName="idEntidad" />
-        </div>
+      <button type="submit" class="mv-boton mv-boton--primario aplicar">Aplicar filtros</button>
+    </form>
+  </div>
 
-        <div class="campo">
-          <label class="campo__etiqueta" for="auditoria-accion">Código de acción</label>
-          <select id="auditoria-accion" class="campo__control" formControlName="codigoAccion">
-            <option [ngValue]="null">Todas</option>
-            @for (opcion of opcionesAccion; track opcion.codigo) {
-              <option [ngValue]="opcion.codigo">{{ opcion.etiqueta }}</option>
-            }
-          </select>
-        </div>
-
-        <div class="campo">
-          <label class="campo__etiqueta" for="auditoria-resultado">Resultado</label>
-          <select id="auditoria-resultado" class="campo__control" formControlName="codigoResultado">
-            <option [ngValue]="null">Todos</option>
-            <option [ngValue]="'EXITO'">Éxito</option>
-            <option [ngValue]="'FALLO'">Fallo</option>
-            <option [ngValue]="'RECHAZADA'">Rechazada</option>
-          </select>
-        </div>
-
-        <div class="campo">
-          <label class="campo__etiqueta" for="auditoria-desde">Desde</label>
-          <input id="auditoria-desde" class="campo__control" type="date" formControlName="desde" />
-        </div>
-
-        <div class="campo">
-          <label class="campo__etiqueta" for="auditoria-hasta">Hasta</label>
-          <input id="auditoria-hasta" class="campo__control" type="date" formControlName="hasta" />
-        </div>
-
-        @if (modoGlobal) {
-          <div class="campo">
-            <label class="campo__etiqueta" for="auditoria-id-grupo">Id de grupo</label>
-            <input id="auditoria-id-grupo" class="campo__control" type="number" formControlName="idGrupo" />
-          </div>
-        }
-
-        <button type="submit" class="boton boton--contorno">Aplicar filtros</button>
-      </form>
-    </details>
+  <section class="actividad" aria-labelledby="auditoria-actividad">
+    <div class="actividad__cabecera">
+      <h2 id="auditoria-actividad" class="actividad__titulo">
+        {{ modoGlobal ? 'Actividad de todos los grupos' : 'Actividad del grupo' }}
+      </h2>
+      @if (!cargando() && !error() && total() > 0) {
+        <p class="resumen-eventos">{{ textoTotal() }}</p>
+      }
+    </div>
 
     @if (error(); as mensaje) {
-      <div class="error" role="alert">
-        <p class="error__mensaje">{{ mensaje }}</p>
-        <button type="button" class="boton boton--contorno" (click)="reintentar()">Reintentar</button>
+      <div class="mv-aviso mv-aviso--error" role="alert">
+        <p>{{ mensaje }}</p>
+        <button type="button" class="mv-boton" (click)="reintentar()">Reintentar</button>
       </div>
     }
 
     @if (cargando()) {
-      <p class="vacio" role="status">Cargando…</p>
+      <div role="status" aria-live="polite">
+        <span class="oculto">Cargando eventos…</span>
+        <div class="esqueleto" aria-hidden="true">
+          <span class="mv-esqueleto mv-esqueleto--bloque"></span>
+          <span class="mv-esqueleto mv-esqueleto--bloque"></span>
+          <span class="mv-esqueleto mv-esqueleto--bloque"></span>
+        </div>
+      </div>
+    } @else if (!error() && elementos().length === 0) {
+      <div class="mv-vacio" role="status">
+        <p class="mv-vacio__titulo">No hay eventos para estos filtros.</p>
+        <p class="mv-vacio__texto">Prueba con otro período o quita algún filtro.</p>
+      </div>
     }
 
-    @if (!cargando() && !error() && elementos().length === 0) {
-      <p class="vacio" role="status">No hay eventos para estos filtros.</p>
-    }
+    @if (!cargando() && elementos().length > 0) {
+      <ul class="mv-lista lista-eventos">
+        @for (evento of elementos(); track evento.idEvento) {
+          <li class="mv-fila tarjeta-evento">
+            <time class="tarjeta-evento__fecha" [attr.datetime]="evento.fechaEvento">{{
+              fechaHoraLegible(evento.fechaEvento)
+            }}</time>
+            <div class="mv-fila__principal">
+              <p class="mv-fila__titulo tarjeta-evento__accion">{{ etiquetaAccion(evento.codigoAccion) }}</p>
+            </div>
+            <p class="mv-fila__meta tarjeta-evento__entidad">
+              {{ etiquetaEntidad(evento.tipoEntidad) }} · {{ evento.idEntidad }}
+            </p>
+            <p class="tarjeta-evento__actor">{{ evento.actor?.nombre ?? 'Proceso automático' }}</p>
+            <span class="tarjeta-evento__resultado"
+              ><span class="mv-chip {{ tonoResultado(evento) }}">{{
+                descripcionResultado(evento.idResultado)
+              }}</span></span
+            >
 
-    <ul class="lista">
-      @for (evento of elementos(); track evento.idEvento) {
-        <li class="tarjeta-evento">
-          <p class="tarjeta-evento__fecha">
-            {{ formatearFecha(evento.fechaEvento) }} a las {{ formatearHora(evento.fechaEvento) }}
-          </p>
-          <p class="tarjeta-evento__actor">{{ evento.actor?.nombre ?? 'Proceso automático' }}</p>
-          <p class="tarjeta-evento__accion">{{ etiquetaAccion(evento.codigoAccion) }}</p>
-          <p class="tarjeta-evento__codigo">{{ evento.codigoAccion }}</p>
-          <p class="tarjeta-evento__entidad">
-            {{ etiquetaEntidad(evento.tipoEntidad) }} · {{ evento.idEntidad }}
-          </p>
-          <span class="insignia">{{ descripcionResultado(evento.idResultado) }}</span>
-
-          @if (evento.detalles) {
-            <details class="detalles">
-              <summary>Detalles</summary>
-              <pre>{{ detallesComoJson(evento.detalles) }}</pre>
+            <details class="mv-mas detalles">
+              <summary class="mv-boton mv-boton--texto" [attr.aria-label]="etiquetaDetalle(evento)">
+                Ver detalles
+              </summary>
+              <p class="detalles__codigo">
+                Código de acción: <code class="tarjeta-evento__codigo">{{ evento.codigoAccion }}</code>
+              </p>
+              @if (evento.detalles) {
+                <pre>{{ detallesComoJson(evento.detalles) }}</pre>
+              }
             </details>
-          }
-        </li>
-      }
-    </ul>
+          </li>
+        }
+      </ul>
+    }
 
     @if (total() > 0) {
       <nav class="paginacion" aria-label="Paginación de auditoría">
         <button
           type="button"
-          class="boton boton--contorno"
+          class="mv-boton"
           [disabled]="!hayPaginaAnterior() || cargando()"
           (click)="paginaAnterior()"
         >
+          <app-icono nombre="flecha-izquierda" aria-hidden="true" />
           Anterior
         </button>
         <span aria-live="polite">Página {{ pagina() + 1 }} de {{ totalPaginas() }}</span>
         <button
           type="button"
-          class="boton boton--contorno"
+          class="mv-boton"
           [disabled]="!hayPaginaSiguiente() || cargando()"
           (click)="paginaSiguiente()"
         >
           Siguiente
+          <app-icono nombre="flecha-derecha" aria-hidden="true" />
         </button>
       </nav>
     }
-  </div>
+  </section>
 </div>

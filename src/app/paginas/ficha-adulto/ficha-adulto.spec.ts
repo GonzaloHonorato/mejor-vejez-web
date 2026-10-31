@@ -6,8 +6,14 @@ import { Observable, Subject, of, throwError } from 'rxjs';
 
 import { FichaAdulto } from './ficha-adulto';
 import { RespuestaAdultoMayor, RespuestaContacto } from '../../nucleo/adultos/modelos-adultos';
-import { ServicioAdultos, SolicitudGuardarAdultoMayor } from '../../nucleo/adultos/servicio-adultos';
-import { RespuestaEstadoCatalogo, ServicioCatalogos } from '../../nucleo/catalogos/servicio-catalogos';
+import {
+  ServicioAdultos,
+  SolicitudGuardarAdultoMayor,
+} from '../../nucleo/adultos/servicio-adultos';
+import {
+  RespuestaEstadoCatalogo,
+  ServicioCatalogos,
+} from '../../nucleo/catalogos/servicio-catalogos';
 import { RespuestaGrupo } from '../../nucleo/grupos/modelos-grupos';
 import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
@@ -115,11 +121,16 @@ async function configurar(opciones: Opciones = {}) {
       },
       {
         provide: ServicioCatalogos,
-        useValue: { estados: opciones.estadosImpl ?? (() => of(opciones.estados ?? ESTADOS_ADULTO)) },
+        useValue: {
+          estados: opciones.estadosImpl ?? (() => of(opciones.estados ?? ESTADOS_ADULTO)),
+        },
       },
     ],
   })
-    .overrideComponent(FichaAdulto, { remove: { imports: [ContactosAdulto] }, add: { imports: [ContactosAdultoFalso] } })
+    .overrideComponent(FichaAdulto, {
+      remove: { imports: [ContactosAdulto] },
+      add: { imports: [ContactosAdultoFalso] },
+    })
     .compileComponents();
   const fixture = TestBed.createComponent(FichaAdulto);
   await fixture.whenStable();
@@ -139,13 +150,94 @@ function botonConTexto(elemento: HTMLElement, texto: string): HTMLButtonElement 
 }
 
 describe('FichaAdulto', () => {
+  it('encabezadoMuestraInicialesDetalleYEstado', async () => {
+    const { elemento } = await configurar({});
+
+    const encabezado = elemento.querySelector('.mv-encabezado')!;
+    expect(encabezado.querySelector('h1')?.textContent).toContain('Rosa González');
+    expect(encabezado.querySelector('.mv-avatar')?.textContent?.trim()).toBe('RG');
+    expect(encabezado.querySelector('.mv-avatar')?.getAttribute('aria-hidden')).toBe('true');
+    expect(encabezado.querySelector('.mv-encabezado__bajada')?.textContent).toMatch(
+      /\d+ años · Código AM-001/,
+    );
+    const chip = encabezado.querySelector('.mv-chip');
+    expect(chip?.textContent?.trim()).toBe('Activo');
+    expect(chip?.classList).toContain('mv-chip--exito');
+  });
+
+  it('seccionesEnTarjetas', async () => {
+    const { elemento } = await configurar({});
+
+    const titulos = Array.from(elemento.querySelectorAll('.mv-tarjeta .mv-tarjeta__titulo')).map(
+      (titulo) => titulo.textContent?.trim(),
+    );
+    expect(titulos).toEqual(['Datos', 'Notas de emergencia', 'Observaciones generales']);
+  });
+
+  it('administradorTieneUnaAccionPrincipalYElRestoEnMasAcciones', async () => {
+    const { elemento } = await configurar({});
+
+    expect(botonConTexto(elemento, 'Editar perfil')?.classList).toContain('mv-boton--primario');
+    const mas = elemento.querySelector('details.mv-mas')!;
+    expect(mas.querySelector('summary')?.textContent).toContain('Más acciones');
+    expect(botonConTexto(mas as HTMLElement, 'Desactivar perfil')).toBeTruthy();
+    expect(botonConTexto(mas as HTMLElement, 'Eliminar')?.classList).toContain('mv-boton--peligro');
+  });
+
+  it('perfilInactivoOfreceReactivarComoAccionPrincipal', async () => {
+    const { elemento } = await configurar({ obtenerImpl: () => of(adulto({ idEstado: 2 })) });
+
+    expect(botonConTexto(elemento, 'Reactivar perfil')?.classList).toContain('mv-boton--primario');
+    expect(botonConTexto(elemento, 'Editar perfil')).toBeFalsy();
+    expect(elemento.querySelector('.mv-encabezado .mv-chip')?.textContent?.trim()).toBe('Inactivo');
+  });
+
+  it('mientrasCargaMuestraElEsqueleto', async () => {
+    const pendiente = new Subject<RespuestaAdultoMayor>();
+    const { fixture, elemento } = await configurar({ obtenerImpl: () => pendiente.asObservable() });
+
+    const estado = Array.from(elemento.querySelectorAll('[role="status"]')).find((nodo) =>
+      nodo.textContent?.includes('Cargando la ficha'),
+    );
+    expect(estado).toBeTruthy();
+    expect(elemento.querySelector('.mv-esqueleto')).toBeTruthy();
+
+    pendiente.next(adulto());
+    await fixture.whenStable();
+    expect(elemento.querySelector('.mv-esqueleto')).toBeFalsy();
+  });
+
+  it('errorAlCargarPermiteReintentar', async () => {
+    let intentos = 0;
+    const { fixture, elemento, servicioAdultos } = await configurar({
+      obtenerImpl: () =>
+        ++intentos === 1
+          ? throwError(
+              () => new HttpErrorResponse({ status: 500, error: { detail: 'Falló la carga.' } }),
+            )
+          : of(adulto()),
+    });
+
+    const aviso = elemento.querySelector('.mv-aviso--error');
+    expect(aviso?.getAttribute('role')).toBe('alert');
+    expect(aviso?.textContent).toContain('Falló la carga.');
+
+    botonConTexto(elemento, 'Reintentar')!.click();
+    await fixture.whenStable();
+
+    expect(servicioAdultos.obtener).toHaveBeenCalledTimes(2);
+    expect(servicioAdultos.obtener).toHaveBeenLastCalledWith(1, 1);
+    expect(elemento.querySelector('.mv-aviso--error')).toBeFalsy();
+    expect(elemento.textContent).toContain('Alergia a la penicilina.');
+  });
+
   it('muestraLosDatosDelPerfil', async () => {
     const { elemento, servicioAdultos } = await configurar({});
 
     expect(servicioAdultos.obtener).toHaveBeenCalledWith(1, 1);
     expect(elemento.textContent).toContain('Rosa González');
     expect(elemento.textContent).toContain('AM-001');
-    expect(elemento.textContent).toContain('10-05-1950');
+    expect(elemento.textContent).toContain('10 may 1950');
     expect(elemento.textContent).toContain('años');
     expect(elemento.textContent).toContain('Activo');
     expect(elemento.textContent).toContain('Alergia a la penicilina.');
@@ -210,6 +302,33 @@ describe('FichaAdulto', () => {
     const confirmacion = elemento.querySelector('[role="status"]');
     expect(confirmacion?.textContent).toContain('Cambios guardados.');
     expect(elemento.textContent).toContain('Rosa González Pérez');
+  });
+
+  it('editarEnfocaElPrimerCampoYCancelarDevuelveElFocoAEditarPerfil', async () => {
+    const { fixture, elemento } = await configurar({});
+
+    botonConTexto(elemento, 'Editar perfil')!.click();
+    await fixture.whenStable();
+    expect(document.activeElement?.id).toBe('ficha-nombre');
+
+    botonConTexto(elemento, 'Cancelar')!.click();
+    await fixture.whenStable();
+    const editar = botonConTexto(elemento, 'Editar perfil')!;
+    expect(editar.id).toBe('ficha-editar');
+    expect(document.activeElement).toBe(editar);
+  });
+
+  it('guardarDevuelveElFocoAEditarPerfil', async () => {
+    const { fixture, elemento, servicioAdultos } = await configurar({});
+    servicioAdultos.actualizar.mockReturnValue(of(adulto()));
+
+    botonConTexto(elemento, 'Editar perfil')!.click();
+    await fixture.whenStable();
+    elemento.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    expect(servicioAdultos.actualizar).toHaveBeenCalledTimes(1);
+    expect(document.activeElement).toBe(botonConTexto(elemento, 'Editar perfil'));
   });
 
   it('guardarConNombreVacioMuestraMensajeRequeridoYNoLlamaALaApi', async () => {
@@ -288,7 +407,7 @@ describe('FichaAdulto', () => {
   it('cargaCuandoElGrupoActivoLlegaDespuesDeUnaRecargaODeepLink', async () => {
     // Al recargar la página (o entrar por enlace directo), `ServicioGrupoActivo`
     // todavía no resolvió `listar()`: `activo()` arranca en null. Ese null
-    // inicial NO debe tratarse como "el grupo cambió" (findings Important 1).
+    // inicial NO debe tratarse como "el grupo cambió".
     const { fixture, activo, router, servicioAdultos, elemento } = await configurar({
       activo: null,
     });

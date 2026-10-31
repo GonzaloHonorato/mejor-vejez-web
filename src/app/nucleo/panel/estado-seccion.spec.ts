@@ -162,8 +162,8 @@ describe('EstadoSeccion', () => {
     estadoSeccion.reintentar();
 
     // Mientras espera la respuesta de "Reintentar", los datos nunca desaparecen
-    // ni el estado pasa por "cargando": la regla 9 (un refresco fallido no
-    // borra los datos) también aplica al botón "Reintentar".
+    // ni el estado pasa por "cargando": un refresco fallido no borra los
+    // datos, y eso también aplica al botón "Reintentar".
     expect(estadoSeccion.estado()).toBe('datos');
     expect(estadoSeccion.datos()).toBe(5);
 

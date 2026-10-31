@@ -1,233 +1,278 @@
-<div class="pagina">
-  <header class="cabecera">
-    <h1>Administración de usuarios</h1>
-  </header>
+<header class="mv-encabezado">
+  <div>
+    <p class="mv-encabezado__rotulo">Administración</p>
+    <h1 class="mv-encabezado__titulo">Administración de usuarios</h1>
+    <p class="mv-encabezado__bajada">Crea cuentas, edita sus datos y gestiona el acceso a Cuida+.</p>
+  </div>
+  <div class="mv-encabezado__accion">
+    <button
+      #botonCrearUsuario
+      id="usuarios-abrir-crear"
+      type="button"
+      class="mv-boton mv-boton--primario"
+      aria-controls="usuarios-crear"
+      [attr.aria-expanded]="creandoUsuario()"
+      (click)="alternarCrear()"
+    >
+      Crear usuario
+    </button>
+    <a class="mv-boton" routerLink="/administracion/auditoria">Auditoría global</a>
+  </div>
+</header>
 
-  <div class="contenido">
-    <a class="enlace" routerLink="/administracion/auditoria">Auditoría global</a>
+<div class="contenido">
+  @if (error(); as mensaje) {
+    <p class="mv-aviso mv-aviso--error" role="alert">{{ mensaje }}</p>
+  }
 
-    @if (error(); as mensaje) {
-      <p class="error" role="alert">{{ mensaje }}</p>
-    }
-
-    @if (!creandoUsuario()) {
-      <button #botonCrearUsuario type="button" class="boton boton--primario" (click)="abrirCrear()">
-        Crear usuario
-      </button>
-    }
-
+  <div id="usuarios-crear" class="registro">
     @if (creandoUsuario()) {
-      <section class="tarjeta crear-usuario" aria-labelledby="usuarios-crear-titulo">
-        <h2 id="usuarios-crear-titulo">Crear usuario</h2>
+      <section class="mv-tarjeta crear-usuario" aria-labelledby="usuarios-crear-titulo">
+        <div class="mv-tarjeta__cabecera">
+          <h2 id="usuarios-crear-titulo" class="mv-tarjeta__titulo">Crear usuario</h2>
+        </div>
 
-        @if (errorCrear(); as mensaje) {
-          <p class="error" role="alert">{{ mensaje }}</p>
-        }
+        <form class="mv-tarjeta__cuerpo formulario" [formGroup]="formularioCrear" (ngSubmit)="crear()" novalidate>
+          <p class="ayuda">Al crearla, la cuenta recibe una contraseña temporal que verás una sola vez.</p>
 
-        <form [formGroup]="formularioCrear" (ngSubmit)="crear()" novalidate>
-          <div class="campo">
-            <label class="campo__etiqueta" for="usuario-crear-nombre">Nombre</label>
+          @if (errorCrear(); as mensaje) {
+            <p class="mv-aviso mv-aviso--error ancho" role="alert">{{ mensaje }}</p>
+          }
+
+          <div class="mv-campo">
+            <label class="mv-campo__etiqueta" for="usuario-crear-nombre">Nombre</label>
             <input
               id="usuario-crear-nombre"
-              class="campo__control"
+              class="mv-campo__control"
               type="text"
               formControlName="nombre"
               [attr.aria-invalid]="erroresCamposCrear()['nombre'] ? true : null"
               [attr.aria-describedby]="erroresCamposCrear()['nombre'] ? 'usuario-crear-nombre-error' : null"
             />
             @if (erroresCamposCrear()['nombre']; as mensaje) {
-              <p id="usuario-crear-nombre-error" class="error" role="alert">{{ mensaje }}</p>
+              <p id="usuario-crear-nombre-error" class="mv-campo__error" role="alert">{{ mensaje }}</p>
             }
           </div>
 
-          <div class="campo">
-            <label class="campo__etiqueta" for="usuario-crear-email">Correo</label>
+          <div class="mv-campo">
+            <label class="mv-campo__etiqueta" for="usuario-crear-email">Correo</label>
             <input
               id="usuario-crear-email"
-              class="campo__control"
+              class="mv-campo__control"
               type="email"
               formControlName="email"
               [attr.aria-invalid]="erroresCamposCrear()['email'] ? true : null"
               [attr.aria-describedby]="erroresCamposCrear()['email'] ? 'usuario-crear-email-error' : null"
             />
             @if (erroresCamposCrear()['email']; as mensaje) {
-              <p id="usuario-crear-email-error" class="error" role="alert">{{ mensaje }}</p>
+              <p id="usuario-crear-email-error" class="mv-campo__error" role="alert">{{ mensaje }}</p>
             }
           </div>
 
-          <div class="campo">
-            <label class="campo__etiqueta" for="usuario-crear-telefono">Teléfono</label>
+          <div class="mv-campo">
+            <label class="mv-campo__etiqueta" for="usuario-crear-telefono">Teléfono</label>
             <input
               id="usuario-crear-telefono"
-              class="campo__control"
+              class="mv-campo__control"
               type="tel"
               formControlName="telefono"
               [attr.aria-invalid]="erroresCamposCrear()['telefono'] ? true : null"
               [attr.aria-describedby]="erroresCamposCrear()['telefono'] ? 'usuario-crear-telefono-error' : null"
             />
             @if (erroresCamposCrear()['telefono']; as mensaje) {
-              <p id="usuario-crear-telefono-error" class="error" role="alert">{{ mensaje }}</p>
+              <p id="usuario-crear-telefono-error" class="mv-campo__error" role="alert">
+                {{ mensaje }}
+              </p>
             }
           </div>
 
-          <div class="tarjeta__acciones">
-            <button type="button" class="boton boton--contorno" (click)="cancelarCrear()">Cancelar</button>
-            <button type="submit" class="boton boton--primario" [disabled]="guardandoCrear()">
+          <div class="botones">
+            <button type="button" class="mv-boton" (click)="cancelarCrear()">Cancelar</button>
+            <button type="submit" class="mv-boton mv-boton--primario" [disabled]="guardandoCrear()">
               {{ guardandoCrear() ? 'Creando…' : 'Crear usuario' }}
             </button>
           </div>
         </form>
       </section>
     }
+  </div>
 
-    <form class="buscador" [formGroup]="formularioBusqueda" (ngSubmit)="buscar()" novalidate>
-      <div class="campo">
-        <label class="campo__etiqueta" for="usuarios-buscar">Buscar por nombre o correo</label>
-        <input
-          id="usuarios-buscar"
-          class="campo__control"
-          type="search"
-          formControlName="texto"
-        />
+  <form class="buscador" [formGroup]="formularioBusqueda" (ngSubmit)="buscar()" novalidate>
+    <div class="mv-campo">
+      <label class="mv-campo__etiqueta" for="usuarios-buscar">Buscar por nombre o correo</label>
+      <input id="usuarios-buscar" class="mv-campo__control" type="search" formControlName="texto" />
+    </div>
+    <button type="submit" class="mv-boton">Buscar</button>
+  </form>
+
+  @if (errorCarga(); as mensaje) {
+    <div class="mv-aviso mv-aviso--error" role="alert">
+      <p>{{ mensaje }}</p>
+      <button type="button" class="mv-boton" (click)="reintentar()">Reintentar</button>
+    </div>
+  }
+
+  @if (cargando() && usuarios().length === 0) {
+    <div role="status" aria-live="polite">
+      <span class="oculto">Cargando usuarios…</span>
+      <div class="esqueleto" aria-hidden="true">
+        <span class="mv-esqueleto mv-esqueleto--bloque"></span>
+        <span class="mv-esqueleto mv-esqueleto--bloque"></span>
       </div>
-      <button type="submit" class="boton boton--contorno">Buscar</button>
-    </form>
+    </div>
+  } @else if (!errorCarga() && usuarios().length === 0) {
+    <div class="mv-vacio" role="status">
+      <p class="mv-vacio__titulo">No hay usuarios para mostrar.</p>
+      <p class="mv-vacio__texto">Prueba con otra búsqueda o crea un usuario nuevo.</p>
+    </div>
+  }
 
-    <ul class="lista">
+  @if (usuarios().length > 0) {
+    <ul class="mv-lista lista-usuarios">
       @for (usuario of usuarios(); track usuario.idUsuario) {
-        <li class="usuario">
-          <div class="usuario__principal">
-            <p class="usuario__nombre">{{ usuario.nombre }}</p>
-            <p class="usuario__correo">{{ usuario.email }}</p>
+        <li class="mv-fila usuario">
+          <div class="usuario__persona">
+            <span class="mv-avatar" aria-hidden="true">{{ iniciales(usuario.nombre) }}</span>
+            <div class="mv-fila__principal">
+              <p class="mv-fila__titulo usuario__nombre">{{ usuario.nombre }}</p>
+              <p class="mv-fila__meta usuario__correo">{{ usuario.email }}</p>
+            </div>
           </div>
 
-          <div class="usuario__estado">
-            <label class="campo__etiqueta oculto" [attr.for]="'usuario-estado-' + usuario.idUsuario">
-              Estado de {{ usuario.nombre }}
-            </label>
-            <select
-              [id]="'usuario-estado-' + usuario.idUsuario"
-              class="campo__control"
-              [formControl]="controlEstado(usuario)"
-              (change)="cambiarEstado(usuario, controlEstado(usuario).value)"
-            >
-              @for (estado of estados(); track estado.idEstado) {
-                <option [ngValue]="estado.idEstado">{{ estado.descripcion }}</option>
-              }
-            </select>
+          <div class="usuario__chips">
+            <span class="mv-chip {{ tonoEstado(usuario) }}">{{ descripcionEstado(usuario) }}</span>
+            <span class="mv-chip" [class.mv-chip--info]="usuario.esAdministrador">
+              {{ usuario.esAdministrador ? 'Administrador' : 'Integrante' }}
+            </span>
           </div>
 
-          <span class="insignia" [class.insignia--admin]="usuario.esAdministrador">
-            {{ usuario.esAdministrador ? 'Administrador' : 'Integrante' }}
-          </span>
-
-          <button type="button" class="boton boton--contorno usuario__editar" (click)="editar(usuario)">
-            Editar
-          </button>
-          @if (puedeReenviarAcceso(usuario)) {
+          <div class="mv-fila__acciones usuario__acciones">
             <button
+              [id]="'usuario-editar-' + usuario.idUsuario"
               type="button"
-              class="boton boton--contorno"
-              [disabled]="reenviando() === usuario.idUsuario"
-              (click)="reenviarAcceso(usuario)"
+              class="mv-boton mv-boton--primario usuario__editar"
+              [attr.aria-label]="'Editar a ' + usuario.nombre"
+              (click)="editar(usuario)"
             >
-              Reenviar accesos
+              Editar
             </button>
+            <details class="mv-mas">
+              <summary class="mv-boton mv-boton--texto" [attr.aria-label]="'Más acciones: ' + usuario.nombre">
+                <app-icono nombre="mas" aria-hidden="true" />
+                Más acciones
+              </summary>
+              <div class="mv-mas__panel">
+                <div class="mv-campo">
+                  <label class="mv-campo__etiqueta" [attr.for]="'usuario-estado-' + usuario.idUsuario">
+                    Estado de la cuenta<span class="oculto"> de {{ usuario.nombre }}</span>
+                  </label>
+                  <select
+                    [id]="'usuario-estado-' + usuario.idUsuario"
+                    class="mv-campo__control"
+                    [formControl]="controlEstado(usuario)"
+                    (change)="cambiarEstado(usuario, controlEstado(usuario).value)"
+                  >
+                    @for (estado of estados(); track estado.idEstado) {
+                      <option [ngValue]="estado.idEstado">{{ estado.descripcion }}</option>
+                    }
+                  </select>
+                </div>
+                @if (puedeReenviarAcceso(usuario)) {
+                  <button
+                    type="button"
+                    class="mv-boton"
+                    [disabled]="reenviando() === usuario.idUsuario"
+                    (click)="reenviarAcceso(usuario)"
+                  >
+                    Reenviar accesos
+                  </button>
+                }
+              </div>
+            </details>
+          </div>
+
+          @if (editando()?.idUsuario === usuario.idUsuario) {
+            <section class="mv-tarjeta editar-usuario" aria-labelledby="usuarios-editar-titulo">
+              <div class="mv-tarjeta__cabecera">
+                <h2 id="usuarios-editar-titulo" class="mv-tarjeta__titulo">Editar: {{ usuario.nombre }}</h2>
+              </div>
+
+              <form class="mv-tarjeta__cuerpo formulario" [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
+                @if (errorEdicion(); as mensaje) {
+                  <p class="mv-aviso mv-aviso--error ancho" role="alert">{{ mensaje }}</p>
+                }
+
+                <div class="mv-campo">
+                  <label class="mv-campo__etiqueta" for="usuario-nombre">Nombre</label>
+                  <input
+                    id="usuario-nombre"
+                    class="mv-campo__control"
+                    type="text"
+                    formControlName="nombre"
+                    [attr.aria-invalid]="erroresCampos()['nombre'] ? true : null"
+                    [attr.aria-describedby]="erroresCampos()['nombre'] ? 'usuario-nombre-error' : null"
+                  />
+                  @if (erroresCampos()['nombre']; as mensaje) {
+                    <p id="usuario-nombre-error" class="mv-campo__error" role="alert">{{ mensaje }}</p>
+                  }
+                </div>
+
+                <div class="mv-campo">
+                  <label class="mv-campo__etiqueta" for="usuario-telefono">Teléfono</label>
+                  <input
+                    id="usuario-telefono"
+                    class="mv-campo__control"
+                    type="tel"
+                    formControlName="telefono"
+                    [attr.aria-invalid]="erroresCampos()['telefono'] ? true : null"
+                    [attr.aria-describedby]="erroresCampos()['telefono'] ? 'usuario-telefono-error' : null"
+                  />
+                  @if (erroresCampos()['telefono']; as mensaje) {
+                    <p id="usuario-telefono-error" class="mv-campo__error" role="alert">
+                      {{ mensaje }}
+                    </p>
+                  }
+                </div>
+
+                <label class="mv-campo mv-campo--casilla ancho">
+                  <input id="usuario-administrador" type="checkbox" formControlName="esAdministrador" />
+                  <span class="mv-campo__etiqueta">Administrador</span>
+                </label>
+
+                <div class="botones">
+                  <button type="button" class="mv-boton" (click)="cancelarEdicion()">Cancelar</button>
+                  <button type="submit" class="mv-boton mv-boton--primario" [disabled]="guardando()">
+                    {{ guardando() ? 'Guardando…' : 'Guardar cambios' }}
+                  </button>
+                </div>
+              </form>
+            </section>
           }
         </li>
-      } @empty {
-        <p>No hay usuarios para mostrar.</p>
       }
     </ul>
+  }
 
+  @if (usuarios().length > 0 || pagina() > 0) {
     <nav class="paginacion" aria-label="Paginación de usuarios">
-      <button
-        type="button"
-        class="boton boton--contorno"
-        [disabled]="pagina() === 0"
-        (click)="paginaAnterior()"
-      >
+      <button type="button" class="mv-boton" [disabled]="pagina() === 0" (click)="paginaAnterior()">
+        <app-icono nombre="flecha-izquierda" aria-hidden="true" />
         Anterior
       </button>
       <span>Página {{ pagina() + 1 }}</span>
-      <button
-        type="button"
-        class="boton boton--contorno"
-        [disabled]="!hayMasPaginas()"
-        (click)="siguientePagina()"
-      >
+      <button type="button" class="mv-boton" [disabled]="!hayMasPaginas()" (click)="siguientePagina()">
         Siguiente
+        <app-icono nombre="flecha-derecha" aria-hidden="true" />
       </button>
     </nav>
+  }
 
-    @if (editando(); as usuarioEditado) {
-      <section class="tarjeta" aria-labelledby="usuarios-editar-titulo">
-        <h2 id="usuarios-editar-titulo">Editar: {{ usuarioEditado.nombre }}</h2>
-
-        @if (errorEdicion(); as mensaje) {
-          <p class="error" role="alert">{{ mensaje }}</p>
-        }
-
-        <form [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
-          <div class="campo">
-            <label class="campo__etiqueta" for="usuario-nombre">Nombre</label>
-            <input
-              id="usuario-nombre"
-              class="campo__control"
-              type="text"
-              formControlName="nombre"
-              [attr.aria-invalid]="erroresCampos()['nombre'] ? true : null"
-              [attr.aria-describedby]="erroresCampos()['nombre'] ? 'usuario-nombre-error' : null"
-            />
-            @if (erroresCampos()['nombre']; as mensaje) {
-              <p id="usuario-nombre-error" class="error" role="alert">{{ mensaje }}</p>
-            }
-          </div>
-
-          <div class="campo">
-            <label class="campo__etiqueta" for="usuario-telefono">Teléfono</label>
-            <input
-              id="usuario-telefono"
-              class="campo__control"
-              type="tel"
-              formControlName="telefono"
-              [attr.aria-invalid]="erroresCampos()['telefono'] ? true : null"
-              [attr.aria-describedby]="erroresCampos()['telefono'] ? 'usuario-telefono-error' : null"
-            />
-            @if (erroresCampos()['telefono']; as mensaje) {
-              <p id="usuario-telefono-error" class="error" role="alert">{{ mensaje }}</p>
-            }
-          </div>
-
-          <label class="interruptor">
-            <input
-              id="usuario-administrador"
-              class="interruptor__control"
-              type="checkbox"
-              formControlName="esAdministrador"
-            />
-            <span class="interruptor__etiqueta">Administrador</span>
-          </label>
-
-          <div class="tarjeta__acciones">
-            <button type="button" class="boton boton--contorno" (click)="cancelarEdicion()">
-              Cancelar
-            </button>
-            <button type="submit" class="boton boton--primario" [disabled]="guardando()">
-              {{ guardando() ? 'Guardando…' : 'Guardar cambios' }}
-            </button>
-          </div>
-        </form>
-      </section>
-    }
-
-    @if (claveAMostrar(); as datos) {
-      <app-clave-temporal
-        [titulo]="datos.titulo"
-        [clave]="datos.clave"
-        [correoEnviado]="datos.correoEnviado"
-        (cerrar)="cerrarClave()"
-      />
-    }
-  </div>
+  @if (claveAMostrar(); as datos) {
+    <app-clave-temporal
+      [titulo]="datos.titulo"
+      [clave]="datos.clave"
+      [correoEnviado]="datos.correoEnviado"
+      (cerrar)="cerrarClave()"
+    />
+  }
 </div>

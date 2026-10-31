@@ -1,18 +1,34 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
+import {
+  Component,
+  Injector,
+  OnInit,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { ContactosAdulto } from './contactos-adulto/contactos-adulto';
+import { inicialesDe } from '../../compartido/marco-app/identidad-usuario';
+import { Icono } from '../../compartido/icono/icono';
 import { edadEnAnios } from '../../nucleo/adultos/edad';
 import { RespuestaAdultoMayor } from '../../nucleo/adultos/modelos-adultos';
 import { AVISO_OPERATIVO, puedeAdministrarGrupo } from '../../nucleo/adultos/permisos-adultos';
 import { ServicioAdultos } from '../../nucleo/adultos/servicio-adultos';
 import { ServicioCatalogos } from '../../nucleo/catalogos/servicio-catalogos';
-import { formatearFecha } from '../../nucleo/fechas';
+import { fechaConAnio } from '../../nucleo/fecha-legible';
 import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
-import { erroresDeCampos, mensajeDeCampo, mensajeDeError } from '../../nucleo/http/mensaje-de-error';
+import {
+  erroresDeCampos,
+  mensajeDeCampo,
+  mensajeDeError,
+} from '../../nucleo/http/mensaje-de-error';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
+import { detalleAdulto } from '../adultos/detalle-adulto';
 
 /**
  * Página "Ficha del adulto mayor" (`/adultos/:idAdulto`): datos del perfil,
@@ -22,11 +38,11 @@ import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
  * Siempre trabaja sobre el `idGrupo` del grupo activo en el momento en que
  * se entra a la ficha: si ese grupo cambia mientras se está viendo (no la
  * carga inicial), se vuelve a `/adultos` sin mostrar datos del grupo
- * anterior (Foco de revisión 5 de la Fase 2).
+ * anterior.
  */
 @Component({
   selector: 'app-ficha-adulto',
-  imports: [ReactiveFormsModule, RouterLink, ContactosAdulto],
+  imports: [ReactiveFormsModule, RouterLink, ContactosAdulto, Icono],
   templateUrl: './ficha-adulto.html',
   styleUrl: './ficha-adulto.scss',
 })
@@ -37,11 +53,13 @@ export class FichaAdulto implements OnInit {
   private readonly servicioYo = inject(ServicioYo);
   private readonly servicioCatalogos = inject(ServicioCatalogos);
   private readonly fb = inject(NonNullableFormBuilder);
+  private readonly injector = inject(Injector);
 
   protected readonly grupoActivo = inject(ServicioGrupoActivo);
   protected readonly activo = this.grupoActivo.activo;
   protected readonly avisoOperativo = AVISO_OPERATIVO;
-  protected readonly formatearFecha = formatearFecha;
+  protected readonly fechaConAnio = fechaConAnio;
+  protected readonly detalle = detalleAdulto;
 
   private readonly idAdulto = Number(this.ruta.snapshot.paramMap.get('idAdulto'));
 
@@ -143,6 +161,16 @@ export class FichaAdulto implements OnInit {
     return edadEnAnios(adulto.fechaNacimiento);
   }
 
+  protected iniciales(adulto: RespuestaAdultoMayor): string {
+    return inicialesDe(adulto.nombreCompleto);
+  }
+
+  protected reintentar(): void {
+    if (this.idGrupoCargado === null) return;
+    this.errorGeneral.set(null);
+    this.cargar(this.idGrupoCargado);
+  }
+
   protected editar(): void {
     const adulto = this.adulto();
     if (!adulto) return;
@@ -152,12 +180,14 @@ export class FichaAdulto implements OnInit {
     this.erroresCampos.set({});
     this.rellenarFormulario(adulto);
     this.editando.set(true);
+    this.enfocar('ficha-nombre');
   }
 
   protected cancelarEdicion(): void {
     this.editando.set(false);
     this.erroresCampos.set({});
     this.errorGeneral.set(null);
+    this.enfocar('ficha-editar');
   }
 
   /** Error de la API, o si no un mensaje local cuando se tocó el campo sin completar el nombre. */
@@ -181,8 +211,13 @@ export class FichaAdulto implements OnInit {
 
     this.errorGeneral.set(null);
     this.erroresCampos.set({});
-    const { nombreCompleto, codigoInterno, fechaNacimiento, notasEmergencia, observacionesGenerales } =
-      this.formulario.getRawValue();
+    const {
+      nombreCompleto,
+      codigoInterno,
+      fechaNacimiento,
+      notasEmergencia,
+      observacionesGenerales,
+    } = this.formulario.getRawValue();
     this.guardando.set(true);
     this.servicioAdultos
       .actualizar(grupo.idGrupo, adulto.idAdultoMayor, {
@@ -199,6 +234,7 @@ export class FichaAdulto implements OnInit {
           this.guardando.set(false);
           this.editando.set(false);
           this.confirmacionEdicion.set(true);
+          this.enfocar('ficha-editar');
         },
         error: (error: unknown) => {
           this.guardando.set(false);
@@ -292,6 +328,10 @@ export class FichaAdulto implements OnInit {
         }
       },
     });
+  }
+
+  private enfocar(id: string): void {
+    afterNextRender(() => document.getElementById(id)?.focus(), { injector: this.injector });
   }
 
   private rellenarFormulario(adulto: RespuestaAdultoMayor): void {

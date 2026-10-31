@@ -1,6 +1,6 @@
-import { TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { NEVER, Observable, of, throwError } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 
 import { Integrantes } from './integrantes';
@@ -52,11 +52,12 @@ async function configurar(opciones: {
   esAdministrador?: boolean;
   integrantesIniciales?: RespuestaIntegrante[];
   notificaCoordinador?: boolean;
+  integrantes?: () => Observable<RespuestaIntegrante[]>;
 }) {
   const servicioGrupos = {
     obtener: vi.fn(() => of(grupo(opciones.miRol, opciones.notificaCoordinador ?? true))),
     roles: vi.fn(() => of(ROLES)),
-    integrantes: vi.fn(() => of(opciones.integrantesIniciales ?? [])),
+    integrantes: vi.fn(opciones.integrantes ?? (() => of(opciones.integrantesIniciales ?? []))),
     incorporar: vi.fn(),
     crearIntegrante: vi.fn(),
     cambiarRol: vi.fn(),
@@ -67,7 +68,7 @@ async function configurar(opciones: {
     actualizar: vi.fn(),
   };
   const grupoActivo = { cargar: vi.fn(async () => {}) };
-  // La sección de sucesión (Tarea 8) carga su propio estado: sin propuesta activa ni historial.
+  // La sección de sucesión carga su propio estado: sin propuesta activa ni historial.
   const servicioSucesion = {
     activa: vi.fn(() => of(null)),
     historial: vi.fn(() => of([])),
@@ -124,13 +125,24 @@ function botonConTexto(elemento: HTMLElement, texto: string): HTMLButtonElement 
   );
 }
 
+async function abrirAgregar(fixture: ComponentFixture<Integrantes>): Promise<void> {
+  (fixture.nativeElement as HTMLElement)
+    .querySelector<HTMLButtonElement>('#integrantes-abrir-agregar')!
+    .click();
+  await fixture.whenStable();
+}
+
+function enviarAgregar(elemento: HTMLElement): void {
+  elemento.querySelector<HTMLFormElement>('#integrantes-agregar form')!.dispatchEvent(new Event('submit'));
+}
+
 describe('Integrantes', () => {
   afterEach(() => {
     document.body.innerHTML = '';
   });
 
   it('coordinadorVeFormularioYAcciones', async () => {
-    const { elemento } = await configurar({
+    const { fixture, elemento } = await configurar({
       miRol: 'COORDINADOR',
       integrantesIniciales: [
         integrante(1, 'Ana', 1, 'COORDINADOR'),
@@ -138,8 +150,9 @@ describe('Integrantes', () => {
       ],
     });
 
-    expect(elemento.querySelector('#integrante-email')).toBeTruthy();
     expect(elemento.textContent).toContain('Agregar integrante');
+    await abrirAgregar(fixture);
+    expect(elemento.querySelector('#integrante-email')).toBeTruthy();
 
     const filas = Array.from(elemento.querySelectorAll('.integrante'));
     expect(filas).toHaveLength(2);
@@ -215,6 +228,7 @@ describe('Integrantes', () => {
     });
 
     expect(elemento.querySelector('#integrante-email')).toBeFalsy();
+    expect(elemento.querySelector('#integrantes-abrir-agregar')).toBeFalsy();
     const fila = elemento.querySelector('.integrante') as HTMLElement;
     expect(fila.querySelector('select')).toBeFalsy();
     expect(botonConTexto(fila, 'Desactivar')).toBeFalsy();
@@ -235,10 +249,11 @@ describe('Integrantes', () => {
       ),
     );
 
+    await abrirAgregar(fixture);
     const campo = elemento.querySelector<HTMLInputElement>('#integrante-email')!;
     campo.value = 'nadie@correo.cl';
     campo.dispatchEvent(new Event('input'));
-    elemento.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'));
+    enviarAgregar(elemento);
     await fixture.whenStable();
 
     expect(elemento.querySelector('[role="alert"]')?.textContent).toContain(
@@ -250,10 +265,11 @@ describe('Integrantes', () => {
     const { fixture, elemento, servicioGrupos } = await configurar({ miRol: 'COORDINADOR' });
     servicioGrupos.incorporar.mockReturnValue(of(integrante(3, 'Carla', 1, 'COORDINADOR')));
 
+    await abrirAgregar(fixture);
     const campo = elemento.querySelector<HTMLInputElement>('#integrante-email')!;
     campo.value = '  carla@correo.cl  ';
     campo.dispatchEvent(new Event('input'));
-    elemento.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'));
+    enviarAgregar(elemento);
     await fixture.whenStable();
 
     expect(servicioGrupos.incorporar).toHaveBeenCalledWith(5, { email: 'carla@correo.cl', idRol: 1 });
@@ -263,10 +279,11 @@ describe('Integrantes', () => {
   it('correoInvalidoMuestraMensajeAlEnviar', async () => {
     const { fixture, elemento, servicioGrupos } = await configurar({ miRol: 'COORDINADOR' });
 
+    await abrirAgregar(fixture);
     const campo = elemento.querySelector<HTMLInputElement>('#integrante-email')!;
     campo.value = 'no-es-un-correo';
     campo.dispatchEvent(new Event('input'));
-    elemento.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'));
+    enviarAgregar(elemento);
     await fixture.whenStable();
 
     const error = elemento.querySelector('#integrante-email-error');
@@ -297,7 +314,7 @@ describe('Integrantes', () => {
     });
 
     const select = elemento.querySelector<HTMLSelectElement>('.integrante select')!;
-    expect(select.selectedOptions[0]?.textContent?.trim()).toBe('Colaborador');
+    expect(select.selectedOptions[0]?.textContent?.trim()).toBe('Colaborador/a');
   });
 
   it('cambiarRolConFallaRevierteElSelectAlValorReal', async () => {
@@ -318,11 +335,11 @@ describe('Integrantes', () => {
 
     const select = elemento.querySelector<HTMLSelectElement>('.integrante select')!;
     const opciones = Array.from(select.querySelectorAll('option'));
-    select.value = opciones.find((o) => o.textContent?.trim() === 'Colaborador')!.value;
+    select.value = opciones.find((o) => o.textContent?.trim() === 'Colaborador/a')!.value;
     select.dispatchEvent(new Event('change'));
     await fixture.whenStable();
 
-    expect(select.selectedOptions[0]?.textContent?.trim()).toBe('Coordinador');
+    expect(select.selectedOptions[0]?.textContent?.trim()).toBe('Coordinador/a');
     expect(elemento.querySelector('[role="alert"]')?.textContent).toContain(
       'No se puede cambiar el rol',
     );
@@ -384,6 +401,8 @@ describe('Integrantes', () => {
       'No tienes acceso a este grupo',
     );
     expect(elemento.querySelector('#integrante-email')).toBeFalsy();
+    expect(elemento.querySelector('#integrantes-abrir-agregar')).toBeFalsy();
+    expect(botonConTexto(elemento, 'Crear integrante nuevo')).toBeFalsy();
     expect(botonConTexto(elemento, 'Salir del grupo')).toBeFalsy();
   });
 
@@ -477,6 +496,9 @@ describe('Integrantes', () => {
     await fixture.whenStable();
 
     expect(elemento.querySelector('.crear-integrante')).toBeFalsy();
+    expect(elemento.querySelector('#integrantes-abrir-agregar')?.getAttribute('aria-expanded')).toBe(
+      'true',
+    );
     expect(document.activeElement?.id).toBe('integrante-email');
   });
 
@@ -583,7 +605,7 @@ describe('Integrantes', () => {
       'El nombre es obligatorio.',
     );
     // El mensaje genérico no se muestra: hay un error de campo específico.
-    expect(elemento.querySelector('.crear-integrante > p.error')).toBeFalsy();
+    expect(elemento.querySelector('#integrantes-crear-error')).toBeFalsy();
   });
 
   it('seccionSucesionRecibeElContextoYSuCambioRecargaGrupoEIntegrantes', async () => {
@@ -620,5 +642,121 @@ describe('Integrantes', () => {
 
     expect(elemento.textContent).toContain('Sucesión de la coordinación');
     expect(elemento.querySelector('#sucesion-candidato')).toBeFalsy();
+  });
+  it('agregarIntegranteQuedaPlegadoTrasSuAccion', async () => {
+    const { fixture, elemento } = await configurar({ miRol: 'COORDINADOR' });
+
+    const abrir = elemento.querySelector<HTMLButtonElement>('#integrantes-abrir-agregar')!;
+    expect(abrir.getAttribute('aria-expanded')).toBe('false');
+    expect(elemento.querySelector('#integrante-email')).toBeFalsy();
+
+    await abrirAgregar(fixture);
+    expect(abrir.getAttribute('aria-expanded')).toBe('true');
+    expect(document.activeElement?.id).toBe('integrante-email');
+
+    botonConTexto(elemento.querySelector('#integrantes-agregar')!, 'Cancelar')!.click();
+    await fixture.whenStable();
+    expect(elemento.querySelector('#integrante-email')).toBeFalsy();
+    expect(document.activeElement).toBe(abrir);
+  });
+
+  it('filaMuestraAvatarRolEstadoYMasAcciones', async () => {
+    const { elemento } = await configurar({
+      miRol: 'COORDINADOR',
+      integrantesIniciales: [
+        integrante(1, 'Ana Rojas', 1, 'COORDINADOR'),
+        integrante(2, 'Beto', 2, 'COLABORADOR', '2026-02-01T00:00:00-03:00'),
+      ],
+    });
+
+    const [ana, beto] = Array.from(elemento.querySelectorAll<HTMLElement>('.integrante'));
+    expect(ana.querySelector('.mv-avatar')?.textContent?.trim()).toBe('AR');
+    expect(ana.querySelector('.mv-avatar')?.getAttribute('aria-hidden')).toBe('true');
+    expect(ana.textContent).toContain('ana rojas@correo.cl');
+    expect(ana.textContent).toContain('Tú');
+    expect(ana.querySelector('.rol .mv-chip')?.textContent?.trim()).toBe('Coordinador/a');
+    expect(ana.querySelector('.estado .mv-chip--exito')?.textContent).toContain('Activo');
+    expect(beto.textContent).not.toContain('Tú');
+    expect(beto.querySelector('.estado .mv-chip')?.textContent).toContain('Inactivo');
+
+    const mas = beto.querySelector('details')!;
+    expect(mas.querySelector('summary')?.getAttribute('aria-label')).toBe('Más acciones: Beto');
+    expect(mas.querySelector('select')).toBeTruthy();
+    expect(botonConTexto(mas, 'Reactivar')).toBeTruthy();
+    expect(botonConTexto(mas, 'Eliminar')).toBeTruthy();
+  });
+
+  it('colaboradorVeElRolComoChipSinMasAcciones', async () => {
+    const { elemento } = await configurar({
+      miRol: 'COLABORADOR',
+      integrantesIniciales: [integrante(2, 'Beto', 2, 'COLABORADOR')],
+    });
+
+    const fila = elemento.querySelector<HTMLElement>('.integrante')!;
+    expect(fila.querySelector('.rol .mv-chip')?.textContent?.trim()).toBe('Colaborador/a');
+    expect(fila.querySelector('details')).toBeFalsy();
+  });
+
+  it('encabezadoCuentaLosIntegrantesActivos', async () => {
+    const { elemento } = await configurar({
+      miRol: 'COORDINADOR',
+      integrantesIniciales: [
+        integrante(1, 'Ana', 1, 'COORDINADOR'),
+        integrante(2, 'Beto', 2, 'COLABORADOR'),
+        integrante(3, 'Carla', 2, 'COLABORADOR', '2026-02-01T00:00:00-03:00'),
+      ],
+    });
+
+    expect(elemento.querySelector('h1')?.textContent).toContain('Familia Rojas');
+    expect(elemento.querySelector('.mv-encabezado__bajada')?.textContent).toContain(
+      '2 integrantes activos',
+    );
+    expect(elemento.querySelector('.mv-encabezado__bajada')?.textContent).toContain(
+      'Tu rol: Coordinador/a',
+    );
+  });
+
+  it('muestraCargandoMientrasLleganLosIntegrantes', async () => {
+    const { elemento } = await configurar({ miRol: 'COORDINADOR', integrantes: () => NEVER });
+
+    expect(elemento.querySelector('[role="status"]')?.textContent).toContain('Cargando integrantes');
+    expect(elemento.querySelector('.mv-vacio')).toBeFalsy();
+  });
+
+  it('sinIntegrantesMuestraEstadoVacio', async () => {
+    const { elemento } = await configurar({ miRol: 'COORDINADOR' });
+
+    expect(elemento.querySelector('.mv-vacio')?.textContent).toContain(
+      'Este grupo todavía no tiene integrantes.',
+    );
+  });
+
+  it('errorAlCargarIntegrantesPermiteReintentar', async () => {
+    let fallar = true;
+    const { fixture, elemento, servicioGrupos } = await configurar({
+      miRol: 'COORDINADOR',
+      integrantes: () =>
+        fallar
+          ? throwError(
+              () =>
+                new HttpErrorResponse({
+                  status: 500,
+                  error: { detail: 'No pudimos cargar los integrantes.' },
+                }),
+            )
+          : of([integrante(2, 'Beto', 2, 'COLABORADOR')]),
+    });
+
+    const aviso = elemento.querySelector('.mv-aviso--error')!;
+    expect(aviso.textContent).toContain('No pudimos cargar los integrantes.');
+    expect(elemento.querySelector('.mv-vacio')).toBeFalsy();
+
+    fallar = false;
+    botonConTexto(aviso as HTMLElement, 'Reintentar')!.click();
+    await fixture.whenStable();
+
+    expect(servicioGrupos.integrantes).toHaveBeenCalledTimes(2);
+    expect(elemento.querySelector('.mv-aviso--error')).toBeFalsy();
+    expect(elemento.querySelectorAll('.integrante')).toHaveLength(1);
   });
 });

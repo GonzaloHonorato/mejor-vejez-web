@@ -1,45 +1,116 @@
-<div class="pagina">
-  <header class="cabecera">
-    <h1>Tareas</h1>
-  </header>
+<header class="mv-encabezado">
+  <div>
+    <p class="mv-encabezado__rotulo">Organización diaria</p>
+    <h1 class="mv-encabezado__titulo">Tareas</h1>
+    @if (activo(); as grupo) {
+      <p class="mv-encabezado__bajada">{{ grupo.nombreGrupo }}</p>
+    }
+  </div>
+  @if (puedeAdministrar()) {
+    <div class="mv-encabezado__accion">
+      <a class="mv-boton mv-boton--primario" routerLink="/tareas/nueva">Nueva tarea</a>
+    </div>
+  }
+</header>
 
-  <div class="contenido">
-    @if (!activo()) {
-      <section class="tarjeta tarjeta--suave" aria-labelledby="tareas-sin-grupo-titulo">
-        <h2 id="tareas-sin-grupo-titulo" class="tarjeta__titulo">Primero crea o elige un grupo.</h2>
-        <a class="boton boton--contorno" routerLink="/grupos">Ir a grupos</a>
-      </section>
-    } @else {
-      <p class="nota">
-        Las tareas de medicamentos se generan automáticamente con hasta 7 días de anticipación.
-      </p>
+<div class="contenido">
+  @if (!activo()) {
+    <section class="mv-tarjeta" aria-labelledby="tareas-sin-grupo-titulo">
+      <div class="mv-tarjeta__cuerpo sin-grupo">
+        <h2 id="tareas-sin-grupo-titulo" class="mv-tarjeta__titulo">Primero crea o elige un grupo.</h2>
+        <a class="mv-boton" routerLink="/grupos">Ir a grupos</a>
+      </div>
+    </section>
+  } @else {
+    <div class="mv-aviso mv-aviso--info">
+      <p>Las tareas de medicamentos se generan automáticamente con hasta 7 días de anticipación.</p>
+    </div>
 
-      <div class="navegador-fecha">
-        <button type="button" class="boton boton--contorno" (click)="anterior()">Anterior</button>
-        <button type="button" class="boton boton--contorno" (click)="hoy()">Hoy</button>
-        <button type="button" class="boton boton--contorno" (click)="siguiente()">Siguiente</button>
+    <section class="mv-tarjeta navegador-fecha" aria-labelledby="tareas-dia">
+      <h2 id="tareas-dia" class="dia">
+        {{ fechaTitulo() }}
+        @if (esHoy()) {
+          <span class="mv-chip mv-chip--info">Hoy</span>
+        }
+      </h2>
+      <div class="controles">
+        <button type="button" class="mv-boton" (click)="anterior()">
+          <app-icono nombre="flecha-izquierda" aria-hidden="true" />
+          <span class="mv-oculto-bajo-escritorio">Anterior</span>
+        </button>
+        <button type="button" class="mv-boton" (click)="hoy()">Hoy</button>
+        <button type="button" class="mv-boton" (click)="siguiente()">
+          <span class="mv-oculto-bajo-escritorio">Siguiente</span>
+          <app-icono nombre="flecha-derecha" aria-hidden="true" />
+        </button>
         <label class="oculto" for="tareas-fecha">Elegir fecha</label>
         <input
           id="tareas-fecha"
-          class="campo__control"
+          class="mv-campo__control fecha"
           type="date"
           [formControl]="controlFecha"
           (change)="cambiarFechaDesdeInput()"
         />
       </div>
+    </section>
 
-      <h2 class="titulo-dia">{{ tituloDia() }}</h2>
+    @if (error(); as mensaje) {
+      <div class="mv-aviso mv-aviso--error" role="alert">
+        <p>{{ mensaje }}</p>
+        <button type="button" class="mv-boton" (click)="reintentar()">Reintentar</button>
+      </div>
+    } @else if (!cargando()) {
+      @let conteo = conteos();
+      <ul class="mv-indicadores" aria-label="Resumen del día">
+        <li class="mv-indicador mv-indicador--alerta">
+          <span class="mv-indicador__valor">{{ conteo.pendientes }}</span>
+          <span class="punto" aria-hidden="true"></span>
+          <span class="mv-indicador__etiqueta">{{ ' ' }}{{ plural(conteo.pendientes, 'pendiente', 'pendientes') }}</span>
+        </li>
+        <li class="mv-indicador mv-indicador--peligro">
+          <span class="mv-indicador__valor">{{ conteo.atrasadas }}</span>
+          <span class="punto" aria-hidden="true"></span>
+          <span class="mv-indicador__etiqueta">{{ ' ' }}{{ plural(conteo.atrasadas, 'atrasada', 'atrasadas') }}</span>
+        </li>
+        <li class="mv-indicador mv-indicador--exito">
+          <span class="mv-indicador__valor">{{ conteo.completadas }}</span>
+          <span class="punto" aria-hidden="true"></span>
+          <span class="mv-indicador__etiqueta">{{ ' ' }}{{ plural(conteo.completadas, 'completada', 'completadas') }}</span>
+        </li>
+        <li class="mv-indicador">
+          <span class="mv-indicador__valor">{{ conteo.total }}</span>
+          <span class="punto" aria-hidden="true"></span>
+          <span class="mv-indicador__etiqueta">{{ ' ' }}en total del día</span>
+        </li>
+      </ul>
+    }
 
-      @if (error(); as mensaje) {
-        <p class="error" role="alert">{{ mensaje }}</p>
-      }
-
-      <div class="filtros">
-        <div class="campo campo--filtro">
-          <label class="campo__etiqueta" for="tareas-filtro-adulto">Adulto mayor</label>
+    <div class="mv-filtros" role="group" aria-label="Filtros">
+      <div class="mv-campo">
+        <label class="mv-campo__etiqueta" for="tareas-buscar">Buscar tarea</label>
+        <input
+          id="tareas-buscar"
+          class="mv-campo__control"
+          type="search"
+          placeholder="Tarea, adulto o responsable"
+          [formControl]="controlBusqueda"
+        />
+      </div>
+      <button
+        type="button"
+        class="mv-boton alternar-filtros"
+        aria-controls="tareas-mas-filtros"
+        [attr.aria-expanded]="filtrosAbiertos()"
+        (click)="filtrosAbiertos.set(!filtrosAbiertos())"
+      >
+        Filtros{{ filtrosEscondidosActivos() > 0 ? ' (' + filtrosEscondidosActivos() + ')' : '' }}
+      </button>
+      <div id="tareas-mas-filtros" class="mas-filtros" [class.abierto]="filtrosAbiertos()">
+        <div class="mv-campo">
+          <label class="mv-campo__etiqueta" for="tareas-filtro-adulto">Adulto mayor</label>
           <select
             id="tareas-filtro-adulto"
-            class="campo__control"
+            class="mv-campo__control"
             [formControl]="controlFiltroAdulto"
             (change)="cambiarFiltroAdulto()"
           >
@@ -49,62 +120,93 @@
             }
           </select>
         </div>
-
-        <label class="interruptor">
+        <div class="mv-campo">
+          <label class="mv-campo__etiqueta" for="tareas-filtro-estado">Estado</label>
+          <select id="tareas-filtro-estado" class="mv-campo__control" [formControl]="controlEstado">
+            <option value="">Todos</option>
+            @for (estado of estadosOrdenados(); track estado.idEstado) {
+              <option [value]="estado.codigo">{{ estado.descripcion }}</option>
+            }
+          </select>
+        </div>
+        <label class="mv-campo mv-campo--casilla">
           <input
             id="tareas-solo-mias"
-            class="interruptor__control"
             type="checkbox"
             [checked]="soloMisTareas()"
             (change)="alternarSoloMisTareas()"
           />
-          <span class="interruptor__etiqueta">Solo mis tareas</span>
+          <span class="mv-campo__etiqueta">Solo mis tareas</span>
         </label>
       </div>
+    </div>
 
-      @if (puedeAdministrar()) {
-        <p>
-          <a class="enlace" routerLink="/tareas/nueva">Nueva tarea</a>
-        </p>
-      }
-
-      @if (!cargando() && !error() && tareas().length === 0) {
-        <p class="vacio" role="status">No hay tareas para este día.</p>
-      }
-
-      <ul class="lista">
-        @for (tarea of tareas(); track tarea.idTarea) {
-          <li class="tarjeta-tarea">
-            <div class="tarjeta-tarea__principal">
-              <p class="tarjeta-tarea__hora">{{ formatearHora(tarea.fechaHorario) }}</p>
-              <p class="tarjeta-tarea__titulo">{{ tarea.titulo }}</p>
-              <p class="tarjeta-tarea__adulto">{{ tarea.nombreAdulto }}</p>
-              <p class="tarjeta-tarea__responsable">{{ responsable(tarea) }}</p>
-              <p class="tarjeta-tarea__insignias">
-                <span class="insignia">{{ descripcionEstado(tarea) }}</span>
-                @if (tarea.atrasada) {
-                  <span class="insignia insignia--atrasada">Atrasada</span>
-                }
-              </p>
-            </div>
-
-            <app-acciones-tarea
-              [tarea]="tarea"
-              [idGrupo]="activo()!.idGrupo"
-              [estados]="estados()"
-              [quien]="quien()"
-              (actualizada)="actualizarTarea($event)"
-            />
-
-            <a
-              class="enlace"
-              [routerLink]="['/tareas', tarea.idTarea]"
-              [attr.aria-label]="'Ver detalle: ' + tarea.titulo + ', ' + formatearHora(tarea.fechaHorario)"
-              >Ver detalle</a
-            >
-          </li>
+    <section class="agenda" aria-labelledby="tareas-agenda">
+      <div class="agenda__cabecera">
+        <h2 id="tareas-agenda">Agenda del día</h2>
+        @if (!cargando() && !error()) {
+          <span class="cuenta">
+            {{ tareasVisibles().length }} {{ plural(tareasVisibles().length, 'tarea', 'tareas') }}
+          </span>
         }
-      </ul>
-    }
-  </div>
+      </div>
+
+      @if (cargando()) {
+        <div role="status" aria-live="polite">
+          <span class="oculto">Cargando tareas…</span>
+          <div class="esqueleto" aria-hidden="true">
+            <span class="mv-esqueleto mv-esqueleto--bloque"></span>
+            <span class="mv-esqueleto mv-esqueleto--bloque"></span>
+            <span class="mv-esqueleto mv-esqueleto--bloque"></span>
+          </div>
+        </div>
+      } @else if (!error() && tareasVisibles().length === 0) {
+        @if (hayFiltros()) {
+          <div class="mv-vacio" role="status">
+            <p class="mv-vacio__titulo">Ninguna tarea coincide con los filtros.</p>
+            <p class="mv-vacio__texto">Prueba con otro estado, otra búsqueda u otro adulto.</p>
+            <button type="button" class="mv-boton" (click)="limpiarFiltros()">Limpiar filtros</button>
+          </div>
+        } @else {
+          <div class="mv-vacio" role="status">
+            <p class="mv-vacio__titulo">No hay tareas para este día.</p>
+            <p class="mv-vacio__texto">Usa las flechas o el calendario para ver otro día.</p>
+          </div>
+        }
+      } @else {
+        <ul class="mv-lista lista-tareas">
+          @for (tarea of tareasVisibles(); track tarea.idTarea) {
+            <li class="mv-fila">
+              <span class="mv-fila__dato">{{ formatearHora(tarea.fechaHorario) }}</span>
+              <div class="mv-fila__principal">
+                <a
+                  class="mv-fila__titulo mv-fila__enlace"
+                  [routerLink]="['/tareas', tarea.idTarea]"
+                  [attr.aria-label]="tarea.titulo + ', ' + formatearHora(tarea.fechaHorario)"
+                  >{{ tarea.titulo }}</a
+                >
+                <p class="mv-fila__meta">{{ etiquetaTipo(tarea) }}</p>
+                <p class="mv-fila__meta">{{ tarea.nombreAdulto }} · {{ responsable(tarea) }}</p>
+              </div>
+              <span class="chips">
+                <span class="mv-chip {{ tonoEstado(tarea) }}">{{ descripcionEstado(tarea) }}</span>
+                @if (tarea.atrasada) {
+                  <span class="mv-chip mv-chip--peligro">Atrasada</span>
+                }
+              </span>
+              <div class="mv-fila__acciones">
+                <app-acciones-tarea
+                  [tarea]="tarea"
+                  [idGrupo]="activo()!.idGrupo"
+                  [estados]="estados()"
+                  [quien]="quien()"
+                  (actualizada)="actualizarTarea($event)"
+                />
+              </div>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  }
 </div>

@@ -142,6 +142,14 @@ function seleccionarOpcionPorTexto(select: HTMLSelectElement, texto: string): vo
   select.dispatchEvent(new Event('change'));
 }
 
+async function abrirAlta(fixture: { whenStable(): Promise<unknown> }, elemento: HTMLElement): Promise<void> {
+  const boton = Array.from(elemento.querySelectorAll('button')).find(
+    (b) => b.textContent?.trim() === 'Nuevo plan',
+  )!;
+  boton.click();
+  await fixture.whenStable();
+}
+
 describe('Planes', () => {
   it('sinGrupoActivoInvitaAElegirUno', async () => {
     const { elemento } = await configurar({ activo: null });
@@ -172,13 +180,13 @@ describe('Planes', () => {
 
     expect(servicioPlanes.listar).toHaveBeenCalledWith(1, { idAdulto: undefined, incluirInactivos: false });
 
-    const tarjetas = Array.from(elemento.querySelectorAll('.tarjeta-plan'));
+    const tarjetas = Array.from(elemento.querySelectorAll('.lista-planes .mv-fila'));
     expect(tarjetas).toHaveLength(2);
 
     expect(tarjetas[0].textContent).toContain('Plan mañana');
     expect(tarjetas[0].textContent).toContain('Rosa González');
     expect(tarjetas[0].textContent).toContain('2');
-    expect(tarjetas[0].querySelector('a.enlace')?.getAttribute('href')).toBe('/planes/1');
+    expect(tarjetas[0].querySelector('a.mv-fila__titulo')?.getAttribute('href')).toBe('/planes/1');
     expect(tarjetas[0].textContent).not.toContain('Inactivo');
 
     expect(tarjetas[1].textContent).toContain('Plan noche');
@@ -215,6 +223,7 @@ describe('Planes', () => {
     const navegar = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
     servicioPlanes.crear.mockReturnValue(of(plan({ idPlan: 9 })));
 
+    await abrirAlta(fixture, elemento);
     const selectAdulto = elemento.querySelector<HTMLSelectElement>('#plan-adulto')!;
     seleccionarOpcionPorTexto(selectAdulto, 'Rosa González');
 
@@ -237,6 +246,7 @@ describe('Planes', () => {
   it('crearSinAdultoMuestraMensajeRequeridoYNoLlamaALaApi', async () => {
     const { fixture, elemento, servicioPlanes } = await configurar({ planesIniciales: [] });
 
+    await abrirAlta(fixture, elemento);
     const campoNombre = elemento.querySelector<HTMLInputElement>('#plan-nombre')!;
     campoNombre.value = 'Plan mañana';
     campoNombre.dispatchEvent(new Event('input'));
@@ -260,6 +270,7 @@ describe('Planes', () => {
       ),
     );
 
+    await abrirAlta(fixture, elemento);
     const selectAdulto = elemento.querySelector<HTMLSelectElement>('#plan-adulto')!;
     seleccionarOpcionPorTexto(selectAdulto, 'Rosa González');
 
@@ -310,6 +321,7 @@ describe('Planes', () => {
     const navegar = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     expect(servicioPlanes.listar).toHaveBeenCalledWith(1, { idAdulto: 5, incluirInactivos: false });
 
+    await abrirAlta(fixture, elemento);
     const selectAdulto = elemento.querySelector<HTMLSelectElement>('#plan-adulto')!;
     seleccionarOpcionPorTexto(selectAdulto, 'Rosa González');
     servicioPlanes.listar.mockClear();
@@ -371,7 +383,7 @@ describe('Planes', () => {
   it('filtroListaAdultosInactivosYElFormularioSoloActivos', async () => {
     const activoAdulto = adulto({ idAdultoMayor: 1, nombreCompleto: 'Rosa González', idEstado: 1 });
     const inactivoAdulto = adulto({ idAdultoMayor: 2, nombreCompleto: 'Pedro Soto', idEstado: 2 });
-    const { elemento, servicioAdultos } = await configurar({
+    const { fixture, elemento, servicioAdultos } = await configurar({
       adultos: [activoAdulto, inactivoAdulto],
     });
 
@@ -384,6 +396,7 @@ describe('Planes', () => {
     expect(opcionesFiltro).toContain('Rosa González');
     expect(opcionesFiltro).toContain('Pedro Soto (inactivo)');
 
+    await abrirAlta(fixture, elemento);
     const selectFormulario = elemento.querySelector<HTMLSelectElement>('#plan-adulto')!;
     const opcionesFormulario = Array.from(selectFormulario.querySelectorAll('option')).map((o) =>
       o.textContent?.trim(),
@@ -402,6 +415,7 @@ describe('Planes', () => {
       ),
     );
 
+    await abrirAlta(fixture, elemento);
     const selectAdulto = elemento.querySelector<HTMLSelectElement>('#plan-adulto')!;
     seleccionarOpcionPorTexto(selectAdulto, 'Rosa González');
     const campoNombre = elemento.querySelector<HTMLInputElement>('#plan-nombre')!;
@@ -422,5 +436,132 @@ describe('Planes', () => {
 
     expect(elemento.textContent).not.toContain('Error previo de la API');
     expect(servicioPlanes.crear).toHaveBeenCalledTimes(1);
+  });
+
+  it('encabezadoConRotuloYAvisoLegal', async () => {
+    const { elemento } = await configurar({});
+
+    expect(elemento.querySelector('.mv-encabezado__rotulo')?.textContent).toContain(
+      'Planificación del cuidado',
+    );
+    expect(elemento.querySelector('h1')?.textContent).toContain('Medicamentos');
+    expect(elemento.querySelector('.mv-aviso--info')?.textContent).toContain(
+      'no diagnostica ni recomienda medicamentos ni dosis',
+    );
+  });
+
+  it('indicadoresCuentanPlanesYMedicamentosActivosDeLaLista', async () => {
+    const otroActivo = plan({ idPlan: 3, nombrePlan: 'Plan tarde', medicamentosActivos: 1 });
+    const inactivo = plan({ idPlan: 2, nombrePlan: 'Plan noche', idEstado: 2, medicamentosActivos: 4 });
+    const { elemento } = await configurar({ planesIniciales: [plan(), otroActivo, inactivo] });
+
+    const indicadores = Array.from(
+      elemento.querySelectorAll('[aria-label="Resumen de planes"] .mv-indicador'),
+    ).map((li) => li.textContent?.replace(/\s+/g, ' ').trim());
+    expect(indicadores).toEqual(['2 planes activos', '3 medicamentos activos']);
+  });
+
+  it('indicadoresEnSingular', async () => {
+    const { elemento } = await configurar({ planesIniciales: [plan({ medicamentosActivos: 1 })] });
+
+    const indicadores = Array.from(
+      elemento.querySelectorAll('[aria-label="Resumen de planes"] .mv-indicador'),
+    ).map((li) => li.textContent?.replace(/\s+/g, ' ').trim());
+    expect(indicadores).toEqual(['1 plan activo', '1 medicamento activo']);
+  });
+
+  it('elTituloEsElEnlaceAlPlanConNombreAccesibleUnico', async () => {
+    const otro = plan({ idPlan: 2, nombrePlan: 'Plan mañana', nombreAdulto: 'Pedro Soto' });
+    const { elemento } = await configurar({ planesIniciales: [plan(), otro] });
+
+    const enlaces = Array.from(elemento.querySelectorAll<HTMLAnchorElement>('a.mv-fila__titulo'));
+    expect(enlaces.map((a) => a.getAttribute('href'))).toEqual(['/planes/1', '/planes/2']);
+    expect(enlaces.map((a) => a.getAttribute('aria-label'))).toEqual([
+      'Plan mañana, Rosa González',
+      'Plan mañana, Pedro Soto',
+    ]);
+    expect(elemento.textContent).not.toContain('Ver plan');
+  });
+
+  it('chipDeEstadoPorPlan', async () => {
+    const inactivo = plan({ idPlan: 2, nombrePlan: 'Plan noche', idEstado: 2 });
+    const { elemento } = await configurar({ planesIniciales: [plan(), inactivo] });
+
+    const chips = Array.from(elemento.querySelectorAll('.lista-planes .mv-chip')).map((c) =>
+      c.textContent?.trim(),
+    );
+    expect(chips).toEqual(['Activo', 'Inactivo']);
+    expect(elemento.querySelector('.lista-planes .mv-chip--exito')?.textContent).toContain('Activo');
+  });
+
+  it('nuevoPlanDespliegaYPliegaElFormulario', async () => {
+    const { fixture, elemento } = await configurar({});
+    const boton = Array.from(elemento.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Nuevo plan',
+    )!;
+
+    expect(elemento.querySelector('#plan-nombre')).toBeFalsy();
+    expect(boton.getAttribute('aria-expanded')).toBe('false');
+    expect(boton.id).toBe('planes-abrir-alta');
+    expect(elemento.querySelector('#planes-alta')).toBeTruthy();
+
+    boton.click();
+    await fixture.whenStable();
+    expect(elemento.querySelector('#plan-nombre')).toBeTruthy();
+    expect(boton.getAttribute('aria-expanded')).toBe('true');
+    expect(boton.getAttribute('aria-controls')).toBe('planes-alta');
+    expect(document.activeElement?.id).toBe('plan-adulto');
+
+    const textos = Array.from(elemento.querySelectorAll('#planes-alta .botones button')).map((b) =>
+      b.textContent?.trim(),
+    );
+    expect(textos).toEqual(['Cancelar', 'Crear plan']);
+
+    Array.from(elemento.querySelectorAll('#planes-alta button'))
+      .find((b) => b.textContent?.trim() === 'Cancelar')!
+      .dispatchEvent(new Event('click'));
+    await fixture.whenStable();
+    expect(elemento.querySelector('#plan-nombre')).toBeFalsy();
+    expect(boton.getAttribute('aria-expanded')).toBe('false');
+    expect(elemento.querySelector('#planes-alta')).toBeTruthy();
+    expect(document.activeElement).toBe(boton);
+  });
+
+  it('mientrasCargaMuestraEsqueletoSinVacio', async () => {
+    const pendiente = new Subject<RespuestaPlan[]>();
+    const { elemento } = await configurar({ listarImpl: () => pendiente.asObservable() });
+
+    expect(elemento.textContent).toContain('Cargando planes…');
+    expect(elemento.querySelector('.mv-esqueleto')).toBeTruthy();
+    expect(elemento.querySelector('.mv-vacio')).toBeFalsy();
+    expect(elemento.querySelector('[aria-label="Resumen de planes"]')).toBeFalsy();
+  });
+
+  it('errorDeCargaOfreceReintentar', async () => {
+    const listar = vi
+      .fn()
+      .mockReturnValueOnce(
+        throwError(() => new HttpErrorResponse({ status: 500, error: { detail: 'Falló la carga' } })),
+      )
+      .mockReturnValue(of([plan()]));
+    const { fixture, elemento, servicioPlanes } = await configurar({ listarImpl: listar });
+
+    const aviso = elemento.querySelector('.mv-aviso--error')!;
+    expect(aviso.getAttribute('role')).toBe('alert');
+    expect(aviso.textContent).toContain('Falló la carga');
+    expect(elemento.querySelector('.mv-vacio')).toBeFalsy();
+
+    Array.from(aviso.querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === 'Reintentar')!
+      .click();
+    await fixture.whenStable();
+
+    expect(servicioPlanes.listar).toHaveBeenCalledTimes(2);
+    expect(servicioPlanes.listar).toHaveBeenLastCalledWith(1, {
+      idAdulto: undefined,
+      incluirInactivos: false,
+    });
+    expect(elemento.querySelector('.mv-aviso--error')).toBeFalsy();
+    expect(elemento.textContent).toContain('Plan mañana');
   });
 });

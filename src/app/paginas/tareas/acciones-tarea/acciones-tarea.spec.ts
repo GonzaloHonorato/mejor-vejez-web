@@ -86,7 +86,7 @@ describe('AccionesTarea', () => {
     fixture.componentInstance.actualizada.subscribe((valor) => emitidas.push(valor));
 
     const boton = botonConTexto(elemento, 'Completar')!;
-    expect(boton.getAttribute('aria-label')).toBe('Completar: Comprar Losartán');
+    expect(boton.getAttribute('aria-label')).toBe('Completar: Comprar Losartán, 08:00');
     boton.click();
     await fixture.whenStable();
 
@@ -181,5 +181,58 @@ describe('AccionesTarea', () => {
     });
 
     expect(elemento.querySelectorAll('button').length).toBe(0);
+  });
+
+  it('pendienteMuestraIniciarComoUnicaAccionPrincipalYElRestoEnMasAcciones', async () => {
+    const { elemento } = await configurar();
+
+    const principales = elemento.querySelectorAll('button.mv-boton--primario');
+    expect(principales).toHaveLength(1);
+    expect(principales[0].textContent?.trim()).toBe('Iniciar');
+    expect(principales[0].getAttribute('aria-label')).toBe('Iniciar: Comprar Losartán, 08:00');
+
+    const mas = elemento.querySelector('details')!;
+    expect(mas.open).toBe(false);
+    expect(mas.querySelector('summary')?.getAttribute('aria-label')).toBe(
+      'Más acciones: Comprar Losartán, 08:00',
+    );
+    expect(Array.from(mas.querySelectorAll('button')).map((b) => b.getAttribute('aria-label'))).toEqual([
+      'Completar: Comprar Losartán, 08:00',
+      'No realizada: Comprar Losartán, 08:00',
+      'Cancelar: Comprar Losartán, 08:00',
+    ]);
+    const secundarias = Array.from(mas.querySelectorAll('button')).map((b) => b.textContent?.trim());
+    expect(secundarias).toEqual(['Completar', 'No realizada', 'Cancelar']);
+  });
+
+  it('enCursoMuestraCompletarComoPrincipalYNoRealizadaComoSecundaria', async () => {
+    const { elemento } = await configurar({ tarea: tarea({ idEstado: 11 }) });
+
+    const principales = elemento.querySelectorAll('button.mv-boton--primario');
+    expect(principales).toHaveLength(1);
+    expect(principales[0].textContent?.trim()).toBe('Completar');
+    const secundarias = Array.from(elemento.querySelectorAll('details button')).map((b) =>
+      b.textContent?.trim(),
+    );
+    expect(secundarias).toEqual(['No realizada']);
+  });
+
+  it('colaboradorNoAsignadoNoVeNingunaAccion', async () => {
+    const { elemento } = await configurar({
+      tarea: tarea({ responsable: { idUsuario: 999, nombre: 'Otra persona' } }),
+      quien: { idUsuario: 200, miRol: 'COLABORADOR', esAdministrador: false },
+    });
+
+    expect(elemento.querySelectorAll('button').length).toBe(0);
+    expect(elemento.querySelector('details')).toBeNull();
+  });
+
+  it('colaboradorSinAsignacionPuedeConfirmarPeroNoCancelar', async () => {
+    const { elemento } = await configurar({
+      quien: { idUsuario: 200, miRol: 'COLABORADOR', esAdministrador: false },
+    });
+
+    const textos = Array.from(elemento.querySelectorAll('button')).map((b) => b.textContent?.trim());
+    expect(textos).toEqual(['Iniciar', 'Completar', 'No realizada']);
   });
 });

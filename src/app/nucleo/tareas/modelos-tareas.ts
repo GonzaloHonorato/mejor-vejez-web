@@ -1,16 +1,16 @@
 /**
- * Contratos de `/api/grupos/{idGrupo}/tareas` (Tareas 5–8 de la API, Fase 4).
+ * Contratos de `/api/grupos/{idGrupo}/tareas`.
  * Interfaces idénticas a los records de la API, con los mismos nombres, sin
  * el prefijo de paquete. Las fechas y los instantes llegan como `string`
  * (`LocalDate`/`OffsetDateTime` serializados por Jackson).
  */
 
-/** Tipos de tarea de cuidado (regla 5: MEDICAMENTOS solo se cancela por el plan). */
+/** Tipos de tarea de cuidado (MEDICAMENTOS solo se cancela por el plan). */
 export type TipoTarea = 'MEDICAMENTOS' | 'COMPRA_RETIRO_MEDICAMENTOS' | 'CITAS_CONTROLES_MEDICOS';
 
 /**
  * Tipos de tarea que se pueden crear a mano desde `NuevaTarea`: MEDICAMENTOS
- * queda fuera porque solo la genera el planificador (regla 5); crearla a
+ * queda fuera porque solo la genera el planificador; crearla a
  * mano la rechazaría la API con 422.
  */
 export type TipoTareaManual = Extract<

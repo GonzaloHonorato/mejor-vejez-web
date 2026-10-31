@@ -1,0 +1,88 @@
+// Esqueleto del marco mientras se resuelve la sesión: mismas medidas que
+// `marco-app` (cabecera, barra inferior en celular y barra lateral desde
+// tableta) para que el cambio no salte.
+@use 'estilos/puntos-quiebre' as pq;
+
+.esqueleto-marco {
+  display: flex;
+  min-height: 100dvh;
+  border-top: 6px solid var(--mv-color-primario);
+  background: var(--mv-color-superficie);
+
+  &__lateral {
+    display: none;
+  }
+
+  &__principal {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  &__cabecera {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--mv-espacio-3);
+    min-height: 64px;
+    padding: var(--mv-espacio-2) var(--mv-espacio-4);
+    border-bottom: 1px solid var(--mv-color-borde);
+  }
+
+  &__titulo {
+    display: none;
+  }
+
+  &__avatar {
+    flex: none;
+    width: var(--mv-espacio-10);
+    height: var(--mv-espacio-10);
+    border-radius: var(--mv-radio-completo);
+  }
+
+  &__contenido {
+    display: grid;
+    flex: 1;
+    align-content: start;
+    gap: var(--mv-espacio-3);
+    padding: var(--mv-espacio-6) var(--mv-espacio-4);
+  }
+
+  &__pestanas {
+    height: 72px;
+    border-top: 1px solid var(--mv-color-borde);
+  }
+
+  @include pq.desde-tableta {
+    border-top: 0;
+
+    &__lateral {
+      display: block;
+      flex: none;
+      width: 248px;
+      padding: var(--mv-espacio-5);
+      background: var(--mv-color-navegacion-fondo);
+    }
+
+    &__marca,
+    &__pestanas {
+      display: none;
+    }
+
+    &__titulo {
+      display: block;
+      width: 10rem;
+    }
+
+    &__cabecera {
+      padding-inline: var(--mv-espacio-8);
+    }
+
+    &__contenido {
+      width: 100%;
+      max-width: var(--mv-ancho-contenido);
+      padding: var(--mv-espacio-8);
+    }
+  }
+}

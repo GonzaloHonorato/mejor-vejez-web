@@ -10,12 +10,12 @@
       {{ propuesta.saliente.nombre }} te propone como coordinador de {{ activo()?.nombreGrupo }}.
     </p>
     @if (error(); as mensaje) {
-      <p class="error" role="alert">{{ mensaje }}</p>
+      <p class="mv-aviso mv-aviso--error" role="alert">{{ mensaje }}</p>
     }
     <div class="aviso__acciones">
       <button
         type="button"
-        class="boton boton--primario"
+        class="mv-boton mv-boton--primario"
         [disabled]="procesando()"
         (click)="aceptar(propuesta)"
       >
@@ -23,7 +23,7 @@
       </button>
       <button
         type="button"
-        class="boton boton--contorno"
+        class="mv-boton"
         [disabled]="procesando()"
         (click)="rechazar(propuesta)"
       >

@@ -1,15 +1,15 @@
 @if (reasignables().length >= 2) {
   @if (confirmandoTodas()) {
-    <div class="confirmar">
+    <div class="mv-aviso mv-aviso--alerta confirmar">
       <p class="confirmar__texto">
         ¿Reasignar las {{ reasignables().length }} tareas pendientes a {{ entrante().nombre }}? Cada
         reasignación queda registrada.
       </p>
       <div class="acciones">
-        <button type="button" class="boton boton--primario" (click)="confirmarReasignarTodas()">
+        <button type="button" class="mv-boton mv-boton--primario" (click)="confirmarReasignarTodas()">
           Confirmar
         </button>
-        <button type="button" class="boton boton--contorno" (click)="volverDeReasignarTodas()">
+        <button type="button" class="mv-boton" (click)="volverDeReasignarTodas()">
           Volver
         </button>
       </div>
@@ -17,7 +17,7 @@
   } @else {
     <button
       type="button"
-      class="boton boton--contorno"
+      class="mv-boton"
       [disabled]="enLote()"
       (click)="pedirReasignarTodas()"
     >
@@ -30,9 +30,9 @@
   <p class="resultado" role="status">{{ resumen }}</p>
 }
 
-<ul class="lista">
+<ul class="lista-resumen">
   @for (tarea of tareas(); track tarea.idDetalle) {
-    <li class="tarjeta-item">
+    <li class="item-resumen">
       <a class="enlace" [routerLink]="['/tareas', tarea.idReferencia]">{{ tarea.resumen }}</a>
 
       @switch (estado(tarea.idReferencia)?.tipo) {
@@ -45,7 +45,7 @@
         @case ('error') {
           @if (estado(tarea.idReferencia); as fila) {
             @if (fila.tipo === 'error') {
-              <p class="error" role="alert">{{ fila.mensaje }}</p>
+              <p class="mv-aviso mv-aviso--error" role="alert">{{ fila.mensaje }}</p>
             }
           }
         }
@@ -54,7 +54,7 @@
       @if (muestraBoton(tarea.idReferencia)) {
         <button
           type="button"
-          class="boton boton--contorno"
+          class="mv-boton"
           [disabled]="botonDeshabilitado(tarea.idReferencia)"
           (click)="reasignar(tarea.idReferencia)"
         >
@@ -70,5 +70,5 @@
 </ul>
 
 <p class="ayuda">
-  Reasignar usa la misma operación de Tareas (HU-06) y queda registrado en la auditoría.
+  Cada reasignación cambia el responsable de la tarea y queda registrada en la auditoría.
 </p>

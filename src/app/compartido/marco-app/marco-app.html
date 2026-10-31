@@ -1,10 +1,12 @@
-<a class="saltar" href="#contenido-principal" [attr.inert]="inerteDetras()">Saltar al contenido</a>
+<a class="mv-saltar" href="#contenido-principal" [attr.inert]="inerteDetras()"
+  >Saltar al contenido</a
+>
 
 <div class="marco">
   <aside class="lateral" [attr.inert]="inerteDetras()">
-    <span class="marca marca--invertida">
-      <span class="marca__isotipo" aria-hidden="true"></span>
-      Mejor Vejez
+    <span class="mv-marca mv-marca--invertida">
+      <span class="mv-marca__isotipo" aria-hidden="true">+</span>
+      Cuida+
     </span>
     <nav aria-label="Navegación principal">
       <ul class="lateral__lista">
@@ -27,22 +29,37 @@
 
   <div class="principal">
     <header class="cabecera" [attr.inert]="inerteDetras()">
-      <span class="marca cabecera__marca">
-        <span class="marca__isotipo" aria-hidden="true"></span>
-        Mejor Vejez
+      <span class="mv-marca cabecera__marca">
+        <span class="mv-marca__isotipo" aria-hidden="true">+</span>
+        <span class="mv-oculto-bajo-escritorio">Cuida+</span>
       </span>
       <p class="cabecera__ruta">{{ tituloRuta() }}</p>
       <app-selector-grupo class="cabecera__grupo" variante="cabecera" />
       <div class="cabecera__usuario">
-        @if (nombreUsuario()) {
-          <span class="cabecera__nombre">{{ nombreUsuario() }}</span>
+        @if (iniciales()) {
+          <span class="mv-avatar" aria-hidden="true">{{ iniciales() }}</span>
         }
-        <button type="button" class="boton-salir" (click)="cerrarSesion()">Cerrar sesión</button>
+        <span class="mv-oculto-bajo-escritorio cabecera__persona">
+          @if (nombreUsuario()) {
+            <span class="cabecera__nombre-usuario">{{ nombreUsuario() }}</span>
+          }
+          @if (rolActivo(); as rol) {
+            <span class="cabecera__rol">{{ rol }}</span>
+          }
+        </span>
+        <button
+          type="button"
+          class="mv-boton mv-boton--texto cabecera__salir"
+          (click)="cerrarSesion()"
+        >
+          <app-icono nombre="salir" />
+          Cerrar sesión
+        </button>
       </div>
     </header>
 
     @if (error(); as mensaje) {
-      <p class="aviso-global" role="alert">{{ mensaje }}</p>
+      <p class="mv-aviso mv-aviso--error aviso-global" role="alert">{{ mensaje }}</p>
     }
 
     <main id="contenido-principal" class="contenido" tabindex="-1" [attr.inert]="inerteDetras()">

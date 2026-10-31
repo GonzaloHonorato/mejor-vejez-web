@@ -1,13 +1,13 @@
 <fieldset class="horario" (focusout)="tocar()">
-  <legend>Horario</legend>
+  <legend class="mv-campo__etiqueta">Horario</legend>
   <p class="nota">Hora de Chile (America/Santiago)</p>
 
   <div class="modos">
-    <label class="opcion">
+    <label class="mv-campo mv-campo--casilla">
       <input type="radio" [name]="prefijo + '-modo'" value="HORAS_FIJAS" [formControl]="modo" />
       <span>Horas fijas</span>
     </label>
-    <label class="opcion">
+    <label class="mv-campo mv-campo--casilla">
       <input type="radio" [name]="prefijo + '-modo'" value="INTERVALO" [formControl]="modo" />
       <span>Intervalo</span>
     </label>
@@ -17,17 +17,17 @@
     <ul class="horas">
       @for (control of horas.controls; track control; let i = $index) {
         <li class="fila">
-          <label class="etiqueta" [for]="prefijo + '-hora-' + i">Hora {{ i + 1 }}</label>
+          <label class="mv-campo__etiqueta hora" [for]="prefijo + '-hora-' + i">Hora {{ i + 1 }}</label>
           <input
             [id]="prefijo + '-hora-' + i"
-            class="control"
+            class="mv-campo__control"
             type="time"
             [formControl]="control"
             [attr.aria-describedby]="errorVisible() ? prefijo + '-error' : null"
           />
           <button
             type="button"
-            class="boton"
+            class="mv-boton"
             [attr.aria-label]="'Quitar hora ' + (i + 1)"
             [disabled]="deshabilitado() || horas.length === 1"
             (click)="quitarHora(i)"
@@ -37,36 +37,36 @@
         </li>
       }
     </ul>
-    <button type="button" class="boton" [disabled]="deshabilitado()" (click)="agregarHora()">
+    <button type="button" class="mv-boton" [disabled]="deshabilitado()" (click)="agregarHora()">
       Agregar hora
     </button>
   } @else {
     <div class="intervalo" [formGroup]="intervalo">
-      <div class="campo">
-        <label class="etiqueta" [for]="prefijo + '-inicio'">Inicio</label>
+      <div class="mv-campo">
+        <label class="mv-campo__etiqueta" [for]="prefijo + '-inicio'">Inicio</label>
         <input
           [id]="prefijo + '-inicio'"
-          class="control"
+          class="mv-campo__control"
           type="time"
           formControlName="inicio"
           [attr.aria-describedby]="errorVisible() ? prefijo + '-error' : null"
         />
       </div>
-      <div class="campo">
-        <label class="etiqueta" [for]="prefijo + '-fin'">Fin</label>
+      <div class="mv-campo">
+        <label class="mv-campo__etiqueta" [for]="prefijo + '-fin'">Fin</label>
         <input
           [id]="prefijo + '-fin'"
-          class="control"
+          class="mv-campo__control"
           type="time"
           formControlName="fin"
           [attr.aria-describedby]="errorVisible() ? prefijo + '-error' : null"
         />
       </div>
-      <div class="campo">
-        <label class="etiqueta" [for]="prefijo + '-frecuencia'">Cada N horas</label>
+      <div class="mv-campo">
+        <label class="mv-campo__etiqueta" [for]="prefijo + '-frecuencia'">Cada N horas</label>
         <input
           [id]="prefijo + '-frecuencia'"
-          class="control"
+          class="mv-campo__control"
           type="number"
           inputmode="numeric"
           min="1"
@@ -85,6 +85,6 @@
     }
   </p>
   @if (errorVisible(); as mensaje) {
-    <p [id]="prefijo + '-error'" class="error" role="alert">{{ mensaje }}</p>
+    <p [id]="prefijo + '-error'" class="mv-campo__error" role="alert">{{ mensaje }}</p>
   }
 </fieldset>

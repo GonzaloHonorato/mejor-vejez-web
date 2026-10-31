@@ -7,8 +7,8 @@
  * Se parsean los componentes a mano (como en `edadEnAnios`) en vez de
  * `new Date(iso)` para no depender de la zona horaria del navegador.
  *
- * Compartido entre páginas (Tarea 7 lo crea para "Medicamentos"; la Tarea 8
- * lo reutiliza en la página del plan y el formulario de detalle).
+ * Para controles de formulario y textos que se guardan (el motivo de una
+ * reasignación); en texto visible se usa `fechaConAnio`.
  */
 export function formatearFecha(iso: string | null): string {
   if (!iso) {
@@ -32,7 +32,7 @@ export function hoyEnSantiago(): string {
  * Hora local de Santiago de un instante ISO (`OffsetDateTime`/`Instant`
  * serializado por la API), en formato 24 h `"HH:mm"`. Se usa `Intl` con
  * `timeZone: 'America/Santiago'` (nunca la zona del navegador/proceso):
- * compartida por las páginas de tareas/agenda (Tarea 9 y siguientes).
+ * compartida por las páginas de tareas y agenda.
  */
 export function formatearHora(iso: string): string {
   return new Intl.DateTimeFormat('en-GB', {
@@ -108,11 +108,10 @@ function formatearOffset(offsetMinutos: number): string {
 /**
  * Instante ISO (`yyyy-mm-ddTHH:mm:00±hh:mm`) de una fecha y hora LOCAL de
  * Santiago, con el offset que corresponde a Chile en ese momento (nunca el
- * del navegador/proceso). Se usa al dar de alta una cita o tarea manual
- * (restricción global, foco de revisión 5): el 2026-04-04 a las 10:00
- * todavía es `-03:00`, pero el 2026-04-05 a las 10:00 ya es `-04:00`
+ * del navegador/proceso). Se usa al dar de alta una cita o tarea manual:
+ * el 2026-04-04 a las 10:00 todavía es `-03:00`, pero el 2026-04-05 a las 10:00 ya es `-04:00`
  * (retroceso de otoño). El 2026-04-04 a las 23:30 (hora que se repite en el
- * retroceso) usa el PRIMER offset, `-03:00` (regla 2 del plan).
+ * retroceso) usa el PRIMER offset, `-03:00`.
  *
  * El 2026-09-06 a las 00:30 (salto de primavera) NO EXISTE: ese día el reloj
  * de Chile salta de las 00:00 a la 01:00, así que el tramo 00:00-00:59 no

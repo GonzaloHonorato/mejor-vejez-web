@@ -3,6 +3,7 @@ import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angula
 import { RouterLink } from '@angular/router';
 
 import { SaludApi, ServicioSalud } from '../../nucleo/salud/servicio-salud';
+import { Icono } from '../../compartido/icono/icono';
 
 type Estado = 'revisando' | 'ok' | 'degradado' | 'caido';
 
@@ -10,7 +11,7 @@ const REVISAR_CADA_MS = 30_000;
 
 @Component({
   selector: 'app-estado-servicio',
-  imports: [DatePipe, RouterLink],
+  imports: [DatePipe, RouterLink, Icono],
   templateUrl: './estado-servicio.html',
   styleUrl: './estado-servicio.scss',
 })

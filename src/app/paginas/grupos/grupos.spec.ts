@@ -1,4 +1,4 @@
-import { TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -21,7 +21,11 @@ function grupo(idGrupo: number, nombreGrupo: string, miRol: string | null): Resp
   };
 }
 
-async function configurar(gruposIniciales: RespuestaGrupo[], esAdministrador = false) {
+async function configurar(
+  gruposIniciales: RespuestaGrupo[],
+  esAdministrador = false,
+  opciones: { cargar?: () => Promise<void>; error?: string } = {},
+) {
   const grupos = signal(gruposIniciales);
   const activo = signal<RespuestaGrupo | null>(gruposIniciales[0] ?? null);
   /** Lo que devolverá la próxima llamada a `cargar()` (simula la recarga desde la API). */
@@ -29,10 +33,13 @@ async function configurar(gruposIniciales: RespuestaGrupo[], esAdministrador = f
   const grupoActivo = {
     grupos,
     activo,
-    error: signal<string | null>(null),
-    cargar: vi.fn(async () => {
-      grupos.set(siguienteCarga);
-    }),
+    error: signal<string | null>(opciones.error ?? null),
+    cargar: vi.fn(
+      opciones.cargar ??
+        (async () => {
+          grupos.set(siguienteCarga);
+        }),
+    ),
     seleccionar: vi.fn((idGrupo: number) => {
       activo.set(grupos().find((g) => g.idGrupo === idGrupo) ?? null);
     }),
@@ -55,6 +62,7 @@ async function configurar(gruposIniciales: RespuestaGrupo[], esAdministrador = f
     ],
   });
   const fixture = TestBed.createComponent(Grupos);
+  document.body.appendChild(fixture.nativeElement);
   await fixture.whenStable();
   return {
     fixture,
@@ -67,7 +75,15 @@ async function configurar(gruposIniciales: RespuestaGrupo[], esAdministrador = f
   };
 }
 
-function crearGrupo(elemento: HTMLElement, nombre: string): void {
+async function abrirCrear(fixture: ComponentFixture<Grupos>): Promise<void> {
+  const elemento = fixture.nativeElement as HTMLElement;
+  elemento.querySelector<HTMLButtonElement>('#grupos-abrir-crear')!.click();
+  await fixture.whenStable();
+}
+
+async function crearGrupo(fixture: ComponentFixture<Grupos>, nombre: string): Promise<void> {
+  const elemento = fixture.nativeElement as HTMLElement;
+  await abrirCrear(fixture);
   const campo = elemento.querySelector<HTMLInputElement>('#grupo-nombre')!;
   campo.value = nombre;
   campo.dispatchEvent(new Event('input'));
@@ -75,7 +91,10 @@ function crearGrupo(elemento: HTMLElement, nombre: string): void {
 }
 
 describe('Grupos', () => {
-  afterEach(() => TestBed.inject(HttpTestingController).verify());
+  afterEach(() => {
+    TestBed.inject(HttpTestingController).verify();
+    document.body.innerHTML = '';
+  });
 
   it('listaMisGruposConRol', async () => {
     const { elemento, grupoActivo } = await configurar([
@@ -87,16 +106,16 @@ describe('Grupos', () => {
     const filas = Array.from(elemento.querySelectorAll('.grupo'));
     expect(filas).toHaveLength(2);
     expect(filas[0].textContent).toContain('Familia Rojas');
-    expect(filas[0].textContent).toContain('Coordinador');
+    expect(filas[0].textContent).toContain('Coordinador/a');
     expect(filas[0].textContent).toContain('Grupo activo');
     expect(filas[1].textContent).toContain('Familia Soto');
-    expect(filas[1].textContent).toContain('Colaborador');
+    expect(filas[1].textContent).toContain('Colaborador/a');
     expect(filas[1].textContent).not.toContain('Grupo activo');
     expect(filas[1].querySelector('a')?.getAttribute('href')).toBe('/grupos/2');
     expect(elemento.textContent).not.toContain('Ver todos los grupos');
 
     const usar = Array.from(filas[1].querySelectorAll('button')).find((b) =>
-      b.textContent?.includes('Usar este grupo'),
+      b.textContent?.includes('Usar grupo'),
     )!;
     usar.click();
     expect(grupoActivo.seleccionar).toHaveBeenCalledWith(2);
@@ -108,7 +127,7 @@ describe('Grupos', () => {
     const nuevo = grupo(7, 'Familia Pérez', 'COORDINADOR');
     alRecargar([existente, nuevo]);
 
-    crearGrupo(elemento, 'Familia Pérez');
+    await crearGrupo(fixture, 'Familia Pérez');
     const peticion = http.expectOne((req) => req.method === 'POST' && req.url.endsWith('/api/grupos'));
     expect(peticion.request.body).toEqual({ nombreGrupo: 'Familia Pérez' });
     peticion.flush(nuevo);
@@ -123,7 +142,7 @@ describe('Grupos', () => {
   it('muestraErrorDeLaApiAlCrear', async () => {
     const { fixture, elemento, http, grupoActivo } = await configurar([]);
 
-    crearGrupo(elemento, 'Familia Rojas');
+    await crearGrupo(fixture, 'Familia Rojas');
     http
       .expectOne((req) => req.method === 'POST' && req.url.endsWith('/api/grupos'))
       .flush(
@@ -142,7 +161,7 @@ describe('Grupos', () => {
     const { fixture, elemento, http, grupoActivo } = await configurar([]);
     grupoActivo.cargar.mockRejectedValueOnce(new Error('boom'));
 
-    crearGrupo(elemento, 'Familia Rojas');
+    await crearGrupo(fixture, 'Familia Rojas');
     const peticion = http.expectOne((req) => req.method === 'POST' && req.url.endsWith('/api/grupos'));
     peticion.flush(grupo(5, 'Familia Rojas', 'COORDINADOR'));
     await fixture.whenStable();
@@ -203,6 +222,94 @@ describe('Grupos', () => {
     expect(filas[1].textContent).toContain('Familia Ajena');
     expect(filas[1].textContent).toContain('Sin membresía');
     // No es miembro: no puede dejarlo como activo, solo ver sus integrantes.
-    expect(filas[1].textContent).not.toContain('Usar este grupo');
+    expect(filas[1].textContent).not.toContain('Usar grupo');
+  });
+  it('crearGrupoQuedaPlegadoTrasLaAccionPrincipal', async () => {
+    const { fixture, elemento } = await configurar([grupo(1, 'Familia Rojas', 'COORDINADOR')]);
+
+    const abrir = elemento.querySelector<HTMLButtonElement>('#grupos-abrir-crear')!;
+    expect(abrir.textContent).toContain('Crear grupo');
+    expect(abrir.getAttribute('aria-expanded')).toBe('false');
+    expect(elemento.querySelector('#grupo-nombre')).toBeFalsy();
+
+    await abrirCrear(fixture);
+    expect(abrir.getAttribute('aria-expanded')).toBe('true');
+    expect(document.activeElement?.id).toBe('grupo-nombre');
+
+    Array.from(elemento.querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === 'Cancelar')!
+      .click();
+    await fixture.whenStable();
+    expect(elemento.querySelector('#grupo-nombre')).toBeFalsy();
+    expect(document.activeElement).toBe(abrir);
+  });
+
+  it('crearGrupoConExitoPliegaElFormulario', async () => {
+    const existente = grupo(1, 'Familia Rojas', 'COORDINADOR');
+    const { fixture, elemento, http, alRecargar } = await configurar([existente]);
+    const nuevo = grupo(7, 'Familia Pérez', 'COORDINADOR');
+    alRecargar([existente, nuevo]);
+
+    await crearGrupo(fixture, 'Familia Pérez');
+    http.expectOne((req) => req.method === 'POST').flush(nuevo);
+    await fixture.whenStable();
+
+    expect(elemento.querySelector('#grupo-nombre')).toBeFalsy();
+    expect(document.activeElement?.id).toBe('grupos-abrir-crear');
+  });
+
+  it('filaMuestraFechaDeCreacionRolEIntegrantes', async () => {
+    const { elemento } = await configurar([
+      grupo(1, 'Familia Rojas', 'COORDINADOR'),
+      grupo(2, 'Familia Soto', 'COLABORADOR'),
+    ]);
+
+    const filas = Array.from(elemento.querySelectorAll<HTMLElement>('.grupo'));
+    expect(filas[0].textContent).toContain('Creado el 1 ene 2026');
+    expect(filas[0].querySelector('.mv-chip')?.textContent?.trim()).toBe('Coordinador/a');
+    expect(filas[0].querySelector('.mv-chip--info')?.textContent).toContain('Grupo activo');
+
+    const enlace = filas[1].querySelector('a')!;
+    expect(enlace.textContent).toContain('Integrantes');
+    expect(enlace.getAttribute('aria-label')).toBe('Integrantes de Familia Soto');
+    expect(enlace.querySelector('app-icono')).toBeTruthy();
+    const usar = filas[1].querySelector('button')!;
+    expect(usar.getAttribute('aria-label')).toBe('Usar el grupo Familia Soto');
+  });
+
+  it('muestraCargandoMientrasLlegaLaLista', async () => {
+    let terminar!: () => void;
+    const pendiente = new Promise<void>((resolver) => (terminar = resolver));
+    const { fixture, elemento } = await configurar([], false, { cargar: () => pendiente });
+
+    expect(elemento.querySelector('[role="status"]')?.textContent).toContain('Cargando grupos');
+    expect(elemento.querySelector('.mv-vacio')).toBeFalsy();
+
+    terminar();
+    await new Promise((resolver) => setTimeout(resolver));
+    await fixture.whenStable();
+    expect(elemento.textContent).not.toContain('Cargando grupos');
+  });
+
+  it('sinGruposMuestraEstadoVacio', async () => {
+    const { elemento } = await configurar([]);
+
+    const vacio = elemento.querySelector('.mv-vacio');
+    expect(vacio?.textContent).toContain('Todavía no perteneces a ningún grupo.');
+  });
+
+  it('errorAlCargarPermiteReintentar', async () => {
+    const { fixture, elemento, grupoActivo } = await configurar([], false, {
+      error: 'No pudimos cargar tus grupos.',
+    });
+
+    const aviso = elemento.querySelector('.mv-aviso--error')!;
+    expect(aviso.textContent).toContain('No pudimos cargar tus grupos.');
+    expect(elemento.querySelector('.mv-vacio')).toBeFalsy();
+    Array.from(aviso.querySelectorAll('button'))
+      .find((b) => b.textContent?.includes('Reintentar'))!
+      .click();
+    await fixture.whenStable();
+    expect(grupoActivo.cargar).toHaveBeenCalledTimes(2);
   });
 });

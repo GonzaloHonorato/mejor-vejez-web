@@ -1,99 +1,176 @@
-<div class="pagina">
-  <header class="cabecera">
-    <h1>Alertas</h1>
-  </header>
+<header class="mv-encabezado">
+  <div>
+    <p class="mv-encabezado__rotulo">Coordinación del cuidado</p>
+    <h1 class="mv-encabezado__titulo">Alertas</h1>
+    <p class="mv-encabezado__bajada">
+      Revisa situaciones que requieren atención y registra cómo se resolvieron.
+    </p>
+  </div>
+</header>
 
-  <div class="contenido">
-    @if (!activo()) {
-      <section class="tarjeta tarjeta--suave" aria-labelledby="alertas-sin-grupo-titulo">
-        <h2 id="alertas-sin-grupo-titulo" class="tarjeta__titulo">Primero crea o elige un grupo.</h2>
-        <a class="boton boton--contorno" routerLink="/grupos">Ir a grupos</a>
-      </section>
-    } @else {
-      <nav class="pestanas" aria-label="Filtrar por estado">
+<div class="contenido">
+  @if (!activo()) {
+    <section class="mv-tarjeta" aria-labelledby="alertas-sin-grupo-titulo">
+      <div class="mv-tarjeta__cuerpo sin-grupo">
+        <h2 id="alertas-sin-grupo-titulo" class="mv-tarjeta__titulo">
+          Primero crea o elige un grupo.
+        </h2>
+        <a class="mv-boton" routerLink="/grupos">Ir a grupos</a>
+      </div>
+    </section>
+  } @else {
+    @let total = totales();
+    @if (!errorVisible()) {
+      <ul class="mv-indicadores indicadores-dos" aria-label="Resumen de alertas">
+        <li class="mv-indicador mv-indicador--peligro">
+          @if (total.ABIERTA === undefined) {
+            <span class="mv-esqueleto valor-cargando" aria-hidden="true"></span>
+            <span class="oculto">Cargando abiertas</span>
+          } @else {
+            <span class="mv-indicador__valor">{{ total.ABIERTA ?? '—' }}</span>
+          }
+          <span class="punto" aria-hidden="true"></span>
+          @if (total.ABIERTA !== undefined) {
+            <span class="mv-indicador__etiqueta"
+              >{{ ' ' }}{{ plural(total.ABIERTA ?? 0, 'abierta', 'abiertas') }}</span
+            >
+          }
+        </li>
+        <li class="mv-indicador mv-indicador--exito">
+          @if (total.CERRADA === undefined) {
+            <span class="mv-esqueleto valor-cargando" aria-hidden="true"></span>
+            <span class="oculto">Cargando cerradas</span>
+          } @else {
+            <span class="mv-indicador__valor">{{ total.CERRADA ?? '—' }}</span>
+          }
+          <span class="punto" aria-hidden="true"></span>
+          @if (total.CERRADA !== undefined) {
+            <span class="mv-indicador__etiqueta"
+              >{{ ' ' }}{{ plural(total.CERRADA ?? 0, 'cerrada', 'cerradas') }}</span
+            >
+          }
+        </li>
+      </ul>
+    }
+
+    <section class="bandeja" aria-labelledby="alertas-bandeja">
+      <h2 id="alertas-bandeja" class="bandeja__titulo">Bandeja de alertas</h2>
+
+      <nav class="mv-pestanas" aria-label="Filtrar por estado">
         <button
           type="button"
-          class="pestana"
-          [class.pestana--activa]="pestana() === 'ABIERTA'"
+          class="mv-pestanas__pestana"
           [attr.aria-pressed]="pestana() === 'ABIERTA'"
           (click)="elegirPestana('ABIERTA')"
         >
-          Abiertas
+          <span class="nombre-pestana">Abiertas</span>
+          @if (total.ABIERTA !== undefined && total.ABIERTA !== null) {
+            <span class="mv-pestanas__contador">{{ total.ABIERTA }}</span>
+          }
         </button>
         <button
           type="button"
-          class="pestana"
-          [class.pestana--activa]="pestana() === 'CERRADA'"
+          class="mv-pestanas__pestana"
           [attr.aria-pressed]="pestana() === 'CERRADA'"
           (click)="elegirPestana('CERRADA')"
         >
-          Cerradas
+          <span class="nombre-pestana">Cerradas</span>
+          @if (total.CERRADA !== undefined && total.CERRADA !== null) {
+            <span class="mv-pestanas__contador">{{ total.CERRADA }}</span>
+          }
         </button>
       </nav>
 
-      <div class="campo campo--filtro">
-        <label class="campo__etiqueta" for="alertas-filtro-tipo">Tipo de alerta</label>
+      <div class="mv-campo filtro-tipo">
+        <label class="mv-campo__etiqueta" for="alertas-filtro-tipo">Tipo de alerta</label>
         <select
           id="alertas-filtro-tipo"
-          class="campo__control"
+          class="mv-campo__control"
           [formControl]="controlFiltroTipo"
           (change)="cambiarFiltroTipo()"
         >
-          <option value="">Todos</option>
+          <option value="">Todos los tipos</option>
           @for (tipo of tiposAlerta; track tipo) {
-            <option [value]="tipo">{{ etiquetaTipoAlerta[tipo] }}</option>
+            <option [value]="tipo">{{ etiquetaTipo[tipo] }}</option>
           }
         </select>
       </div>
 
       @if (errorVisible(); as mensaje) {
-        <div class="error" role="alert">
-          <p class="error__mensaje">{{ mensaje }}</p>
-          <button type="button" class="boton boton--contorno" (click)="reintentar()">Reintentar</button>
+        <div class="mv-aviso mv-aviso--error" role="alert">
+          <p>{{ mensaje }}</p>
+          <button type="button" class="mv-boton" (click)="reintentar()">Reintentar</button>
         </div>
       }
 
-      @if (!cargando() && !errorVisible() && elementos().length === 0) {
-        <p class="vacio" role="status">{{ mensajeVacio() }}</p>
+      @if (cargando()) {
+        <div role="status" aria-live="polite">
+          <span class="oculto">Cargando alertas…</span>
+          <div class="esqueleto" aria-hidden="true">
+            <span class="mv-esqueleto mv-esqueleto--bloque"></span>
+            <span class="mv-esqueleto mv-esqueleto--bloque"></span>
+            <span class="mv-esqueleto mv-esqueleto--bloque"></span>
+          </div>
+        </div>
+      } @else if (!errorVisible() && elementos().length === 0) {
+        <div class="mv-vacio" role="status">
+          <p class="mv-vacio__titulo">{{ mensajeVacio() }}</p>
+          <p class="mv-vacio__texto">
+            {{
+              tipoFiltro()
+                ? 'Prueba con otro tipo de alerta.'
+                : 'Las alertas de este grupo aparecerán aquí.'
+            }}
+          </p>
+        </div>
       }
 
-      <ul class="lista">
-        @for (alerta of elementos(); track alerta.idAlerta) {
-          <li class="tarjeta-alerta">
-            <div class="tarjeta-alerta__principal">
-              <span class="chip">{{ etiquetaTipoAlerta[alerta.tipoAlerta] }}</span>
-              <p class="tarjeta-alerta__adulto">{{ alerta.nombreAdulto }}</p>
-              <p class="tarjeta-alerta__mensaje">{{ alerta.mensajeAlerta }}</p>
-              <p class="tarjeta-alerta__fecha">
-                Detectada el {{ formatearFecha(alerta.fechaDeteccion) }} a las
-                {{ formatearHora(alerta.fechaDeteccion) }}
-              </p>
-              @if (pestana() === 'CERRADA') {
-                <p class="tarjeta-alerta__revision">
-                  Revisada por {{ alerta.revisor?.nombre ?? 'Sin revisor' }}
-                  @if (alerta.fechaRevision) {
-                    el {{ formatearFecha(alerta.fechaRevision) }} a las
-                    {{ formatearHora(alerta.fechaRevision) }}
+      @if (elementos().length > 0) {
+        <ul class="mv-lista lista-alertas">
+          @for (alerta of elementos(); track alerta.idAlerta) {
+            @let detectada = fechaHoraLegible(alerta.fechaDeteccion);
+            <li class="mv-fila">
+              <span
+                ><span class="mv-chip {{ tonoTipo[alerta.tipoAlerta] }}">{{
+                  etiquetaTipo[alerta.tipoAlerta]
+                }}</span></span
+              >
+              <div class="mv-fila__principal">
+                <a
+                  class="mv-fila__titulo mv-fila__enlace"
+                  [routerLink]="['/alertas', alerta.idAlerta]"
+                  [attr.aria-label]="
+                    titulo(alerta) + ', ' + alerta.nombreAdulto + ', detectada ' + detectada
+                  "
+                  >{{ titulo(alerta) }}</a
+                >
+                <p class="mv-fila__meta mensaje">{{ alerta.mensajeAlerta }}</p>
+                <p class="mv-fila__meta adulto">{{ alerta.nombreAdulto }}</p>
+                <p class="mv-fila__meta">Detectada: {{ detectada }}</p>
+                @if (pestana() === 'CERRADA') {
+                  <p class="mv-fila__meta">{{ revision(alerta) }}</p>
+                  @if (alerta.observacionCierre?.trim()) {
+                    <p class="mv-fila__meta observacion">
+                      {{ extracto(alerta.observacionCierre!) }}
+                    </p>
                   }
-                </p>
-              }
-            </div>
-
-            <a class="enlace" [routerLink]="['/alertas', alerta.idAlerta]">Ver detalle</a>
-          </li>
-        }
-      </ul>
+                }
+              </div>
+            </li>
+          }
+        </ul>
+      }
 
       @if (!cargando() && hayMas()) {
         <button
           type="button"
-          class="boton boton--contorno"
+          class="mv-boton mv-boton--bloque"
           [disabled]="cargandoMas()"
           (click)="cargarMas()"
         >
           {{ cargandoMas() ? 'Cargando…' : 'Cargar más' }}
         </button>
       }
-    }
-  </div>
+    </section>
+  }
 </div>

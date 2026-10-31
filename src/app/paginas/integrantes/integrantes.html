@@ -1,198 +1,67 @@
-<div class="pagina">
-  <header class="cabecera">
-    <a class="enlace-volver" routerLink="/grupos">Volver a grupos</a>
-    <h1>{{ grupo()?.nombreGrupo ?? 'Integrantes' }}</h1>
-  </header>
+<a class="mv-boton mv-boton--texto volver" routerLink="/grupos">
+  <app-icono nombre="flecha-izquierda" aria-hidden="true" />
+  Volver a grupos
+</a>
 
-  <div class="contenido">
-    @if (error(); as mensaje) {
-      <p class="error" role="alert">{{ mensaje }}</p>
+<header class="mv-encabezado">
+  <div>
+    <p class="mv-encabezado__rotulo">Integrantes del grupo</p>
+    <h1 class="mv-encabezado__titulo">{{ grupo()?.nombreGrupo ?? 'Integrantes' }}</h1>
+    @if (integrantesCargados()) {
+      <p class="mv-encabezado__bajada">
+        {{ totalActivos() }} {{ totalActivos() === 1 ? 'integrante activo' : 'integrantes activos' }}
+        @if (grupo()?.miRol; as rol) {
+          · Tu rol: {{ etiquetaRol(rol) }}
+        }
+      </p>
     }
-
-    @if (esMiembroActivo()) {
-      <button type="button" class="boton boton--contorno" (click)="salir()">Salir del grupo</button>
-    }
-
-    @if (puedeAdministrar()) {
-      <a
-        id="integrantes-enlace-auditoria"
-        class="enlace-volver"
-        [routerLink]="['/grupos', idGrupo, 'auditoria']"
+  </div>
+  @if (puedeAdministrar()) {
+    <div class="mv-encabezado__accion">
+      <button
+        id="integrantes-abrir-agregar"
+        type="button"
+        class="mv-boton mv-boton--primario"
+        aria-controls="integrantes-agregar"
+        [attr.aria-expanded]="agregarAbierto()"
+        (click)="alternarAgregar()"
       >
-        Auditoría del grupo
-      </a>
-    }
+        Agregar integrante
+      </button>
+      <button
+        #botonCrearIntegranteNuevo
+        id="integrantes-abrir-crear"
+        type="button"
+        class="mv-boton"
+        aria-controls="integrantes-crear"
+        [attr.aria-expanded]="creandoIntegrante()"
+        (click)="alternarCrearIntegrante()"
+      >
+        Crear integrante nuevo
+      </button>
+    </div>
+  }
+</header>
 
-    @if (grupoCargado()) {
-      @if (puedeAdministrar()) {
-        <label class="interruptor">
-          <input
-            id="integrantes-notifica-coordinador"
-            class="interruptor__control"
-            type="checkbox"
-            [checked]="grupo()?.notificaCoordinador"
-            [disabled]="cambiandoNotificaCoordinador()"
-            (change)="alternarNotificarCoordinador($event)"
-          />
-          <span class="interruptor__etiqueta">Notificar las alertas al coordinador</span>
-        </label>
-      } @else {
-        <p>Notificar las alertas al coordinador: {{ grupo()?.notificaCoordinador ? 'Sí' : 'No' }}</p>
-      }
-    }
+<div class="contenido">
+  @if (error(); as mensaje) {
+    <p class="mv-aviso mv-aviso--error" role="alert">{{ mensaje }}</p>
+  }
 
-    <ul class="lista">
-      @for (integrante of integrantesOrdenados(); track integrante.idIntegrante) {
-        <li class="integrante" [class.integrante--inactivo]="!estaActivo(integrante)">
-          <div class="integrante__principal">
-            <p class="integrante__nombre">{{ integrante.nombre }}</p>
-            <p class="integrante__correo">{{ integrante.email }}</p>
-          </div>
+  <div id="integrantes-agregar" class="registro">
+    @if (puedeAdministrar() && agregarAbierto()) {
+      <section class="mv-tarjeta" aria-labelledby="integrantes-agregar-titulo">
+        <div class="mv-tarjeta__cabecera">
+          <h2 id="integrantes-agregar-titulo" class="mv-tarjeta__titulo">Agregar integrante</h2>
+        </div>
+        <form class="mv-tarjeta__cuerpo formulario" [formGroup]="formulario" (ngSubmit)="agregar()" novalidate>
+          <p class="ayuda">La persona debe tener una cuenta en Cuida+.</p>
 
-          <div class="integrante__rol">
-            @if (puedeAdministrar()) {
-              <select
-                class="campo__control"
-                [formControl]="controlRol(integrante)"
-                [attr.aria-label]="'Rol de ' + integrante.nombre"
-                (change)="cambiarRol(integrante, controlRol(integrante).value)"
-              >
-                @for (rol of roles(); track rol.idRol) {
-                  <option [ngValue]="rol.idRol">{{ rol.nombreRol | titlecase }}</option>
-                }
-              </select>
-            } @else {
-              <span>{{ integrante.nombreRol | titlecase }}</span>
-            }
-          </div>
-
-          <span class="insignia" [class.insignia--inactiva]="!estaActivo(integrante)">
-            {{ estaActivo(integrante) ? 'Activo' : 'Inactivo' }}
-          </span>
-
-          @if (puedeAdministrar()) {
-            <div class="integrante__acciones">
-              @if (estaActivo(integrante)) {
-                <button type="button" class="boton boton--contorno" (click)="desactivar(integrante)">
-                  Desactivar
-                </button>
-              } @else {
-                <button type="button" class="boton boton--contorno" (click)="reactivar(integrante)">
-                  Reactivar
-                </button>
-              }
-              <button type="button" class="boton boton--peligro" (click)="eliminar(integrante)">
-                Eliminar
-              </button>
-            </div>
-          }
-        </li>
-      }
-    </ul>
-
-    @if (puedeAdministrar()) {
-      @if (!creandoIntegrante()) {
-        <button
-          #botonCrearIntegranteNuevo
-          type="button"
-          class="boton boton--primario"
-          (click)="abrirCrearIntegrante()"
-        >
-          Crear integrante nuevo
-        </button>
-      }
-
-      @if (creandoIntegrante()) {
-        <section class="tarjeta crear-integrante" aria-labelledby="integrantes-crear-titulo">
-          <h2 id="integrantes-crear-titulo">Crear integrante nuevo</h2>
-
-          @if (errorCrearIntegrante(); as mensaje) {
-            <p class="error" role="alert">{{ mensaje }}</p>
-            @if (yaExisteCuentaIntegrante()) {
-              <button type="button" class="boton boton--contorno" (click)="irAAgregarPorCorreo()">
-                Si la persona ya tiene cuenta, agrégala por correo
-              </button>
-            }
-          }
-
-          <form [formGroup]="formularioCrearIntegrante" (ngSubmit)="crearIntegrante()" novalidate>
-            <div class="campo">
-              <label class="campo__etiqueta" for="integrante-crear-nombre">Nombre</label>
-              <input
-                id="integrante-crear-nombre"
-                class="campo__control"
-                type="text"
-                formControlName="nombre"
-                [attr.aria-invalid]="erroresCamposCrearIntegrante()['nombre'] ? true : null"
-                [attr.aria-describedby]="
-                  erroresCamposCrearIntegrante()['nombre'] ? 'integrante-crear-nombre-error' : null
-                "
-              />
-              @if (erroresCamposCrearIntegrante()['nombre']; as mensaje) {
-                <p id="integrante-crear-nombre-error" class="error" role="alert">{{ mensaje }}</p>
-              }
-            </div>
-
-            <div class="campo">
-              <label class="campo__etiqueta" for="integrante-crear-email">Correo</label>
-              <input
-                id="integrante-crear-email"
-                class="campo__control"
-                type="email"
-                formControlName="email"
-                [attr.aria-invalid]="
-                  formularioCrearIntegrante.controls.email.invalid &&
-                  formularioCrearIntegrante.controls.email.touched
-                    ? true
-                    : null
-                "
-              />
-              @if (
-                formularioCrearIntegrante.controls.email.invalid &&
-                formularioCrearIntegrante.controls.email.touched
-              ) {
-                <p id="integrante-crear-email-error" class="error" role="alert">
-                  Ingresa un correo válido.
-                </p>
-              }
-            </div>
-
-            <div class="campo">
-              <label class="campo__etiqueta" for="integrante-crear-rol">Rol</label>
-              <select id="integrante-crear-rol" class="campo__control" formControlName="idRol">
-                @for (rol of roles(); track rol.idRol) {
-                  <option [ngValue]="rol.idRol">{{ rol.nombreRol | titlecase }}</option>
-                }
-              </select>
-            </div>
-
-            <div class="tarjeta__acciones">
-              <button type="button" class="boton boton--contorno" (click)="cancelarCrearIntegrante()">
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                class="boton boton--primario"
-                [disabled]="formularioCrearIntegrante.invalid || guardandoCrearIntegrante()"
-              >
-                {{ guardandoCrearIntegrante() ? 'Creando…' : 'Crear integrante nuevo' }}
-              </button>
-            </div>
-          </form>
-        </section>
-      }
-    }
-
-    @if (puedeAdministrar()) {
-      <section class="tarjeta" aria-labelledby="integrantes-agregar-titulo">
-        <h2 id="integrantes-agregar-titulo">Agregar integrante</h2>
-
-        <form [formGroup]="formulario" (ngSubmit)="agregar()" novalidate>
-          <div class="campo">
-            <label class="campo__etiqueta" for="integrante-email">Correo</label>
+          <div class="mv-campo">
+            <label class="mv-campo__etiqueta" for="integrante-email">Correo</label>
             <input
               id="integrante-email"
-              class="campo__control"
+              class="mv-campo__control"
               type="email"
               formControlName="email"
               [attr.aria-invalid]="formulario.controls.email.invalid && formulario.controls.email.touched ? true : null"
@@ -203,48 +72,290 @@
               "
             />
             @if (formulario.controls.email.invalid && formulario.controls.email.touched) {
-              <p id="integrante-email-error" class="error" role="alert">Ingresa un correo válido.</p>
+              <p id="integrante-email-error" class="mv-campo__error" role="alert">
+                Ingresa un correo válido.
+              </p>
             }
           </div>
 
-          <div class="campo">
-            <label class="campo__etiqueta" for="integrante-rol">Rol</label>
-            <select id="integrante-rol" class="campo__control" formControlName="idRol">
+          <div class="mv-campo">
+            <label class="mv-campo__etiqueta" for="integrante-rol">Rol</label>
+            <select id="integrante-rol" class="mv-campo__control" formControlName="idRol">
               @for (rol of roles(); track rol.idRol) {
-                <option [ngValue]="rol.idRol">{{ rol.nombreRol | titlecase }}</option>
+                <option [ngValue]="rol.idRol">{{ etiquetaRol(rol.nombreRol) }}</option>
               }
             </select>
           </div>
 
-          <button
-            type="submit"
-            class="boton boton--primario"
-            [disabled]="formulario.invalid || agregando()"
-          >
-            {{ agregando() ? 'Agregando…' : 'Agregar integrante' }}
-          </button>
+          <div class="botones">
+            <button type="button" class="mv-boton" (click)="cerrarAgregar()">Cancelar</button>
+            <button
+              type="submit"
+              class="mv-boton mv-boton--primario"
+              [disabled]="formulario.invalid || agregando()"
+            >
+              {{ agregando() ? 'Agregando…' : 'Agregar integrante' }}
+            </button>
+          </div>
         </form>
       </section>
     }
+  </div>
 
-    @if (grupoCargado()) {
-      <app-seccion-sucesion
-        [idGrupo]="idGrupo"
-        [integrantes]="integrantes()"
-        [idUsuarioActual]="idUsuario()"
-        [soyCoordinador]="soyCoordinador()"
-        [esAdministrador]="esAdministrador()"
-        (cambio)="alCambiarSucesion()"
-      />
-    }
+  <div id="integrantes-crear" class="registro">
+    @if (puedeAdministrar() && creandoIntegrante()) {
+      <section class="mv-tarjeta crear-integrante" aria-labelledby="integrantes-crear-titulo">
+        <div class="mv-tarjeta__cabecera">
+          <h2 id="integrantes-crear-titulo" class="mv-tarjeta__titulo">Crear integrante nuevo</h2>
+        </div>
+        <form
+          class="mv-tarjeta__cuerpo formulario"
+          [formGroup]="formularioCrearIntegrante"
+          (ngSubmit)="crearIntegrante()"
+          novalidate
+        >
+          @if (errorCrearIntegrante(); as mensaje) {
+            <div id="integrantes-crear-error" class="mv-aviso mv-aviso--error" role="alert">
+              <p>{{ mensaje }}</p>
+              @if (yaExisteCuentaIntegrante()) {
+                <button type="button" class="mv-boton" (click)="irAAgregarPorCorreo()">
+                  Si la persona ya tiene cuenta, agrégala por correo
+                </button>
+              }
+            </div>
+          }
 
-    @if (claveAMostrar(); as datos) {
-      <app-clave-temporal
-        [titulo]="datos.titulo"
-        [clave]="datos.clave"
-        [correoEnviado]="datos.correoEnviado"
-        (cerrar)="cerrarClave()"
-      />
+          <div class="mv-campo">
+            <label class="mv-campo__etiqueta" for="integrante-crear-nombre">Nombre</label>
+            <input
+              id="integrante-crear-nombre"
+              class="mv-campo__control"
+              type="text"
+              formControlName="nombre"
+              [attr.aria-invalid]="erroresCamposCrearIntegrante()['nombre'] ? true : null"
+              [attr.aria-describedby]="
+                erroresCamposCrearIntegrante()['nombre'] ? 'integrante-crear-nombre-error' : null
+              "
+            />
+            @if (erroresCamposCrearIntegrante()['nombre']; as mensaje) {
+              <p id="integrante-crear-nombre-error" class="mv-campo__error" role="alert">
+                {{ mensaje }}
+              </p>
+            }
+          </div>
+
+          <div class="mv-campo">
+            <label class="mv-campo__etiqueta" for="integrante-crear-email">Correo</label>
+            <input
+              id="integrante-crear-email"
+              class="mv-campo__control"
+              type="email"
+              formControlName="email"
+              [attr.aria-invalid]="
+                formularioCrearIntegrante.controls.email.invalid &&
+                formularioCrearIntegrante.controls.email.touched
+                  ? true
+                  : null
+              "
+              [attr.aria-describedby]="
+                formularioCrearIntegrante.controls.email.invalid &&
+                formularioCrearIntegrante.controls.email.touched
+                  ? 'integrante-crear-email-error'
+                  : null
+              "
+            />
+            @if (
+              formularioCrearIntegrante.controls.email.invalid &&
+              formularioCrearIntegrante.controls.email.touched
+            ) {
+              <p id="integrante-crear-email-error" class="mv-campo__error" role="alert">
+                Ingresa un correo válido.
+              </p>
+            }
+          </div>
+
+          <div class="mv-campo">
+            <label class="mv-campo__etiqueta" for="integrante-crear-rol">Rol</label>
+            <select id="integrante-crear-rol" class="mv-campo__control" formControlName="idRol">
+              @for (rol of roles(); track rol.idRol) {
+                <option [ngValue]="rol.idRol">{{ etiquetaRol(rol.nombreRol) }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="botones">
+            <button type="button" class="mv-boton" (click)="cancelarCrearIntegrante()">Cancelar</button>
+            <button
+              type="submit"
+              class="mv-boton mv-boton--primario"
+              [disabled]="formularioCrearIntegrante.invalid || guardandoCrearIntegrante()"
+            >
+              {{ guardandoCrearIntegrante() ? 'Creando…' : 'Crear integrante nuevo' }}
+            </button>
+          </div>
+        </form>
+      </section>
     }
   </div>
+
+  <section class="seccion" aria-labelledby="integrantes-lista-titulo">
+    <h2 id="integrantes-lista-titulo" class="seccion__titulo">Integrantes</h2>
+
+    @if (errorCarga(); as mensaje) {
+      <div class="mv-aviso mv-aviso--error" role="alert">
+        <p>{{ mensaje }}</p>
+        <button type="button" class="mv-boton" (click)="reintentar()">Reintentar</button>
+      </div>
+    }
+
+    @if (!integrantesCargados() && !errorCarga()) {
+      <div role="status" aria-live="polite">
+        <span class="oculto">Cargando integrantes…</span>
+        <div class="esqueleto" aria-hidden="true">
+          <span class="mv-esqueleto mv-esqueleto--bloque"></span>
+          <span class="mv-esqueleto mv-esqueleto--bloque"></span>
+        </div>
+      </div>
+    } @else if (integrantesCargados() && integrantes().length === 0) {
+      <div class="mv-vacio" role="status">
+        <p class="mv-vacio__titulo">Este grupo todavía no tiene integrantes.</p>
+      </div>
+    }
+
+    @if (integrantes().length > 0) {
+      <ul class="mv-lista lista-integrantes">
+        @for (integrante of integrantesOrdenados(); track integrante.idIntegrante) {
+          <li class="mv-fila integrante" [class.integrante--inactivo]="!estaActivo(integrante)">
+            <span class="mv-avatar" aria-hidden="true">{{ inicialesDe(integrante.nombre) }}</span>
+            <div class="mv-fila__principal">
+              <p class="mv-fila__titulo">{{ integrante.nombre }}</p>
+              <p class="mv-fila__meta">
+                {{ integrante.email }}
+                @if (integrante.idUsuario === idUsuario()) {
+                  · Tú
+                }
+              </p>
+            </div>
+
+            <span class="rol">
+              <span class="oculto">Rol: </span>
+              <span class="mv-chip" [class.mv-chip--info]="integrante.nombreRol === 'COORDINADOR'">
+                {{ etiquetaRol(integrante.nombreRol) }}
+              </span>
+            </span>
+
+            <span class="estado">
+              <span class="mv-chip" [class.mv-chip--exito]="estaActivo(integrante)">
+                {{ estaActivo(integrante) ? 'Activo' : 'Inactivo' }}
+              </span>
+            </span>
+
+            @if (puedeAdministrar()) {
+              <details class="mv-mas mas">
+                <summary
+                  class="mv-boton mv-boton--texto"
+                  [attr.aria-label]="'Más acciones: ' + integrante.nombre"
+                >
+                  <app-icono nombre="mas" aria-hidden="true" />
+                  Más acciones
+                </summary>
+                <div class="mv-mas__panel">
+                  <div class="mv-campo">
+                    <label class="mv-campo__etiqueta" [attr.for]="'integrante-rol-' + integrante.idIntegrante">
+                      Rol
+                    </label>
+                    <select
+                      class="mv-campo__control"
+                      [id]="'integrante-rol-' + integrante.idIntegrante"
+                      [formControl]="controlRol(integrante)"
+                      [attr.aria-label]="'Rol de ' + integrante.nombre"
+                      (change)="cambiarRol(integrante, controlRol(integrante).value)"
+                    >
+                      @for (rol of roles(); track rol.idRol) {
+                        <option [ngValue]="rol.idRol">{{ etiquetaRol(rol.nombreRol) }}</option>
+                      }
+                    </select>
+                  </div>
+                  @if (estaActivo(integrante)) {
+                    <button type="button" class="mv-boton" (click)="desactivar(integrante)">
+                      Desactivar
+                    </button>
+                  } @else {
+                    <button type="button" class="mv-boton" (click)="reactivar(integrante)">
+                      Reactivar
+                    </button>
+                  }
+                  <button type="button" class="mv-boton mv-boton--peligro" (click)="eliminar(integrante)">
+                    Eliminar
+                  </button>
+                </div>
+              </details>
+            }
+          </li>
+        }
+      </ul>
+      <p class="ayuda">Desactivar una membresía no elimina la cuenta de la persona.</p>
+    }
+  </section>
+
+  @if (grupoCargado()) {
+    <section class="mv-tarjeta" aria-labelledby="integrantes-configuracion-titulo">
+      <div class="mv-tarjeta__cabecera">
+        <h2 id="integrantes-configuracion-titulo" class="mv-tarjeta__titulo">Configuración del grupo</h2>
+      </div>
+      <div class="mv-tarjeta__cuerpo configuracion">
+        @if (puedeAdministrar()) {
+          <label class="mv-campo mv-campo--casilla">
+            <input
+              id="integrantes-notifica-coordinador"
+              type="checkbox"
+              [checked]="grupo()?.notificaCoordinador"
+              [disabled]="cambiandoNotificaCoordinador()"
+              (change)="alternarNotificarCoordinador($event)"
+            />
+            <span class="mv-campo__etiqueta">Notificar las alertas al coordinador</span>
+          </label>
+        } @else {
+          <p>Notificar las alertas al coordinador: {{ grupo()?.notificaCoordinador ? 'Sí' : 'No' }}</p>
+        }
+
+        @if (puedeAdministrar() || esMiembroActivo()) {
+          <div class="botones">
+            @if (puedeAdministrar()) {
+              <a
+                id="integrantes-enlace-auditoria"
+                class="mv-boton"
+                [routerLink]="['/grupos', idGrupo, 'auditoria']"
+              >
+                Auditoría del grupo
+              </a>
+            }
+            @if (esMiembroActivo()) {
+              <button type="button" class="mv-boton mv-boton--peligro" (click)="salir()">
+                Salir del grupo
+              </button>
+            }
+          </div>
+        }
+      </div>
+    </section>
+
+    <app-seccion-sucesion
+      [idGrupo]="idGrupo"
+      [integrantes]="integrantes()"
+      [idUsuarioActual]="idUsuario()"
+      [soyCoordinador]="soyCoordinador()"
+      [esAdministrador]="esAdministrador()"
+      (cambio)="alCambiarSucesion()"
+    />
+  }
+
+  @if (claveAMostrar(); as datos) {
+    <app-clave-temporal
+      [titulo]="datos.titulo"
+      [clave]="datos.clave"
+      [correoEnviado]="datos.correoEnviado"
+      (cerrar)="cerrarClave()"
+    />
+  }
 </div>

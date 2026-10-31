@@ -1,36 +1,58 @@
 import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { AccionesTarea } from './acciones-tarea/acciones-tarea';
+import { Icono } from '../../compartido/icono/icono';
 import { RespuestaAdultoMayor } from '../../nucleo/adultos/modelos-adultos';
 import { puedeAdministrarGrupo } from '../../nucleo/adultos/permisos-adultos';
 import { ServicioAdultos } from '../../nucleo/adultos/servicio-adultos';
 import { RespuestaEstadoCatalogo, ServicioCatalogos } from '../../nucleo/catalogos/servicio-catalogos';
-import { formatearFecha, formatearHora, hoyEnSantiago, nombreDia, sumarDias } from '../../nucleo/fechas';
+import { fechaLarga } from '../../nucleo/fecha-legible';
+import { formatearHora, hoyEnSantiago, sumarDias } from '../../nucleo/fechas';
 import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
 import { mensajeDeError } from '../../nucleo/http/mensaje-de-error';
-import { QuienConfirma } from '../../nucleo/tareas/estados-tarea';
-import { RespuestaTarea } from '../../nucleo/tareas/modelos-tareas';
+import { CodigoEstadoTarea, QuienConfirma } from '../../nucleo/tareas/estados-tarea';
+import { RespuestaTarea, TipoTarea } from '../../nucleo/tareas/modelos-tareas';
 import { ServicioTareas } from '../../nucleo/tareas/servicio-tareas';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
 
+const ETIQUETA_TIPO: Record<TipoTarea, string> = {
+  MEDICAMENTOS: 'Medicamento',
+  COMPRA_RETIRO_MEDICAMENTOS: 'Compra o retiro de medicamentos',
+  CITAS_CONTROLES_MEDICOS: 'Cita o control médico',
+};
+
+const TONO_ESTADO: Partial<Record<CodigoEstadoTarea, string>> = {
+  PENDIENTE: 'mv-chip--alerta',
+  EN_CURSO: 'mv-chip--info',
+  COMPLETADA: 'mv-chip--exito',
+};
+
+/** Texto comparable sin tildes ni mayúsculas ("Muñoz" → "munoz"). */
+function normalizar(texto: string): string {
+  return texto.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+}
+
 /**
  * Página "Tareas" (`/tareas?fecha=yyyy-mm-dd&idAdulto=`): agenda de un día
- * del grupo activo. Sigue el mismo patrón de `paginas/planes`: un `effect()`
- * con contador de generación recarga (o limpia) la lista cada vez que el
- * grupo activo, la fecha o los filtros cambian; el día por defecto es
- * `hoyEnSantiago()` (nunca la fecha del navegador).
+ * del grupo activo. Un `effect()` con contador de generación recarga (o
+ * limpia) la lista cada vez que el grupo activo, la fecha o los filtros de
+ * la API (adulto, "Solo mis tareas") cambian; el día por defecto es
+ * `hoyEnSantiago()` (nunca la fecha del navegador). Estado y búsqueda de
+ * texto filtran localmente la lista ya cargada, y los indicadores del día
+ * se cuentan sobre esa misma lista completa.
  *
- * `desde`/`hasta` de `ServicioTareas.listar` son fechas INCLUSIVAS (contrato
- * de la Tarea 5 de la API: la ventana real es `[desde 00:00, hasta + 1
- * 00:00)` en Santiago; `hasta` nulo equivale a `desde`). Para pedir la
- * agenda de un solo día se envían ambas iguales a la fecha elegida (nunca
- * `sumarDias(fecha, 1)`, que pediría dos días).
+ * `desde`/`hasta` de `ServicioTareas.listar` son fechas INCLUSIVAS (la
+ * ventana real es `[desde 00:00, hasta + 1 00:00)` en Santiago; `hasta`
+ * nulo equivale a `desde`). Para pedir la agenda de un solo día se envían
+ * ambas iguales a la fecha elegida (nunca `sumarDias(fecha, 1)`, que
+ * pediría dos días).
  */
 @Component({
   selector: 'app-tareas',
-  imports: [ReactiveFormsModule, RouterLink, AccionesTarea],
+  imports: [ReactiveFormsModule, RouterLink, AccionesTarea, Icono],
   templateUrl: './tareas.html',
   styleUrl: './tareas.scss',
 })
@@ -45,9 +67,7 @@ export class Tareas implements OnInit {
 
   protected readonly grupoActivo = inject(ServicioGrupoActivo);
   protected readonly activo = this.grupoActivo.activo;
-  protected readonly formatearFecha = formatearFecha;
   protected readonly formatearHora = formatearHora;
-  protected readonly nombreDia = nombreDia;
 
   protected readonly tareas = signal<RespuestaTarea[]>([]);
   protected readonly cargando = signal(false);
@@ -65,8 +85,64 @@ export class Tareas implements OnInit {
 
   protected readonly controlFecha = this.fb.control<string>(this.fecha());
   protected readonly controlFiltroAdulto = this.fb.control<number | null>(this.idAdultoFiltro());
+  /** Filtros locales: código de estado del catálogo ('' = todos) y texto libre. */
+  protected readonly controlEstado = this.fb.control<string>('');
+  protected readonly controlBusqueda = this.fb.control<string>('');
+  private readonly estadoFiltro = toSignal(this.controlEstado.valueChanges, { initialValue: '' });
+  private readonly busqueda = toSignal(this.controlBusqueda.valueChanges, { initialValue: '' });
+  /** Sube con "Reintentar" para repetir la misma carga. */
+  private readonly recarga = signal(0);
 
-  protected readonly tituloDia = computed(() => `${nombreDia(this.fecha())} ${formatearFecha(this.fecha())}`);
+  protected readonly fechaTitulo = computed(() => fechaLarga(this.fecha()));
+  protected readonly esHoy = computed(() => this.fecha() === hoyEnSantiago());
+
+  /** Estados del catálogo en su orden, para el filtro "Estado". */
+  protected readonly estadosOrdenados = computed(() =>
+    [...this.estados()].sort((a, b) => a.orden - b.orden),
+  );
+
+  /** Conteos del día sobre la lista cargada completa (sin los filtros locales). */
+  protected readonly conteos = computed(() => {
+    const tareas = this.tareas();
+    const contar = (codigo: CodigoEstadoTarea) =>
+      tareas.filter((tarea) => this.codigoEstado(tarea) === codigo).length;
+    return {
+      pendientes: contar('PENDIENTE'),
+      atrasadas: tareas.filter((tarea) => tarea.atrasada).length,
+      completadas: contar('COMPLETADA'),
+      total: tareas.length,
+    };
+  });
+
+  protected readonly tareasVisibles = computed(() => {
+    const estado = this.estadoFiltro();
+    const texto = normalizar(this.busqueda().trim());
+    return this.tareas().filter(
+      (tarea) =>
+        (estado === '' || this.codigoEstado(tarea) === estado) &&
+        (texto === '' ||
+          normalizar(`${tarea.titulo} ${tarea.nombreAdulto} ${tarea.responsable?.nombre ?? ''}`).includes(texto)),
+    );
+  });
+
+  /** En celular, si se ven Adulto, Estado y "Solo mis tareas" (desde tableta se ven siempre). */
+  protected readonly filtrosAbiertos = signal(false);
+
+  /** Filtros activos dentro del desplegable "Filtros" (la búsqueda queda siempre a la vista). */
+  protected readonly filtrosEscondidosActivos = computed(
+    () =>
+      Number(this.idAdultoFiltro() !== null) +
+      Number(this.estadoFiltro() !== '') +
+      Number(this.soloMisTareas()),
+  );
+
+  protected readonly hayFiltros = computed(
+    () =>
+      this.estadoFiltro() !== '' ||
+      this.busqueda().trim() !== '' ||
+      this.idAdultoFiltro() !== null ||
+      this.soloMisTareas(),
+  );
 
   /** Sin grupo activo no hay nada que administrar, aunque la persona sea admin. */
   protected readonly puedeAdministrar = computed(() =>
@@ -108,7 +184,7 @@ export class Tareas implements OnInit {
     // Si el grupo activo cambia de verdad (no en la carga inicial), el
     // filtro de adulto del grupo anterior ya no tiene sentido: ese adulto
     // puede no existir en el grupo nuevo y `ServicioConsultaTareas` responde
-    // 404, dejando la agenda vacía con un error en pantalla (hallazgo I2).
+    // 404, dejando la agenda vacía con un error en pantalla.
     // Se limpia antes de que el efecto de carga, declarado después, lea
     // `idAdultoFiltro()` y arme la petición.
     effect(() => {
@@ -135,6 +211,7 @@ export class Tareas implements OnInit {
       const fecha = this.fecha();
       const idAdulto = this.idAdultoFiltro();
       const soloMias = this.soloMisTareas();
+      this.recarga();
 
       this.error.set(null);
       // Nunca se muestran tareas del grupo/día anterior mientras carga el nuevo.
@@ -168,8 +245,21 @@ export class Tareas implements OnInit {
     return this.estados().find((estado) => estado.idEstado === tarea.idEstado)?.descripcion ?? '';
   }
 
+  protected tonoEstado(tarea: RespuestaTarea): string {
+    return TONO_ESTADO[this.codigoEstado(tarea) as CodigoEstadoTarea] ?? '';
+  }
+
+  protected etiquetaTipo(tarea: RespuestaTarea): string {
+    return ETIQUETA_TIPO[tarea.tipoTarea] ?? '';
+  }
+
+  /** Singular o plural de un conteo ("1 pendiente", "2 pendientes"). */
+  protected plural(cantidad: number, singular: string, plural: string): string {
+    return cantidad === 1 ? singular : plural;
+  }
+
   protected responsable(tarea: RespuestaTarea): string {
-    return tarea.responsable?.nombre ?? 'Sin asignar';
+    return tarea.responsable ? `Responsable: ${tarea.responsable.nombre}` : 'Sin responsable asignado';
   }
 
   protected anterior(): void {
@@ -207,10 +297,29 @@ export class Tareas implements OnInit {
     this.soloMisTareas.set(!this.soloMisTareas());
   }
 
+  /** Quita todos los filtros: los locales y los de la API (adulto y "Solo mis tareas"). */
+  protected limpiarFiltros(): void {
+    this.controlEstado.setValue('');
+    this.controlBusqueda.setValue('');
+    this.soloMisTareas.set(false);
+    if (this.idAdultoFiltro() !== null) {
+      this.controlFiltroAdulto.setValue(null);
+      this.cambiarFiltroAdulto();
+    }
+  }
+
+  protected reintentar(): void {
+    this.recarga.update((valor) => valor + 1);
+  }
+
   protected actualizarTarea(tareaActualizada: RespuestaTarea): void {
     this.tareas.update((lista) =>
       lista.map((tarea) => (tarea.idTarea === tareaActualizada.idTarea ? tareaActualizada : tarea)),
     );
+  }
+
+  private codigoEstado(tarea: RespuestaTarea): string | undefined {
+    return this.estados().find((estado) => estado.idEstado === tarea.idEstado)?.codigo;
   }
 
   private cambiarFecha(fecha: string): void {

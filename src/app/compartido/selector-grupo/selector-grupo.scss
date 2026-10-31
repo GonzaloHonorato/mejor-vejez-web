@@ -1,6 +1,5 @@
-// Bloque "GRUPO" del marco — opción C (barra lateral de "Panel familiar ·
-// Escritorio" y encabezado de "Panel familiar · Móvil").
-// Sólo tokens semánticos (`var(--mv-...)`): ver src/estilos/_tema.scss.
+// Bloque del grupo activo del marco: en la barra lateral (escritorio) y en
+// la cabecera. Sólo tokens semánticos (`var(--mv-...)`).
 
 :host {
   display: block;
@@ -80,18 +79,25 @@ p {
   }
 }
 
-// ── Encabezado (móvil) ──────────────────────────────────────────────────
+// ── Cabecera: caja con el grupo activo y el enlace para cambiarlo ──────
+// El borde es una sombra interior: no ocupa alto, así el enlace mide 48px
+// y la caja también.
 .cabecera {
   display: flex;
   align-items: center;
-  gap: var(--mv-espacio-3);
+  gap: var(--mv-espacio-2);
   min-width: 0;
+  min-height: 48px;
+  padding-left: var(--mv-espacio-3);
+  border-radius: var(--mv-radio-md);
+  box-shadow: inset 0 0 0 1px var(--mv-color-borde-control);
 
   &__nombre {
+    flex: 1;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: var(--mv-texto-grande);
     font-weight: var(--mv-texto-peso-negrita);
     color: var(--mv-color-texto);
   }
@@ -101,6 +107,7 @@ p {
     display: inline-flex;
     align-items: center;
     min-height: 48px;
+    padding: 0 var(--mv-espacio-3);
     font-size: var(--mv-texto-pequeno);
     font-weight: var(--mv-texto-peso-negrita);
     color: var(--mv-color-primario);

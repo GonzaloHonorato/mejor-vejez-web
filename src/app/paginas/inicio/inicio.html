@@ -1,198 +1,296 @@
-<section class="saludo" aria-live="polite">
-  <p class="saludo__rotulo">Panel familiar</p>
-  @if (yo(); as usuario) {
-    <h1>Hola, {{ usuario.nombre }}</h1>
-  } @else {
-    <h1>Hola</h1>
-  }
-  @if (cargando()) {
-    <p class="saludo__bajada">Cargando tus datos…</p>
-  }
-</section>
+<header class="mv-encabezado" aria-live="polite">
+  <div>
+    <p class="mv-encabezado__rotulo">Panel familiar</p>
+    @if (yo(); as usuario) {
+      <h1 class="mv-encabezado__titulo">Hola, {{ usuario.nombre }}</h1>
+    } @else {
+      <h1 class="mv-encabezado__titulo">Hola</h1>
+    }
+    @if (cargando()) {
+      <p class="mv-encabezado__bajada">Cargando tus datos…</p>
+    } @else if (activo(); as grupo) {
+      <p class="mv-encabezado__bajada">{{ grupo.nombreGrupo }}</p>
+    }
+  </div>
+</header>
 
 <div class="contenido">
   @if (fallo(); as error) {
-    <section class="tarjeta tarjeta--suave" aria-labelledby="inicio-error-titulo">
-      <h2 id="inicio-error-titulo" class="tarjeta__titulo">Tus datos</h2>
-      @if (error.tipo === 'reintentable') {
-        <p class="tarjeta__texto" role="alert">No pudimos cargar tus datos.</p>
-        <button type="button" class="boton-secundario" (click)="cargar()">Reintentar</button>
-      } @else {
-        <p class="tarjeta__texto" role="alert">{{ error.mensaje }}</p>
-        @if (falloCerrarSesion()) {
-          <p class="tarjeta__texto" role="alert">No pudimos cerrar la sesión. Intenta de nuevo.</p>
+    <section class="mv-tarjeta" aria-labelledby="inicio-error-titulo">
+      <div class="mv-tarjeta__cuerpo tarjeta-mensaje">
+        <h2 id="inicio-error-titulo" class="mv-tarjeta__titulo">Tus datos</h2>
+        @if (error.tipo === 'reintentable') {
+          <p role="alert">No pudimos cargar tus datos.</p>
+          <button type="button" class="mv-boton" (click)="cargar()">Reintentar</button>
+        } @else {
+          <p role="alert">{{ error.mensaje }}</p>
+          @if (falloCerrarSesion()) {
+            <p role="alert">No pudimos cerrar la sesión. Intenta de nuevo.</p>
+          }
+          <button type="button" class="mv-boton" (click)="cerrarSesion()">Cerrar sesión</button>
         }
-        <button type="button" class="boton-secundario" (click)="cerrarSesion()">Cerrar sesión</button>
-      }
+      </div>
     </section>
   }
 
   @if (sinGrupos()) {
-    <section class="tarjeta tarjeta--suave" aria-labelledby="inicio-sin-grupos-titulo">
-      <h2 id="inicio-sin-grupos-titulo" class="tarjeta__titulo">Crea tu primer grupo familiar</h2>
-      <p class="tarjeta__texto">
-        Todavía no perteneces a ningún grupo. Crea uno para empezar a coordinar con tu familia.
-      </p>
-      <a class="boton-secundario" routerLink="/grupos">Ir a Grupos</a>
+    <section class="mv-tarjeta" aria-labelledby="inicio-sin-grupos-titulo">
+      <div class="mv-tarjeta__cuerpo tarjeta-mensaje">
+        <h2 id="inicio-sin-grupos-titulo" class="mv-tarjeta__titulo">Crea tu primer grupo familiar</h2>
+        <p>Todavía no perteneces a ningún grupo. Crea uno para empezar a coordinar con tu familia.</p>
+        <a class="mv-boton mv-boton--primario" routerLink="/grupos">Ir a Grupos</a>
+      </div>
     </section>
   }
 
   @if (activo()) {
     <app-aviso-sucesion />
 
-    <section class="tarjeta" aria-labelledby="inicio-relevos-titulo">
-      <h2 id="inicio-relevos-titulo" class="tarjeta__titulo">Relevos</h2>
-      <p class="tarjeta__texto">Registra y consulta los relevos del turno de cuidado.</p>
-      <a class="boton-secundario" routerLink="/relevos">Ir a Relevos</a>
-    </section>
-
     <section class="panel" aria-labelledby="panel-titulo">
-      <div class="panel__cabecera">
-        <h2 id="panel-titulo" class="panel__titulo">Tu panel</h2>
-        <div class="campo campo--filtro">
-          <label class="campo__etiqueta" for="panel-filtro-adulto">Adulto mayor</label>
-          <select
-            id="panel-filtro-adulto"
-            class="campo__control"
-            [formControl]="controlAdulto"
-            (change)="cambiarAdulto()"
-          >
-            <option [ngValue]="null">Todos</option>
-            @for (adulto of adultosSelector(); track adulto.idAdultoMayor) {
-              <option [ngValue]="adulto.idAdultoMayor">{{ adulto.nombreCompleto }}</option>
-            }
-          </select>
-        </div>
+      <h2 id="panel-titulo" class="oculto">Tu panel</h2>
+
+      <div class="mv-campo filtro-adulto">
+        <label class="mv-campo__etiqueta" for="panel-filtro-adulto">Adulto mayor</label>
+        <select
+          id="panel-filtro-adulto"
+          class="mv-campo__control"
+          [formControl]="controlAdulto"
+          (change)="cambiarAdulto()"
+        >
+          <option [ngValue]="null">Todos</option>
+          @for (adulto of adultosSelector(); track adulto.idAdultoMayor) {
+            <option [ngValue]="adulto.idAdultoMayor">{{ adulto.nombreCompleto }}</option>
+          }
+        </select>
       </div>
 
-      <app-seccion-panel
-        titulo="Tareas de hoy"
-        [estado]="seccionTareas.estado()"
-        mensajeVacio="No hay tareas para hoy ni atrasadas."
-        [desactualizada]="seccionTareas.desactualizada()"
-        (reintentar)="seccionTareas.reintentar()"
-      >
-        @if (seccionTareas.datos(); as datos) {
-          <ul class="resumen-conteos">
-            <li>Pendientes: {{ datos.pendientes }}</li>
-            <li>En curso: {{ datos.enCurso }}</li>
-            <li>Completadas: {{ datos.completadas }}</li>
-            <li>No realizadas: {{ datos.noRealizadas }}</li>
-            <li>Canceladas: {{ datos.canceladas }}</li>
-            <li>Atrasadas: {{ datos.atrasadas }}</li>
-          </ul>
-          @if (datos.tareasAtrasadas.length > 0) {
-            <ul class="lista-panel">
-              @for (tarea of datos.tareasAtrasadas; track tarea.idTarea) {
-                <li>
-                  <a [routerLink]="['/tareas', tarea.idTarea]">
-                    {{ tarea.titulo }} — {{ tarea.nombreAdulto }} — {{ formatearFecha(tarea.fechaHorario) }}
-                    {{ formatearHora(tarea.fechaHorario) }}
-                  </a>
+      <div class="panel__secciones">
+        <app-seccion-panel
+          class="panel__ancha"
+          titulo="Tareas de hoy"
+          [estado]="seccionTareas.estado()"
+          mensajeVacio="No hay tareas para hoy ni atrasadas."
+          [desactualizada]="seccionTareas.desactualizada()"
+          (reintentar)="seccionTareas.reintentar()"
+        >
+          @if (seccionTareas.datos(); as datos) {
+            <ul class="mv-indicadores" aria-label="Tareas de hoy">
+              <li class="mv-indicador mv-indicador--alerta">
+                <span class="mv-indicador__valor">{{ datos.pendientes }}</span>
+                <span class="punto" aria-hidden="true"></span>
+                <span class="mv-indicador__etiqueta">{{ ' ' }}{{ plural(datos.pendientes, 'pendiente', 'pendientes') }}</span>
+              </li>
+              <li class="mv-indicador">
+                <span class="mv-indicador__valor">{{ datos.enCurso }}</span>
+                <span class="punto" aria-hidden="true"></span>
+                <span class="mv-indicador__etiqueta">{{ ' ' }}en curso</span>
+              </li>
+              <li class="mv-indicador mv-indicador--exito">
+                <span class="mv-indicador__valor">{{ datos.completadas }}</span>
+                <span class="punto" aria-hidden="true"></span>
+                <span class="mv-indicador__etiqueta">{{ ' ' }}{{ plural(datos.completadas, 'completada', 'completadas') }}</span>
+              </li>
+              <li class="mv-indicador mv-indicador--peligro">
+                <span class="mv-indicador__valor">{{ datos.atrasadas }}</span>
+                <span class="punto" aria-hidden="true"></span>
+                <span class="mv-indicador__etiqueta">{{ ' ' }}{{ plural(datos.atrasadas, 'atrasada', 'atrasadas') }}</span>
+              </li>
+            </ul>
+            <ul class="secundarios" aria-label="Otras tareas de hoy">
+              <li>{{ datos.noRealizadas }} {{ plural(datos.noRealizadas, 'no realizada', 'no realizadas') }}</li>
+              <li>{{ datos.canceladas }} {{ plural(datos.canceladas, 'cancelada', 'canceladas') }}</li>
+            </ul>
+            @if (datos.tareasAtrasadas.length > 0) {
+              <ul class="mv-lista lista-panel lista-panel--chip" aria-label="Tareas atrasadas">
+                @for (tarea of datos.tareasAtrasadas.slice(0, maximoFilas); track tarea.idTarea) {
+                  <li class="mv-fila">
+                    <span class="mv-fila__dato">{{ fechaHoraLegible(tarea.fechaHorario) }}</span>
+                    <div class="mv-fila__principal">
+                      <a
+                        class="mv-fila__titulo mv-fila__enlace"
+                        [routerLink]="['/tareas', tarea.idTarea]"
+                        [attr.aria-label]="etiquetaEnlace(tarea.titulo, tarea.nombreAdulto, fechaHoraLegible(tarea.fechaHorario))"
+                        >{{ tarea.titulo }}</a
+                      >
+                      <p class="mv-fila__meta">{{ tarea.nombreAdulto }}</p>
+                    </div>
+                    <span><span class="mv-chip mv-chip--peligro">Atrasada</span></span>
+                  </li>
+                }
+              </ul>
+              @if (datos.tareasAtrasadas.length > maximoFilas) {
+                @let total = totalAtrasadas(datos);
+                <a class="mv-boton mv-boton--texto ver-todas" routerLink="/tareas">
+                  Ver {{ total === 1 ? 'la' : 'las' }} {{ total }} {{ plural(total, 'tarea atrasada', 'tareas atrasadas') }}
+                </a>
+              }
+            }
+          }
+        </app-seccion-panel>
+
+        <app-seccion-panel
+          titulo="Alertas de atraso"
+          [estado]="seccionAlertas.estado()"
+          mensajeVacio="No hay alertas de atraso."
+          [desactualizada]="seccionAlertas.desactualizada()"
+          (reintentar)="seccionAlertas.reintentar()"
+        >
+          @if (seccionAlertas.datos(); as datos) {
+            <ul class="mv-indicadores indicadores-dos" aria-label="Resumen de alertas de atraso">
+              <li class="mv-indicador mv-indicador--peligro">
+                <span class="mv-indicador__valor">{{ datos.abiertas }}</span>
+                <span class="punto" aria-hidden="true"></span>
+                <span class="mv-indicador__etiqueta">{{ ' ' }}{{ plural(datos.abiertas, 'abierta', 'abiertas') }}</span>
+              </li>
+              <li class="mv-indicador mv-indicador--exito">
+                <span class="mv-indicador__valor">{{ datos.cerradasUltimos7Dias }}</span>
+                <span class="punto" aria-hidden="true"></span>
+                <span class="mv-indicador__etiqueta">{{ ' ' }}{{ plural(datos.cerradasUltimos7Dias, 'cerrada', 'cerradas') }} (7 días)</span>
+              </li>
+            </ul>
+            @if (datos.recientes.length > 0) {
+              <ul class="mv-lista lista-panel lista-panel--chip" aria-label="Alertas recientes">
+                @for (alerta of datos.recientes.slice(0, maximoFilas); track alerta.idAlerta) {
+                  <li class="mv-fila">
+                    <span class="mv-fila__dato">{{ fechaHoraLegible(alerta.fechaDeteccion) }}</span>
+                    <div class="mv-fila__principal">
+                      @let tituloAlerta = alerta.tituloTarea ?? etiquetaTipoAlerta[alerta.tipoAlerta];
+                      <a
+                        class="mv-fila__titulo mv-fila__enlace"
+                        [routerLink]="['/alertas', alerta.idAlerta]"
+                        [attr.aria-label]="etiquetaEnlace(tituloAlerta, alerta.nombreAdulto, fechaHoraLegible(alerta.fechaDeteccion))"
+                        >{{ tituloAlerta }}</a
+                      >
+                      <p class="mv-fila__meta">{{ alerta.nombreAdulto }}</p>
+                    </div>
+                    <span>
+                      @if (alerta.fechaRevision) {
+                        <span class="mv-chip mv-chip--exito">Cerrada</span>
+                      } @else {
+                        <span class="mv-chip mv-chip--peligro">Abierta</span>
+                      }
+                    </span>
+                  </li>
+                }
+              </ul>
+              @if (datos.recientes.length > maximoFilas) {
+                <a class="mv-boton mv-boton--texto ver-todas" routerLink="/alertas">Ver todas las alertas</a>
+              }
+            }
+          }
+        </app-seccion-panel>
+
+        <app-seccion-panel
+          titulo="Próximos horarios (24 h)"
+          [estado]="seccionHorarios.estado()"
+          mensajeVacio="No hay horarios en las próximas 24 horas."
+          [desactualizada]="seccionHorarios.desactualizada()"
+          (reintentar)="seccionHorarios.reintentar()"
+        >
+          @if (seccionHorarios.datos(); as datos) {
+            <ul class="mv-lista lista-panel" aria-label="Próximos horarios">
+              @for (tarea of datos.tareas.slice(0, maximoHorarios); track tarea.idTarea) {
+                <li class="mv-fila">
+                  <span class="mv-fila__dato">{{ fechaHoraLegible(tarea.fechaHorario) }}</span>
+                  <div class="mv-fila__principal">
+                    <a
+                      class="mv-fila__titulo mv-fila__enlace"
+                      [routerLink]="['/tareas', tarea.idTarea]"
+                      [attr.aria-label]="etiquetaEnlace(tarea.titulo, tarea.nombreAdulto, fechaHoraLegible(tarea.fechaHorario))"
+                      >{{ tarea.titulo }}</a
+                    >
+                    <p class="mv-fila__meta">{{ tarea.nombreAdulto }}</p>
+                  </div>
+                </li>
+              }
+            </ul>
+            @if (datos.tareas.length > maximoHorarios) {
+              <a class="mv-boton mv-boton--texto ver-todas" routerLink="/tareas">Ver tareas</a>
+            }
+          }
+        </app-seccion-panel>
+
+        <app-seccion-panel
+          titulo="Citas (14 días)"
+          [estado]="seccionCitas.estado()"
+          mensajeVacio="No hay citas en los próximos 14 días."
+          [desactualizada]="seccionCitas.desactualizada()"
+          (reintentar)="seccionCitas.reintentar()"
+        >
+          @if (seccionCitas.datos(); as datos) {
+            <ul class="mv-lista lista-panel">
+              @for (tarea of datos.citas; track tarea.idTarea) {
+                <li class="mv-fila">
+                  <span class="mv-fila__dato">{{ fechaHoraLegible(tarea.fechaHorario) }}</span>
+                  <div class="mv-fila__principal">
+                    <a
+                      class="mv-fila__titulo mv-fila__enlace"
+                      [routerLink]="['/tareas', tarea.idTarea]"
+                      [attr.aria-label]="etiquetaEnlace(tarea.titulo, tarea.nombreAdulto, fechaHoraLegible(tarea.fechaHorario))"
+                      >{{ tarea.titulo }}</a
+                    >
+                    <p class="mv-fila__meta">
+                      {{ tarea.nombreAdulto }}
+                      @if (tarea.cita; as cita) {
+                        · {{ cita.nombreMedico }} · {{ cita.lugarAtencion }}
+                      }
+                    </p>
+                  </div>
                 </li>
               }
             </ul>
           }
-        }
-      </app-seccion-panel>
+        </app-seccion-panel>
 
-      <app-seccion-panel
-        titulo="Alertas de atraso"
-        [estado]="seccionAlertas.estado()"
-        mensajeVacio="No hay alertas de atraso."
-        [desactualizada]="seccionAlertas.desactualizada()"
-        (reintentar)="seccionAlertas.reintentar()"
-      >
-        @if (seccionAlertas.datos(); as datos) {
-          <p class="resumen-linea">
-            Abiertas: {{ datos.abiertas }} · Cerradas en 7 días: {{ datos.cerradasUltimos7Dias }}
-          </p>
-          @if (datos.recientes.length > 0) {
-            <ul class="lista-panel">
-              @for (alerta of datos.recientes; track alerta.idAlerta) {
-                <li>
-                  <a [routerLink]="['/alertas', alerta.idAlerta]">
-                    {{ etiquetaTipoAlerta[alerta.tipoAlerta] }} — {{ alerta.nombreAdulto }} —
-                    {{ formatearFecha(alerta.fechaDeteccion) }} {{ formatearHora(alerta.fechaDeteccion) }}
-                  </a>
+        <app-seccion-panel
+          titulo="Alertas preventivas"
+          [estado]="seccionPreventivas.estado()"
+          mensajeVacio="No hay alertas preventivas abiertas."
+          [desactualizada]="seccionPreventivas.desactualizada()"
+          (reintentar)="seccionPreventivas.reintentar()"
+        >
+          @if (seccionPreventivas.datos(); as datos) {
+            <ul class="mv-lista lista-panel">
+              @for (alerta of datos.alertas; track alerta.idAlerta) {
+                <li class="mv-fila">
+                  <span class="mv-fila__dato">{{ fechaLegible(alerta.fechaProgramada) }}</span>
+                  <div class="mv-fila__principal">
+                    <a
+                      class="mv-fila__titulo mv-fila__enlace"
+                      [routerLink]="['/alertas', alerta.idAlerta]"
+                      [attr.aria-label]="
+                        etiquetaEnlace(
+                          etiquetaTipoAlerta[alerta.tipoAlerta],
+                          alerta.nombreAdulto,
+                          fechaLegible(alerta.fechaProgramada),
+                          alerta.nombreMedicamento ?? alerta.tituloTarea
+                        )
+                      "
+                      >{{ etiquetaTipoAlerta[alerta.tipoAlerta] }}</a
+                    >
+                    <p class="mv-fila__meta">
+                      {{ alerta.nombreAdulto }}
+                      @if (alerta.nombreMedicamento ?? alerta.tituloTarea; as detalle) {
+                        · {{ detalle }}
+                      }
+                    </p>
+                  </div>
                 </li>
               }
             </ul>
           }
-        }
-      </app-seccion-panel>
-
-      <app-seccion-panel
-        titulo="Próximos horarios (24 h)"
-        [estado]="seccionHorarios.estado()"
-        mensajeVacio="No hay horarios en las próximas 24 horas."
-        [desactualizada]="seccionHorarios.desactualizada()"
-        (reintentar)="seccionHorarios.reintentar()"
-      >
-        @if (seccionHorarios.datos(); as datos) {
-          <ul class="lista-panel">
-            @for (tarea of datos.tareas; track tarea.idTarea) {
-              <li>
-                <a [routerLink]="['/tareas', tarea.idTarea]">
-                  {{ tarea.titulo }} — {{ tarea.nombreAdulto }} — {{ formatearFecha(tarea.fechaHorario) }}
-                  {{ formatearHora(tarea.fechaHorario) }}
-                </a>
-              </li>
-            }
-          </ul>
-        }
-      </app-seccion-panel>
-
-      <app-seccion-panel
-        titulo="Citas (14 días)"
-        [estado]="seccionCitas.estado()"
-        mensajeVacio="No hay citas en los próximos 14 días."
-        [desactualizada]="seccionCitas.desactualizada()"
-        (reintentar)="seccionCitas.reintentar()"
-      >
-        @if (seccionCitas.datos(); as datos) {
-          <ul class="lista-panel">
-            @for (tarea of datos.citas; track tarea.idTarea) {
-              <li>
-                <a [routerLink]="['/tareas', tarea.idTarea]">
-                  {{ tarea.titulo }} — {{ tarea.nombreAdulto }} — {{ formatearFecha(tarea.fechaHorario) }}
-                  {{ formatearHora(tarea.fechaHorario) }}
-                  @if (tarea.cita; as cita) {
-                    · {{ cita.nombreMedico }} · {{ cita.lugarAtencion }}
-                  }
-                </a>
-              </li>
-            }
-          </ul>
-        }
-      </app-seccion-panel>
-
-      <app-seccion-panel
-        titulo="Alertas preventivas"
-        [estado]="seccionPreventivas.estado()"
-        mensajeVacio="No hay alertas preventivas abiertas."
-        [desactualizada]="seccionPreventivas.desactualizada()"
-        (reintentar)="seccionPreventivas.reintentar()"
-      >
-        @if (seccionPreventivas.datos(); as datos) {
-          <ul class="lista-panel">
-            @for (alerta of datos.alertas; track alerta.idAlerta) {
-              <li>
-                <a [routerLink]="['/alertas', alerta.idAlerta]">
-                  {{ etiquetaTipoAlerta[alerta.tipoAlerta] }} — {{ alerta.nombreAdulto }} —
-                  {{ formatearFecha(alerta.fechaProgramada) }}
-                </a>
-              </li>
-            }
-          </ul>
-        }
-      </app-seccion-panel>
+        </app-seccion-panel>
+      </div>
     </section>
   }
 
-  <section class="tarjeta" aria-labelledby="inicio-estado-titulo">
-    <h2 id="inicio-estado-titulo" class="tarjeta__titulo">Estado del servicio</h2>
-    <p class="tarjeta__texto">Revisa si la aplicación y la base de datos están funcionando.</p>
-    <a class="boton-secundario" routerLink="/estado">Ver estado del servicio</a>
-  </section>
+  <nav class="accesos" aria-label="Accesos">
+    @if (activo()) {
+      <a class="mv-boton mv-boton--texto" routerLink="/relevos">
+        <app-icono nombre="relevos" aria-hidden="true" />
+        Relevos del turno
+      </a>
+    }
+    <a class="mv-boton mv-boton--texto" routerLink="/estado">Estado del servicio</a>
+  </nav>
 </div>

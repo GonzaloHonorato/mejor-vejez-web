@@ -1,79 +1,102 @@
-<section class="tarjeta" aria-labelledby="canales-titulo">
-  <h2 id="canales-titulo">Canales de notificación</h2>
+<section class="mv-tarjeta" aria-labelledby="canales-titulo">
+  <div class="mv-tarjeta__cabecera">
+    <h2 id="canales-titulo" class="mv-tarjeta__titulo">Canales de notificación</h2>
+  </div>
 
-  @if (errorGeneral(); as mensaje) {
-    <p class="error" role="alert">{{ mensaje }}</p>
-  }
+  <div class="mv-tarjeta__cuerpo cuerpo">
+    <p class="ayuda">Dónde quieres recibir los avisos de las alertas.</p>
 
-  @if (cargaFallida()) {
-    <button type="button" class="boton boton--contorno" (click)="reintentar()">Reintentar</button>
-  } @else if (!cargando()) {
-    <form [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
-      <div class="campo">
-        <label class="campo__etiqueta" for="canales-correo">Correo</label>
-        <input
-          id="canales-correo"
-          class="campo__control"
-          type="email"
-          autocomplete="email"
-          formControlName="correoDestino"
-          [attr.aria-invalid]="mensajeCampoCorreo() ? true : null"
-          [attr.aria-describedby]="mensajeCampoCorreo() ? 'canales-correo-error' : null"
-        />
-        @if (mensajeCampoCorreo(); as mensajeCorreo) {
-          <p id="canales-correo-error" class="error" role="alert">{{ mensajeCorreo }}</p>
+    @if (errorGeneral(); as mensaje) {
+      <div class="mv-aviso mv-aviso--error" role="alert">
+        <p>{{ mensaje }}</p>
+        @if (cargaFallida()) {
+          <button type="button" class="mv-boton" (click)="reintentar()">Reintentar</button>
         }
       </div>
+    }
 
-      <label class="interruptor">
-        <input
-          id="canales-correo-habilitado"
-          class="interruptor__control"
-          type="checkbox"
-          aria-label="Correo habilitado"
-          formControlName="correoHabilitado"
-        />
-        <span class="interruptor__etiqueta">Habilitado</span>
-      </label>
-
-      <div class="campo">
-        <label class="campo__etiqueta" for="canales-whatsapp">WhatsApp</label>
-        <input
-          id="canales-whatsapp"
-          class="campo__control"
-          type="tel"
-          autocomplete="tel"
-          placeholder="+56912345678"
-          formControlName="whatsappDestino"
-        />
+    @if (cargando()) {
+      <div role="status" aria-live="polite">
+        <span class="oculto">Cargando tus canales…</span>
+        <div class="esqueleto" aria-hidden="true">
+          <span class="mv-esqueleto"></span>
+          <span class="mv-esqueleto mv-esqueleto--bloque"></span>
+        </div>
       </div>
+    } @else if (!cargaFallida()) {
+      <form class="formulario" [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
+        <fieldset class="canal">
+          <legend class="canal__nombre">Correo</legend>
+          <div class="mv-campo">
+            <label class="mv-campo__etiqueta" for="canales-correo">Dirección de correo</label>
+            <input
+              id="canales-correo"
+              class="mv-campo__control"
+              type="email"
+              autocomplete="email"
+              formControlName="correoDestino"
+              [attr.aria-invalid]="mensajeCampoCorreo() ? true : null"
+              [attr.aria-describedby]="mensajeCampoCorreo() ? 'canales-correo-error' : null"
+            />
+            @if (mensajeCampoCorreo(); as mensajeCorreo) {
+              <p id="canales-correo-error" class="mv-campo__error" role="alert">
+                {{ mensajeCorreo }}
+              </p>
+            }
+          </div>
 
-      <label class="interruptor">
-        <input
-          id="canales-whatsapp-habilitado"
-          class="interruptor__control"
-          type="checkbox"
-          aria-label="WhatsApp habilitado"
-          formControlName="whatsappHabilitado"
-        />
-        <span class="interruptor__etiqueta">Habilitado</span>
-      </label>
+          <label class="mv-campo mv-campo--casilla">
+            <input
+              id="canales-correo-habilitado"
+              type="checkbox"
+              aria-label="Correo habilitado"
+              formControlName="correoHabilitado"
+            />
+            <span class="mv-campo__etiqueta">Habilitado</span>
+          </label>
+        </fieldset>
 
-      @if (!whatsappDisponible()) {
-        <p class="aviso" role="status">
-          WhatsApp aún no envía mensajes: por ahora las alertas llegan por correo.
+        <fieldset class="canal">
+          <legend class="canal__nombre">WhatsApp</legend>
+          <div class="mv-campo">
+            <label class="mv-campo__etiqueta" for="canales-whatsapp">Número de WhatsApp</label>
+            <input
+              id="canales-whatsapp"
+              class="mv-campo__control"
+              type="tel"
+              autocomplete="tel"
+              placeholder="+56912345678"
+              formControlName="whatsappDestino"
+            />
+          </div>
+
+          <label class="mv-campo mv-campo--casilla">
+            <input
+              id="canales-whatsapp-habilitado"
+              type="checkbox"
+              aria-label="WhatsApp habilitado"
+              formControlName="whatsappHabilitado"
+            />
+            <span class="mv-campo__etiqueta">Habilitado</span>
+          </label>
+
+          @if (!whatsappDisponible()) {
+            <p class="mv-aviso mv-aviso--info" role="status">
+              WhatsApp aún no envía mensajes: por ahora las alertas llegan por correo.
+            </p>
+          }
+        </fieldset>
+
+        <p class="confirmacion" role="status">
+          @if (confirmacion()) {
+            Cambios guardados.
+          }
         </p>
-      }
 
-      <p class="confirmacion" role="status">
-        @if (confirmacion()) {
-          Cambios guardados.
-        }
-      </p>
-
-      <button type="submit" class="boton boton--primario" [disabled]="guardando()">
-        {{ guardando() ? 'Guardando…' : 'Guardar cambios' }}
-      </button>
-    </form>
-  }
+        <button type="submit" class="mv-boton mv-boton--primario guardar" [disabled]="guardando()">
+          {{ guardando() ? 'Guardando…' : 'Guardar cambios' }}
+        </button>
+      </form>
+    }
+  </div>
 </section>

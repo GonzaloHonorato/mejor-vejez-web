@@ -11,7 +11,7 @@ import {
   RespuestaPanelTareas,
 } from './modelos-panel';
 
-/** Acceso a los endpoints de resumen del panel familiar (`/api/grupos/{idGrupo}/panel/*`, regla 1 del plan). */
+/** Acceso a los endpoints de resumen del panel familiar (`/api/grupos/{idGrupo}/panel/*`). */
 @Injectable({ providedIn: 'root' })
 export class ServicioPanel {
   private readonly http = inject(HttpClient);

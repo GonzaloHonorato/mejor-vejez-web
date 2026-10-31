@@ -310,7 +310,7 @@ describe('NuevaTarea', () => {
     await elegirMedicamento(fixture, 0, IBUPROFENO);
 
     // Ibuprofeno no trae presentación: la línea no debe conservar la de
-    // Paracetamol (riesgo de datos, hallazgo T12-1).
+    // Paracetamol.
     expect(presentacion.options[presentacion.selectedIndex].textContent?.trim()).toBe('Selecciona…');
   });
 
@@ -395,5 +395,59 @@ describe('NuevaTarea', () => {
     const aviso = elemento.querySelector('[role="status"]');
     expect(aviso?.textContent).toContain('Solo el coordinador puede crear tareas.');
     expect(elemento.querySelector('form.formulario')).toBeNull();
+  });
+
+  it('losCamposUsanMvCampoConSuEtiquetaYElEnvioEsElBotonPrincipal', async () => {
+    const { elemento } = await configurar();
+
+    for (const id of ['nueva-tarea-adulto', 'nueva-tarea-titulo', 'nueva-tarea-fecha', 'nueva-tarea-hora']) {
+      const control = porId(elemento, id);
+      expect(control.classList.contains('mv-campo__control')).toBe(true);
+      const campo = control.closest('.mv-campo')!;
+      expect(campo.querySelector(`label.mv-campo__etiqueta[for="${id}"]`)).not.toBeNull();
+    }
+    const enviarBoton = elemento.querySelector<HTMLButtonElement>('form.formulario button[type="submit"]')!;
+    expect(enviarBoton.textContent).toContain('Crear tarea');
+    expect(enviarBoton.classList.contains('mv-boton--primario')).toBe(true);
+  });
+
+  it('elErrorDeUnCampoQuedaEnlazadoConAriaDescribedby', async () => {
+    const { fixture, elemento } = await configurar();
+
+    await enviar(fixture, elemento);
+
+    const titulo = porId(elemento, 'nueva-tarea-titulo');
+    const idError = titulo.getAttribute('aria-describedby')!;
+    expect(idError).toBe('nueva-tarea-titulo-error');
+    expect(porId(elemento, idError).classList.contains('mv-campo__error')).toBe(true);
+  });
+
+  it('losErroresDeCadaLineaDeCompraTienenIdPorIndiceYSeEnlazanASuControl', async () => {
+    const { fixture, elemento } = await configurar();
+
+    Array.from(elemento.querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === 'Agregar medicamento')!
+      .click();
+    await fixture.whenStable();
+    await enviar(fixture, elemento);
+
+    const lineas = elemento.querySelectorAll<HTMLElement>('.compra-linea');
+    expect(lineas).toHaveLength(2);
+    lineas.forEach((linea, i) => {
+      const enlazados: [HTMLElement, string][] = [
+        [linea.querySelector<HTMLElement>('app-buscador-medicamento input[type="search"]')!, 'medicamento'],
+        [porId(elemento, `nueva-tarea-compra-${i}-presentacion`), 'presentacion'],
+        [porId(elemento, `nueva-tarea-compra-${i}-cantidad`), 'cantidad'],
+        [porId(elemento, `nueva-tarea-compra-${i}-unidad`), 'unidad'],
+      ];
+      for (const [control, campo] of enlazados) {
+        const idError = `nueva-tarea-compra-${i}-${campo}-error`;
+        expect(control.getAttribute('aria-describedby')).toBe(idError);
+        expect(control.getAttribute('aria-invalid')).toBe('true');
+        const error = porId(elemento, idError);
+        expect(linea.contains(error)).toBe(true);
+        expect(error.classList.contains('mv-campo__error')).toBe(true);
+      }
+    });
   });
 });

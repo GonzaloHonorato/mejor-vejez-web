@@ -20,6 +20,7 @@ import {
   RespuestaPanelTareas,
 } from '../../nucleo/panel/modelos-panel';
 import { RespuestaTarea } from '../../nucleo/tareas/modelos-tareas';
+import { fechaHoraLegible, fechaLegible } from '../../nucleo/fecha-legible';
 
 function grupo(idGrupo: number, nombreGrupo: string): RespuestaGrupo {
   return {
@@ -194,7 +195,7 @@ function agotarPeticionesDelPanel(http: HttpTestingController): void {
 }
 
 /**
- * `AvisoSucesion` (Tarea 8) es autónomo y hace sus propias peticiones
+ * `AvisoSucesion` es autónomo y hace sus propias peticiones
  * (`/api/yo`, `/sucesion/activa`): tiene su propio spec. Aquí se sustituye
  * por un doble sin dependencias para que el `HttpTestingController` de
  * estas pruebas siga viendo solo las peticiones de `Inicio`.
@@ -278,6 +279,35 @@ function configurarPanel(opciones?: {
     .flush({ idUsuario: 1, nombre: 'Ana', email: 'ana@correo.cl', esAdministrador: false });
 
   return { fixture, http, activo, elemento: fixture.nativeElement as HTMLElement };
+}
+
+function normalizar(texto: string | null | undefined): string {
+  return (texto ?? '').replace(/\s+/g, ' ').trim();
+}
+
+function textoIndicadores(elemento: HTMLElement, etiqueta: string): string[] {
+  return Array.from(
+    elemento.querySelectorAll(`ul.mv-indicadores[aria-label="${etiqueta}"] > li.mv-indicador`),
+  ).map((li) => normalizar(li.textContent));
+}
+
+function responderPanel(
+  http: HttpTestingController,
+  datos: {
+    tareas?: RespuestaPanelTareas;
+    alertas?: RespuestaPanelAlertas;
+    horarios?: RespuestaPanelHorarios;
+    citas?: RespuestaPanelCitas;
+    preventivas?: RespuestaPanelPreventivas;
+  },
+): void {
+  peticionSeccion(http, 1, 'panel/tareas').flush(datos.tareas ?? panelTareasVacio());
+  peticionSeccion(http, 1, 'panel/alertas').flush(datos.alertas ?? panelAlertasVacio());
+  peticionSeccion(http, 1, 'panel/proximos-horarios').flush(datos.horarios ?? panelHorariosVacio());
+  peticionSeccion(http, 1, 'panel/citas').flush(datos.citas ?? panelCitasVacio());
+  peticionSeccion(http, 1, 'panel/alertas-preventivas').flush(
+    datos.preventivas ?? panelPreventivasVacio(),
+  );
 }
 
 function botonConTexto(elemento: HTMLElement, texto: string): HTMLButtonElement | undefined {
@@ -479,7 +509,7 @@ describe('Inicio — panel familiar', () => {
     }
     await fixture.whenStable();
 
-    // El selector no se vuelve a pedir al cambiar de adulto (solo al cambiar de grupo, regla 11).
+    // El selector no se vuelve a pedir al cambiar de adulto (solo al cambiar de grupo).
     expect(http.match(() => true)).toHaveLength(0);
   });
 
@@ -504,7 +534,7 @@ describe('Inicio — panel familiar', () => {
     adultosGrupo2.flush([adulto(301, 'Pedro Soto')]);
     await fixture.whenStable();
 
-    // La petición del grupo 1 se cancela al cambiar de grupo (M-1: la misma
+    // La petición del grupo 1 se cancela al cambiar de grupo (la misma
     // suscripción se cancela antes de pedir la lista del grupo vigente), así
     // que ya no puede "llegar tarde" y pisar la lista del grupo 2.
     expect(adultosGrupo1.cancelled).toBe(true);
@@ -545,7 +575,7 @@ describe('Inicio — panel familiar', () => {
     activo.set(grupo2);
     await fixture.whenStable();
 
-    // El selector vuelve a "Todos" en el DOM (regla 11), no solo en el signal interno.
+    // El selector vuelve a "Todos" en el DOM, no solo en el signal interno.
     const opcionTodos = Array.from(select.options).find((o) => o.textContent?.trim() === 'Todos')!;
     expect(select.value).toBe(opcionTodos.value);
 
@@ -580,7 +610,7 @@ describe('Inicio — panel familiar', () => {
     activo.set(grupo2);
     await fixture.whenStable();
 
-    // `limpiar()` cancela la suscripción en vuelo del grupo anterior (regla 11): una
+    // `limpiar()` cancela la suscripción en vuelo del grupo anterior: una
     // respuesta tardía de esa petición ya no podría aplicarse nunca.
     expect(tareasGrupo1.cancelled).toBe(true);
 
@@ -594,14 +624,14 @@ describe('Inicio — panel familiar', () => {
     peticionSeccion(http, 2, 'panel/alertas-preventivas').flush(panelPreventivasVacio());
     await fixture.whenStable();
 
-    expect(elemento.textContent).toContain('Pendientes: 3');
+    expect(textoIndicadores(elemento, 'Tareas de hoy')).toContain('3 pendientes');
     http.verify();
   });
 
   it('alDestruirSeCancelanLasPeticionesDeLasSeccionesYDelSelectorDeAdultos', async () => {
     const { fixture, http } = configurarPanel();
 
-    // Deja las 5 peticiones del panel y la del selector de adultos en vuelo (M-1).
+    // Deja las 5 peticiones del panel y la del selector de adultos en vuelo.
     const peticionesSecciones = SUFIJOS_SECCIONES.map((sufijo) => peticionSeccion(http, 1, sufijo));
     const adultos = peticionAdultos(http, 1);
 
@@ -741,7 +771,7 @@ describe('Inicio — refresco del panel', () => {
     await fixture.whenStable();
     expect(elemento.textContent).toContain('No se pudo actualizar.');
 
-    // La persona aprieta "Reintentar" en el aviso de desactualizada (I-1): mientras espera,
+    // La persona aprieta "Reintentar" en el aviso de desactualizada: mientras espera,
     // los datos nunca desaparecen (no pasa por "Cargando…").
     botonConTexto(elemento, 'Reintentar')!.click();
     await fixture.whenStable();
@@ -769,7 +799,7 @@ describe('Inicio — refresco del panel', () => {
     await fixture.whenStable();
 
     // 3 regresos a "visible" en menos de 30 s desde la carga inicial: ninguno debe
-    // generar una petición nueva (antirrebote de M-5).
+    // generar una petición nueva (antirrebote).
     for (let vez = 0; vez < 3; vez++) {
       Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
       document.dispatchEvent(new Event('visibilitychange'));
@@ -806,9 +836,320 @@ describe('Inicio — refresco del panel', () => {
     vi.advanceTimersByTime(INTERVALO_REFRESCO_MS * 3);
     expect(http.match(() => true)).toHaveLength(0);
 
-    // M-6: también se quitó el listener de `visibilitychange` (no solo el intervalo).
+    // También se quitó el listener de `visibilitychange` (no solo el intervalo).
     Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
     document.dispatchEvent(new Event('visibilitychange'));
     expect(http.match(() => true)).toHaveLength(0);
+  });
+});
+
+describe('Inicio — presentación del panel', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-20T12:00:00-03:00'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('encabezadoConRotuloSaludoYGrupoActivo', async () => {
+    const { fixture, http, elemento } = configurarPanel();
+    peticionAdultos(http, 1).flush([]);
+    flushTodasLasSecciones(http, 1);
+    await fixture.whenStable();
+
+    const encabezado = elemento.querySelector('header.mv-encabezado')!;
+    expect(encabezado.querySelector('.mv-encabezado__rotulo')?.textContent).toContain('Panel familiar');
+    expect(encabezado.querySelector('h1.mv-encabezado__titulo')?.textContent).toContain('Hola, Ana');
+    expect(encabezado.querySelector('.mv-encabezado__bajada')?.textContent).toContain('Familia Soto');
+  });
+
+  it('conteosDeTareasSeLeenCompletosEnIndicadores', async () => {
+    const { fixture, http, elemento } = configurarPanel();
+    peticionAdultos(http, 1).flush([]);
+    responderPanel(http, {
+      tareas: {
+        ...panelTareasVacio(),
+        pendientes: 2,
+        enCurso: 1,
+        completadas: 5,
+        atrasadas: 1,
+        noRealizadas: 1,
+        canceladas: 3,
+      },
+    });
+    await fixture.whenStable();
+
+    expect(textoIndicadores(elemento, 'Tareas de hoy')).toEqual([
+      '2 pendientes',
+      '1 en curso',
+      '5 completadas',
+      '1 atrasada',
+    ]);
+    const secundarios = Array.from(
+      elemento.querySelectorAll('ul[aria-label="Otras tareas de hoy"] > li'),
+    ).map((li) => normalizar(li.textContent));
+    expect(secundarios).toEqual(['1 no realizada', '3 canceladas']);
+
+    const tonos = Array.from(
+      elemento.querySelectorAll('ul.mv-indicadores[aria-label="Tareas de hoy"] > li'),
+    ).map((li) => li.className);
+    expect(tonos[0]).toContain('mv-indicador--alerta');
+    expect(tonos[2]).toContain('mv-indicador--exito');
+    expect(tonos[3]).toContain('mv-indicador--peligro');
+  });
+
+  it('conteosDeAlertasSeLeenCompletosEnIndicadores', async () => {
+    const { fixture, http, elemento } = configurarPanel();
+    peticionAdultos(http, 1).flush([]);
+    responderPanel(http, { alertas: { abiertas: 4, cerradasUltimos7Dias: 1, recientes: [] } });
+    await fixture.whenStable();
+
+    expect(textoIndicadores(elemento, 'Resumen de alertas de atraso')).toEqual([
+      '4 abiertas',
+      '1 cerrada (7 días)',
+    ]);
+  });
+
+  it('listasSonFilasConFechaDestacadaTituloYAdulto', async () => {
+    const { fixture, http, elemento } = configurarPanel();
+    peticionAdultos(http, 1).flush([]);
+    responderPanel(http, {
+      tareas: {
+        ...panelTareasVacio(),
+        atrasadas: 1,
+        tareasAtrasadas: [
+          tarea({
+            idTarea: 501,
+            titulo: 'Ibuprofeno 500 mg',
+            nombreAdulto: 'Rosa Elena Rojas Muñoz',
+            fechaHorario: '2026-10-26T20:30:00-03:00',
+          }),
+        ],
+      },
+      citas: {
+        citas: [
+          tarea({
+            idTarea: 601,
+            titulo: 'Control cardiología',
+            fechaHorario: '2026-11-03T10:00:00-03:00',
+            cita: { nombreMedico: 'Dra. Paz', lugarAtencion: 'Clínica Norte', observaciones: null },
+          }),
+        ],
+      },
+      preventivas: {
+        alertas: [alerta({ idAlerta: 801, tipoAlerta: 'REPOSICION_MEDICAMENTO', fechaProgramada: '2026-11-04' })],
+      },
+    });
+    await fixture.whenStable();
+
+    const fila = elemento.querySelector<HTMLElement>('a[href="/tareas/501"]')!.closest('li.mv-fila')!;
+    expect(fila.closest('ul.mv-lista')).toBeTruthy();
+    expect(normalizar(fila.querySelector('.mv-fila__dato')?.textContent)).toBe('Lun 26 oct · 20:30');
+    expect(normalizar(fila.querySelector('.mv-fila__titulo')?.textContent)).toBe('Ibuprofeno 500 mg');
+    expect(fila.querySelector('.mv-fila__meta')?.textContent).toContain('Rosa Elena Rojas Muñoz');
+    expect(fila.querySelector('.mv-chip')?.textContent).toContain('Atrasada');
+
+    const filaCita = elemento.querySelector<HTMLElement>('a[href="/tareas/601"]')!.closest('li.mv-fila')!;
+    expect(filaCita.querySelector('.mv-fila__meta')?.textContent).toContain('Dra. Paz');
+    expect(filaCita.querySelector('.mv-fila__meta')?.textContent).toContain('Clínica Norte');
+
+    const filaPreventiva = elemento.querySelector<HTMLElement>('a[href="/alertas/801"]')!.closest('li.mv-fila')!;
+    expect(normalizar(filaPreventiva.querySelector('.mv-fila__dato')?.textContent)).toBe('Mié 4 nov');
+    expect(filaPreventiva.querySelector('.mv-fila__titulo')?.textContent).toContain(
+      'Reposición de medicamento',
+    );
+    http.verify();
+  });
+
+  it('alertasRecientesSonFilasConChipDeEstado', async () => {
+    const { fixture, http, elemento } = configurarPanel();
+    peticionAdultos(http, 1).flush([]);
+    responderPanel(http, {
+      alertas: {
+        abiertas: 1,
+        cerradasUltimos7Dias: 1,
+        recientes: [
+          alerta({ idAlerta: 701 }),
+          alerta({ idAlerta: 702, fechaRevision: '2026-11-02T12:00:00-03:00' }),
+        ],
+      },
+    });
+    await fixture.whenStable();
+
+    const abierta = elemento.querySelector('a[href="/alertas/701"]')!.closest('li.mv-fila')!;
+    expect(abierta.querySelector('.mv-chip')?.textContent).toContain('Abierta');
+    const cerrada = elemento.querySelector('a[href="/alertas/702"]')!.closest('li.mv-fila')!;
+    expect(cerrada.querySelector('.mv-chip')?.textContent).toContain('Cerrada');
+  });
+
+  it('relevosYEstadoDelServicioSonAccesosCompactosAlFinal', async () => {
+    const { fixture, http, elemento } = configurarPanel();
+    peticionAdultos(http, 1).flush([]);
+    flushTodasLasSecciones(http, 1);
+    await fixture.whenStable();
+
+    const accesos = elemento.querySelector('nav[aria-label="Accesos"]')!;
+    expect(accesos.querySelector('a[href="/relevos"]')).toBeTruthy();
+    expect(accesos.querySelector('a[href="/estado"]')).toBeTruthy();
+    // Van después del panel: no ocupan la primera pantalla.
+    const panel = elemento.querySelector('#panel-titulo')!;
+    expect(panel.compareDocumentPosition(accesos) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('estadoDelServicioSigueVisibleSinGrupoActivo', async () => {
+    const { fixture, elemento } = configurarPanel({ activoInicial: null });
+    await fixture.whenStable();
+
+    expect(elemento.querySelector('a[href="/estado"]')).toBeTruthy();
+    expect(elemento.querySelector('a[href="/relevos"]')).toBeFalsy();
+  });
+
+  it('listasLargasSeAcortanYEnlazanAVerTodas', async () => {
+    const { fixture, http, elemento } = configurarPanel();
+    peticionAdultos(http, 1).flush([]);
+    const tareas = (n: number, base: number) =>
+      Array.from({ length: n }, (_, i) => tarea({ idTarea: base + i, titulo: `Tarea ${base + i}` }));
+    responderPanel(http, {
+      tareas: { ...panelTareasVacio(), atrasadas: 16, tareasAtrasadas: tareas(5, 500) },
+      alertas: {
+        abiertas: 4,
+        cerradasUltimos7Dias: 0,
+        recientes: Array.from({ length: 4 }, (_, i) => alerta({ idAlerta: 700 + i })),
+      },
+      horarios: { tareas: tareas(6, 900) },
+    });
+    await fixture.whenStable();
+
+    const filas = (etiqueta: string) =>
+      elemento.querySelectorAll(`ul.mv-lista[aria-label="${etiqueta}"] > li.mv-fila`).length;
+    expect(filas('Tareas atrasadas')).toBe(3);
+    expect(filas('Alertas recientes')).toBe(3);
+    expect(filas('Próximos horarios')).toBe(5);
+
+    const enlaces = Array.from(elemento.querySelectorAll<HTMLAnchorElement>('a.mv-boton--texto')).map(
+      (a) => [normalizar(a.textContent), a.getAttribute('href')],
+    );
+    expect(enlaces).toContainEqual(['Ver las 16 tareas atrasadas', '/tareas']);
+    expect(enlaces).toContainEqual(['Ver todas las alertas', '/alertas']);
+    expect(enlaces).toContainEqual(['Ver tareas', '/tareas']);
+  });
+
+  it('listasCortasNoMuestranVerTodas', async () => {
+    const { fixture, http, elemento } = configurarPanel();
+    peticionAdultos(http, 1).flush([]);
+    const tareas = (n: number, base: number) =>
+      Array.from({ length: n }, (_, i) => tarea({ idTarea: base + i }));
+    responderPanel(http, {
+      tareas: { ...panelTareasVacio(), atrasadas: 3, tareasAtrasadas: tareas(3, 500) },
+      alertas: {
+        abiertas: 3,
+        cerradasUltimos7Dias: 0,
+        recientes: Array.from({ length: 3 }, (_, i) => alerta({ idAlerta: 700 + i })),
+      },
+      horarios: { tareas: tareas(5, 900) },
+    });
+    await fixture.whenStable();
+
+    const textos = Array.from(elemento.querySelectorAll('a.mv-boton--texto')).map((a) =>
+      normalizar(a.textContent),
+    );
+    expect(textos.some((t) => t.startsWith('Ver '))).toBe(false);
+  });
+
+  it('filtroDeAdultoEsUnaFilaCompactaSinTarjeta', async () => {
+    const { fixture, http, elemento } = configurarPanel();
+    peticionAdultos(http, 1).flush([]);
+    flushTodasLasSecciones(http, 1);
+    await fixture.whenStable();
+
+    const select = elemento.querySelector('#panel-filtro-adulto')!;
+    expect(select.closest('.mv-filtros, .mv-tarjeta')).toBeNull();
+    expect(select.closest('.mv-campo')?.querySelector('label[for="panel-filtro-adulto"]')).toBeTruthy();
+  });
+
+  it('seccionesCargandoMuestranEsqueleto', async () => {
+    const { fixture, elemento } = configurarPanel();
+    await fixture.whenStable();
+
+    expect(elemento.querySelectorAll('app-seccion-panel .mv-esqueleto').length).toBeGreaterThanOrEqual(5);
+  });
+
+  it('enlacesDeFilaTienenNombreAccesibleUnicoConAdultoYFecha', async () => {
+    const { fixture, http, elemento } = configurarPanel();
+    peticionAdultos(http, 1).flush([]);
+    const repetida = (idTarea: number, nombreAdulto: string, fechaHorario: string) =>
+      tarea({ idTarea, titulo: 'Paracetamol', nombreAdulto, fechaHorario });
+    responderPanel(http, {
+      tareas: {
+        ...panelTareasVacio(),
+        atrasadas: 2,
+        tareasAtrasadas: [
+          repetida(501, 'Rosa Pérez', '2026-10-26T08:00:00-03:00'),
+          repetida(502, 'Juan Soto', '2026-10-26T08:00:00-03:00'),
+        ],
+      },
+      alertas: {
+        abiertas: 2,
+        cerradasUltimos7Dias: 0,
+        recientes: [
+          alerta({ idAlerta: 701, tituloTarea: 'Paracetamol', fechaDeteccion: '2026-10-26T08:30:00-03:00' }),
+          alerta({ idAlerta: 702, tituloTarea: 'Paracetamol', fechaDeteccion: '2026-10-26T20:30:00-03:00' }),
+        ],
+      },
+      horarios: {
+        tareas: [
+          repetida(901, 'Rosa Pérez', '2026-11-02T08:00:00-03:00'),
+          repetida(902, 'Rosa Pérez', '2026-11-02T20:00:00-03:00'),
+        ],
+      },
+      citas: {
+        citas: [tarea({ idTarea: 601, titulo: 'Control', fechaHorario: '2026-11-03T10:00:00-03:00' })],
+      },
+      preventivas: {
+        alertas: [
+          alerta({
+            idAlerta: 801,
+            tipoAlerta: 'REPOSICION_MEDICAMENTO',
+            nombreMedicamento: 'Losartán',
+            fechaProgramada: '2026-11-04',
+          }),
+        ],
+      },
+    });
+    await fixture.whenStable();
+
+    const etiqueta = (href: string) =>
+      elemento.querySelector(`a.mv-fila__enlace[href="${href}"]`)?.getAttribute('aria-label');
+    expect(etiqueta('/tareas/501')).toBe(
+      `Paracetamol, Rosa Pérez, ${fechaHoraLegible('2026-10-26T08:00:00-03:00')}`,
+    );
+    expect(etiqueta('/tareas/502')).toBe(
+      `Paracetamol, Juan Soto, ${fechaHoraLegible('2026-10-26T08:00:00-03:00')}`,
+    );
+    expect(etiqueta('/alertas/701')).toBe(
+      `Paracetamol, Rosa Pérez, ${fechaHoraLegible('2026-10-26T08:30:00-03:00')}`,
+    );
+    expect(etiqueta('/alertas/702')).toBe(
+      `Paracetamol, Rosa Pérez, ${fechaHoraLegible('2026-10-26T20:30:00-03:00')}`,
+    );
+    expect(etiqueta('/tareas/901')).toBe(
+      `Paracetamol, Rosa Pérez, ${fechaHoraLegible('2026-11-02T08:00:00-03:00')}`,
+    );
+    expect(etiqueta('/tareas/902')).toBe(
+      `Paracetamol, Rosa Pérez, ${fechaHoraLegible('2026-11-02T20:00:00-03:00')}`,
+    );
+    expect(etiqueta('/tareas/601')).toBe(
+      `Control, Rosa Pérez, ${fechaHoraLegible('2026-11-03T10:00:00-03:00')}`,
+    );
+    expect(etiqueta('/alertas/801')).toBe(
+      `Reposición de medicamento, Rosa Pérez, Losartán, ${fechaLegible('2026-11-04')}`,
+    );
+
+    const enlaces = Array.from(elemento.querySelectorAll('a.mv-fila__enlace'));
+    const nombres = enlaces.map((a) => a.getAttribute('aria-label'));
+    expect(nombres.every((n) => !!n)).toBe(true);
+    expect(new Set(nombres).size).toBe(nombres.length);
   });
 });

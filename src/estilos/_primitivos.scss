@@ -18,6 +18,7 @@
   // Colores — pizarra (texto secundario) y neutros
   --mv-p-pizarra-700: #3c4a5a;
   --mv-p-gris-azulado-300: #c9d3df; // bordes
+  --mv-p-gris-azulado-500: #6b7c8f; // borde de campos (≥ 3:1 sobre blanco y sobre azul-50)
   --mv-p-blanco: #ffffff;
 
   // Colores — rojo (error)
@@ -33,6 +34,12 @@
   --mv-p-verde-700: #1e6b3c;
   --mv-p-verde-100: #e3f1e8;
 
+  // Colores — marca de Google (solo para el logotipo "G" del ingreso)
+  --mv-p-google-azul: #4285f4;
+  --mv-p-google-verde: #34a853;
+  --mv-p-google-amarillo: #fbbc05;
+  --mv-p-google-rojo: #ea4335;
+
   // Espaciados
   --mv-p-espacio-1: 4px;
   --mv-p-espacio-2: 8px;
@@ -47,7 +54,14 @@
   // Radios — pequeños y de borde fino, como en el diseño (rounded=6 / rounded=4)
   --mv-p-radio-sm: 4px;
   --mv-p-radio-md: 6px;
+  --mv-p-radio-lg: 10px; // tarjetas y paneles de los prototipos Cuida+
   --mv-p-radio-completo: 999px;
+
+  // Sombras — suave, del color azul-900 con muy poca opacidad
+  --mv-p-sombra-suave: 0 2px 8px rgba(11, 37, 69, 0.06);
+
+  // Movimiento
+  --mv-p-duracion-pulso: 1.6s;
 
   // Anchos de layout
   --mv-p-ancho-contenido: 1120px;
@@ -58,7 +72,7 @@
 
   // Tipografía — escala de tamaños (de menor a mayor; -6 es fluido entre el
   // título móvil y el de escritorio, 28px → 30px). Valores tomados 1:1 del
-  // diseño de la opción C (12–30px); el piso de accesibilidad (base
+  // diseño elegido (12–30px); el piso de accesibilidad (base
   // nunca bajo 16px) se aplica en `_tema.scss` al elegir qué paso usa
   // `--mv-texto-base`.
   --mv-p-texto-1: 0.8125rem; // 13px — etiquetas (columnas, pestañas)

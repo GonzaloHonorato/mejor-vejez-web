@@ -1,8 +1,20 @@
-import { Component, ElementRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  Injector,
+  OnInit,
+  afterNextRender,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { FormControl, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
 import { ClaveTemporal } from '../../compartido/clave-temporal/clave-temporal';
+import { Icono } from '../../compartido/icono/icono';
+import { inicialesDe } from '../../compartido/marco-app/identidad-usuario';
 import { erroresDeCampos, mensajeDeError } from '../../nucleo/http/mensaje-de-error';
 import { RespuestaEstadoCatalogo, ServicioCatalogos } from '../../nucleo/catalogos/servicio-catalogos';
 import { RespuestaUsuario } from '../../nucleo/usuarios/modelos-usuarios';
@@ -20,14 +32,15 @@ interface ClaveAMostrar {
 /**
  * Página "Administración de usuarios" (`/administracion/usuarios`, solo
  * administradores, ver `guardAdministrador`): buscador, listado paginado y,
- * por usuario, edición de nombre/teléfono/administrador y cambio de estado.
- * Tiene además el enlace "Auditoría global" (`/administracion/auditoria`,
- * Tarea 7): esta página ya está detrás de `guardAdministrador`, así que no
- * hace falta ninguna condición extra para mostrarlo.
+ * por usuario, edición de nombre/teléfono/administrador (acción principal de
+ * la fila) y, en "Más acciones", cambio de estado y reenvío de accesos.
+ * Tiene además el enlace "Auditoría global" (`/administracion/auditoria`):
+ * esta página ya está detrás de `guardAdministrador`, así que no hace falta
+ * ninguna condición extra para mostrarlo.
  */
 @Component({
   selector: 'app-administracion-usuarios',
-  imports: [ReactiveFormsModule, RouterLink, ClaveTemporal],
+  imports: [ReactiveFormsModule, RouterLink, ClaveTemporal, Icono],
   templateUrl: './administracion-usuarios.html',
   styleUrl: './administracion-usuarios.scss',
 })
@@ -35,6 +48,9 @@ export class AdministracionUsuarios implements OnInit {
   private readonly servicioUsuarios = inject(ServicioUsuarios);
   private readonly servicioCatalogos = inject(ServicioCatalogos);
   private readonly fb = inject(NonNullableFormBuilder);
+  private readonly injector = inject(Injector);
+
+  protected readonly iniciales = inicialesDe;
 
   /**
    * Un `FormControl` por fila para el select de estado: a diferencia de
@@ -59,6 +75,9 @@ export class AdministracionUsuarios implements OnInit {
   protected readonly pagina = signal(0);
   protected readonly total = signal(0);
   protected readonly error = signal<string | null>(null);
+  /** Carga del listado: en curso y su error (con "Reintentar"), aparte de los errores de las acciones. */
+  protected readonly cargando = signal(true);
+  protected readonly errorCarga = signal<string | null>(null);
 
   protected readonly hayMasPaginas = computed(() => (this.pagina() + 1) * TAMANO_PAGINA < this.total());
 
@@ -90,12 +109,7 @@ export class AdministracionUsuarios implements OnInit {
    * quedar en ningún servicio, `localStorage` ni log.
    */
   protected readonly claveAMostrar = signal<ClaveAMostrar | null>(null);
-  /**
-   * Botón "Crear usuario" (toggle): se consulta de nuevo en cada lectura
-   * (signal de `viewChild`), así que siempre apunta a la instancia vigente
-   * aunque el `@if` la haya destruido y recreado mientras el formulario
-   * estuvo abierto.
-   */
+  /** Botón "Crear usuario" del encabezado, que abre y cierra el formulario de alta. */
   private readonly botonCrearUsuario = viewChild<ElementRef<HTMLButtonElement>>('botonCrearUsuario');
   /** Dónde devolver el foco al cerrar `ClaveTemporal`: se fija al abrir cada flujo. */
   private restaurarFoco: (() => void) | null = null;
@@ -152,10 +166,13 @@ export class AdministracionUsuarios implements OnInit {
       telefono: usuario.telefono ?? '',
       esAdministrador: usuario.esAdministrador,
     });
+    this.enfocar('usuario-nombre');
   }
 
   protected cancelarEdicion(): void {
+    const usuario = this.editando();
     this.editando.set(null);
+    if (usuario) this.enfocar(`usuario-editar-${usuario.idUsuario}`);
   }
 
   protected guardar(): void {
@@ -203,10 +220,30 @@ export class AdministracionUsuarios implements OnInit {
     this.errorCrear.set(null);
     this.erroresCamposCrear.set({});
     this.formularioCrear.reset({ nombre: '', email: '', telefono: '' });
+    this.enfocar('usuario-crear-nombre');
   }
 
   protected cancelarCrear(): void {
     this.creandoUsuario.set(false);
+    this.enfocar('usuarios-abrir-crear');
+  }
+
+  protected alternarCrear(): void {
+    if (this.creandoUsuario()) this.cancelarCrear();
+    else this.abrirCrear();
+  }
+
+  /** Tono del chip de estado: ACTIVO en verde, el resto neutro. */
+  protected tonoEstado(usuario: RespuestaUsuario): string {
+    return this.codigoEstado(usuario) === 'ACTIVO' ? 'mv-chip--exito' : '';
+  }
+
+  protected descripcionEstado(usuario: RespuestaUsuario): string {
+    return this.estados().find((estado) => estado.idEstado === usuario.idEstado)?.descripcion ?? '';
+  }
+
+  private codigoEstado(usuario: RespuestaUsuario): string | undefined {
+    return this.estados().find((estado) => estado.idEstado === usuario.idEstado)?.codigo;
   }
 
   protected crear(): void {
@@ -265,9 +302,7 @@ export class AdministracionUsuarios implements OnInit {
    * el entorno/seed).
    */
   protected puedeReenviarAcceso(usuario: RespuestaUsuario): boolean {
-    return (
-      this.estados().find((estado) => estado.idEstado === usuario.idEstado)?.codigo === 'ACTIVO'
-    );
+    return this.codigoEstado(usuario) === 'ACTIVO';
   }
 
   protected reenviarAcceso(usuarioObjetivo: RespuestaUsuario): void {
@@ -304,7 +339,17 @@ export class AdministracionUsuarios implements OnInit {
     restaurar?.();
   }
 
+  protected reintentar(): void {
+    this.cargar();
+  }
+
+  private enfocar(id: string): void {
+    afterNextRender(() => document.getElementById(id)?.focus(), { injector: this.injector });
+  }
+
   private cargar(): void {
+    this.cargando.set(true);
+    this.errorCarga.set(null);
     const { texto } = this.formularioBusqueda.getRawValue();
     this.servicioUsuarios
       .listar({
@@ -314,6 +359,7 @@ export class AdministracionUsuarios implements OnInit {
       })
       .subscribe({
         next: (respuesta) => {
+          this.cargando.set(false);
           this.usuarios.set(respuesta.elementos);
           this.total.set(respuesta.total);
           // Sincroniza cada select con el valor real de la API: también revierte
@@ -322,7 +368,10 @@ export class AdministracionUsuarios implements OnInit {
             this.controlEstado(usuario).setValue(usuario.idEstado);
           }
         },
-        error: (error: unknown) => this.error.set(mensajeDeError(error)),
+        error: (error: unknown) => {
+          this.cargando.set(false);
+          this.errorCarga.set(mensajeDeError(error));
+        },
       });
   }
 }

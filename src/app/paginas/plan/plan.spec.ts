@@ -2,7 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, Input, OnInit, output, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
-import { Observable, of, throwError } from 'rxjs';
+import { Observable, Subject, of, throwError } from 'rxjs';
 
 import { Plan } from './plan';
 import { FormularioDetalle } from './formulario-detalle/formulario-detalle';
@@ -24,10 +24,10 @@ import { ServicioPlanes } from '../../nucleo/planificacion/servicio-planes';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
 
 /**
- * Reemplaza al `FormularioDetalle` real (Tarea 9): esta página no prueba su
+ * Reemplaza al `FormularioDetalle` real: esta página no prueba su
  * formulario interno. `instancias` registra, en orden, el `detalle` recibido
  * en CADA montaje (cada `ngOnInit`): permite comprobar que cambiar de
- * detalle en edición remonta el componente (findings Fix round 1, #4).
+ * detalle en edición remonta el componente.
  */
 @Component({ selector: 'app-formulario-detalle', template: '' })
 class FormularioDetalleFalso implements OnInit {
@@ -273,7 +273,7 @@ describe('Plan', () => {
     // Dosis con la descripción del catálogo de unidades.
     expect(elemento.textContent).toContain('1 Comprimido');
     // Término estimado formateado.
-    expect(elemento.textContent).toContain('Término estimado: 01-02-2026 (automático)');
+    expect(elemento.textContent).toContain('Término estimado: 1 feb 2026 (automático)');
   });
 
   it('actualizarCantidadLlamaALaApiYRecarga', async () => {
@@ -326,10 +326,10 @@ describe('Plan', () => {
     expect(campoCantidad.value).toBe('20');
 
     // El usuario escribe un valor pero otra acción (p. ej. "Desactivar" del propio detalle) dispara la recarga.
-    // Se acota al `.tarjeta-detalle`: "Desactivar plan" (nivel plan) también contiene "Desactivar".
+    // Se acota al `.medicamento`: "Desactivar plan" (nivel plan) también contiene "Desactivar".
     campoCantidad.value = '15';
     campoCantidad.dispatchEvent(new Event('input'));
-    const tarjetaDetalle = elemento.querySelector('.tarjeta-detalle')!;
+    const tarjetaDetalle = elemento.querySelector('.medicamento')!;
     botonConTexto(tarjetaDetalle, 'Desactivar')!.click();
     await fixture.whenStable();
 
@@ -384,7 +384,7 @@ describe('Plan', () => {
     );
     // Sin acciones de edición sobre los medicamentos.
     expect(botonConTexto(elemento, 'Agregar medicamento')).toBeFalsy();
-    const tarjetaDetalle = elemento.querySelector('.tarjeta-detalle')!;
+    const tarjetaDetalle = elemento.querySelector('.medicamento')!;
     expect(botonConTexto(tarjetaDetalle, 'Editar')).toBeFalsy();
     expect(botonConTexto(tarjetaDetalle, 'Desactivar')).toBeFalsy();
     expect(botonConTexto(tarjetaDetalle, 'Eliminar')).toBeFalsy();
@@ -400,7 +400,7 @@ describe('Plan', () => {
       obtenerImpl: () => of({ plan: plan(), detalles: [detalleActivo, detalleInactivo] }),
     });
 
-    const tarjetas = Array.from(elemento.querySelectorAll('.tarjeta-detalle'));
+    const tarjetas = Array.from(elemento.querySelectorAll('.medicamento'));
     const tarjetaInactiva = tarjetas.find((t) => t.textContent?.includes('Ibuprofeno'))!;
 
     // Sin Editar ni la cantidad disponible en línea para el detalle inactivo.
@@ -425,7 +425,7 @@ describe('Plan', () => {
     expect(botonConTexto(elemento, 'Desactivar plan')).toBeFalsy();
     expect(botonConTexto(elemento, 'Eliminar')).toBeFalsy();
     expect(botonConTexto(elemento, 'Agregar medicamento')).toBeFalsy();
-    const tarjetaDetalle = elemento.querySelector('.tarjeta-detalle')!;
+    const tarjetaDetalle = elemento.querySelector('.medicamento')!;
     expect(botonConTexto(tarjetaDetalle, 'Editar')).toBeFalsy();
     expect(tarjetaDetalle.querySelector('#detalle-cantidad-100')).toBeFalsy();
     // Pero sí ve los datos del medicamento.
@@ -459,5 +459,105 @@ describe('Plan', () => {
     // Nunca se pide el plan bajo el grupo nuevo: no hay flash de datos ajenos.
     expect(servicioPlanes.obtener).not.toHaveBeenCalledWith(2, 10);
     expect(servicioPlanes.obtener).toHaveBeenCalledTimes(1);
+  });
+
+  it('encabezadoConVolverTituloAdultoYEstado', async () => {
+    const { elemento } = await configurar({});
+
+    const volver = Array.from(elemento.querySelectorAll('a')).find(
+      (a) => a.getAttribute('href') === '/planes',
+    );
+    expect(volver?.textContent).toContain('Volver a medicamentos');
+    expect(elemento.querySelector('h1')?.textContent).toContain('Plan diario');
+    const encabezado = elemento.querySelector('.mv-encabezado')!;
+    expect(encabezado.textContent).toContain('Rosa González');
+    expect(encabezado.querySelector('.mv-chip--exito')?.textContent).toContain('Activo');
+  });
+
+  it('accionesDelPlanUnaPrincipalYElRestoEnMasAcciones', async () => {
+    const { elemento } = await configurar({});
+    const datos = elemento.querySelector('[aria-labelledby="plan-datos-titulo"]')!;
+
+    expect(botonConTexto(datos, 'Editar plan')?.closest('details')).toBeNull();
+    const mas = datos.querySelector('details')!;
+    expect(mas.querySelector('summary')?.textContent).toContain('Más acciones');
+    expect(botonConTexto(mas, 'Desactivar plan')).toBeTruthy();
+    expect(botonConTexto(mas, 'Eliminar')).toBeTruthy();
+  });
+
+  it('planInactivoTieneReactivarComoAccionPrincipal', async () => {
+    const { elemento } = await configurar({
+      obtenerImpl: () => of({ plan: plan({ idEstado: 2 }), detalles: [detalle()] }),
+    });
+    const datos = elemento.querySelector('[aria-labelledby="plan-datos-titulo"]')!;
+
+    expect(botonConTexto(datos, 'Reactivar plan')?.closest('details')).toBeNull();
+    expect(botonConTexto(datos.querySelector('details')!, 'Eliminar')).toBeTruthy();
+    expect(elemento.querySelector('.mv-encabezado .mv-chip')?.textContent).toContain('Inactivo');
+  });
+
+  it('accionesDelMedicamentoUnaPrincipalYElRestoEnMasAcciones', async () => {
+    const { elemento } = await configurar({});
+    const tarjeta = elemento.querySelector('.medicamento')!;
+
+    expect(tarjeta.querySelector('[aria-label="Editar Paracetamol"]')?.closest('details')).toBeNull();
+    const mas = tarjeta.querySelector('details')!;
+    expect(mas.querySelector('summary')?.getAttribute('aria-label')).toBe(
+      'Más acciones: Paracetamol',
+    );
+    expect(mas.querySelector('#detalle-cantidad-100')).toBeTruthy();
+    expect(mas.querySelector('[aria-label="Desactivar Paracetamol"]')).toBeTruthy();
+    expect(mas.querySelector('[aria-label="Eliminar Paracetamol"]')).toBeTruthy();
+  });
+
+  it('medicamentoConDatosLegibles', async () => {
+    const { elemento } = await configurar({});
+    const tarjeta = elemento.querySelector('.medicamento')!;
+
+    expect(tarjeta.querySelector('h3')?.textContent).toContain('Paracetamol');
+    expect(tarjeta.querySelector('.mv-chip--exito')?.textContent).toContain('Activo');
+    const datos = Array.from(tarjeta.querySelectorAll('dt')).map((dt) => dt.textContent?.trim());
+    expect(datos).toEqual(['Dosis', 'Días', 'Horario', 'Vigencia', 'Cantidad disponible']);
+    expect(tarjeta.textContent).toContain('Término estimado: 1 feb 2026 (automático)');
+  });
+
+  it('sinMedicamentosMuestraEstadoVacio', async () => {
+    const { elemento } = await configurar({
+      obtenerImpl: () => of({ plan: plan(), detalles: [] }),
+    });
+
+    expect(elemento.querySelector('.mv-vacio')?.textContent).toContain(
+      'Aún no hay medicamentos en este plan.',
+    );
+  });
+
+  it('mientrasCargaMuestraEsqueleto', async () => {
+    const pendiente = new Subject<RespuestaPlanDetallado>();
+    const { elemento } = await configurar({ obtenerImpl: () => pendiente.asObservable() });
+
+    expect(elemento.textContent).toContain('Cargando plan…');
+    expect(elemento.querySelector('.mv-esqueleto')).toBeTruthy();
+  });
+
+  it('errorDeCargaOfreceReintentar', async () => {
+    const obtener = vi
+      .fn()
+      .mockReturnValueOnce(
+        throwError(() => new HttpErrorResponse({ status: 500, error: { detail: 'Falló la carga' } })),
+      )
+      .mockReturnValue(of({ plan: plan(), detalles: [detalle()] }));
+    const { fixture, elemento, servicioPlanes } = await configurar({ obtenerImpl: obtener });
+
+    const aviso = elemento.querySelector('.mv-aviso--error')!;
+    expect(aviso.getAttribute('role')).toBe('alert');
+    expect(aviso.textContent).toContain('Falló la carga');
+
+    botonConTexto(aviso, 'Reintentar')!.click();
+    await fixture.whenStable();
+
+    expect(servicioPlanes.obtener).toHaveBeenCalledTimes(2);
+    expect(servicioPlanes.obtener).toHaveBeenLastCalledWith(1, 10);
+    expect(elemento.querySelector('.mv-aviso--error')).toBeFalsy();
+    expect(elemento.textContent).toContain('Paracetamol');
   });
 });

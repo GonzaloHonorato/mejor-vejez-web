@@ -17,7 +17,7 @@ export interface FiltroRelevos {
   tamano?: number;
 }
 
-/** Acceso a los endpoints de relevos del turno de cuidado (`/api/grupos/{idGrupo}/relevos`, HU-11). */
+/** Acceso a los endpoints de relevos del turno de cuidado (`/api/grupos/{idGrupo}/relevos`). */
 @Injectable({ providedIn: 'root' })
 export class ServicioRelevos {
   private readonly http = inject(HttpClient);

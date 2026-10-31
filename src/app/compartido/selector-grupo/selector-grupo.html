@@ -38,7 +38,7 @@
   </div>
 } @else {
   <div class="cabecera">
-    <span class="cabecera__nombre">{{ nombreActivo() }}</span>
+    <span class="cabecera__nombre"><span class="oculto">Grupo: </span>{{ nombreActivo() }}</span>
     <a class="cabecera__cambiar" routerLink="/grupos"
       >{{ activo() ? 'Cambiar' : 'Crear grupo' }}@if (activo()) {<span class="oculto"> de grupo</span>}</a
     >

@@ -1,14 +1,16 @@
 <div class="buscador" (keydown.enter)="alPresionarEnter($event)">
-  <div class="campo">
-    <label class="etiqueta" for="buscador-medicamento-texto">Medicamento</label>
+  <div class="mv-campo">
+    <label class="mv-campo__etiqueta" for="buscador-medicamento-texto">Medicamento</label>
     <input
       id="buscador-medicamento-texto"
-      class="control"
+      class="mv-campo__control"
       type="search"
       autocomplete="off"
       placeholder="Escribe al menos 2 letras"
       [formControl]="texto"
       aria-controls="buscador-medicamento-resultados"
+      [attr.aria-invalid]="descritoPor() ? true : null"
+      [attr.aria-describedby]="descritoPor()"
     />
   </div>
 
@@ -21,7 +23,7 @@
   </p>
 
   @if (error(); as mensaje) {
-    <p class="error" role="alert">{{ mensaje }}</p>
+    <p class="mv-aviso mv-aviso--error" role="alert">{{ mensaje }}</p>
   }
 
   <ul id="buscador-medicamento-resultados" class="resultados">
@@ -37,7 +39,7 @@
               <span>{{ presentacion }}</span>
             }
             @if (medicamento.usadoEnGrupo) {
-              <span class="insignia">Usado en este grupo</span>
+              <span class="mv-chip mv-chip--exito">Usado en este grupo</span>
             }
           </span>
         </button>
@@ -46,7 +48,7 @@
   </ul>
 
   @if (buscado() !== null && !agregando()) {
-    <button type="button" class="boton" (click)="abrirAlta()">
+    <button type="button" class="mv-boton" (click)="abrirAlta()">
       Agregar «{{ buscado() }}» al catálogo
     </button>
   }
@@ -55,11 +57,11 @@
     <div class="nuevo" [formGroup]="nuevo" role="group" aria-labelledby="medicamento-nuevo-titulo">
       <p id="medicamento-nuevo-titulo" class="titulo">Agregar al catálogo</p>
 
-      <div class="campo">
-        <label class="etiqueta" for="medicamento-nuevo-nombre">Nombre</label>
+      <div class="mv-campo">
+        <label class="mv-campo__etiqueta" for="medicamento-nuevo-nombre">Nombre</label>
         <input
           id="medicamento-nuevo-nombre"
-          class="control"
+          class="mv-campo__control"
           type="text"
           formControlName="nombre"
           [attr.aria-invalid]="mensajeCampo('nombre', 'Ingresa el nombre') ? true : null"
@@ -68,25 +70,27 @@
           "
         />
         @if (mensajeCampo('nombre', 'Ingresa el nombre'); as mensaje) {
-          <p id="medicamento-nuevo-nombre-error" class="error" role="alert">{{ mensaje }}</p>
+          <p id="medicamento-nuevo-nombre-error" class="mv-campo__error" role="alert">
+            {{ mensaje }}
+          </p>
         }
       </div>
 
-      <div class="campo">
-        <label class="etiqueta" for="medicamento-nuevo-principio">Principio activo</label>
+      <div class="mv-campo">
+        <label class="mv-campo__etiqueta" for="medicamento-nuevo-principio">Principio activo</label>
         <input
           id="medicamento-nuevo-principio"
-          class="control"
+          class="mv-campo__control"
           type="text"
           formControlName="principioActivo"
         />
       </div>
 
-      <div class="campo">
-        <label class="etiqueta" for="medicamento-nuevo-presentacion">Presentación</label>
+      <div class="mv-campo">
+        <label class="mv-campo__etiqueta" for="medicamento-nuevo-presentacion">Presentación</label>
         <select
           id="medicamento-nuevo-presentacion"
-          class="control"
+          class="mv-campo__control"
           formControlName="idPresentacion"
           [attr.aria-invalid]="
             mensajeCampo('idPresentacion', 'Elige la presentación') ? true : null
@@ -103,15 +107,19 @@
           }
         </select>
         @if (mensajeCampo('idPresentacion', 'Elige la presentación'); as mensaje) {
-          <p id="medicamento-nuevo-presentacion-error" class="error" role="alert">{{ mensaje }}</p>
+          <p id="medicamento-nuevo-presentacion-error" class="mv-campo__error" role="alert">
+            {{ mensaje }}
+          </p>
         }
       </div>
 
-      <div class="campo">
-        <label class="etiqueta" for="medicamento-nuevo-concentracion">Concentración</label>
+      <div class="mv-campo">
+        <label class="mv-campo__etiqueta" for="medicamento-nuevo-concentracion"
+          >Concentración</label
+        >
         <input
           id="medicamento-nuevo-concentracion"
-          class="control"
+          class="mv-campo__control"
           type="text"
           placeholder="Ej.: 500 mg"
           formControlName="concentracion"
@@ -119,15 +127,15 @@
       </div>
 
       <div class="acciones">
+        <button type="button" class="mv-boton" (click)="cerrarAlta()">Cancelar</button>
         <button
           type="button"
-          class="boton boton--primario"
+          class="mv-boton mv-boton--primario"
           [disabled]="guardando()"
           (click)="crear()"
         >
           {{ guardando() ? 'Agregando…' : 'Agregar al catálogo' }}
         </button>
-        <button type="button" class="boton" (click)="cerrarAlta()">Cancelar</button>
       </div>
     </div>
   }

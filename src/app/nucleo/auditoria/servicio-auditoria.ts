@@ -7,7 +7,7 @@ import { RespuestaPagina } from '../usuarios/modelos-usuarios';
 import { CodigoResultadoAuditoria, RespuestaEventoAuditoria } from './modelos-auditoria';
 
 /**
- * Filtros opcionales de la consulta de auditoría (regla 9 del plan).
+ * Filtros opcionales de la consulta de auditoría.
  * `idGrupo` solo lo usa `consultarGlobal` (en `consultarGrupo` el grupo lo
  * fija la ruta); los filtros vacíos, `null` o `''` no se envían.
  */
@@ -22,7 +22,7 @@ export interface FiltroAuditoria {
 }
 
 /**
- * Acceso a la consulta de auditoría, de solo lectura (HU-12, TSA-52):
+ * Acceso a la consulta de auditoría, de solo lectura:
  * `consultarGrupo` para el coordinador/administrador de un grupo
  * (`/api/grupos/{idGrupo}/auditoria`) y `consultarGlobal` para el
  * administrador (`/api/auditoria`, incluye eventos sin grupo).
@@ -57,7 +57,7 @@ export class ServicioAuditoria {
     );
   }
 
-  /** Los filtros vacíos, `null` o `''` no se envían (regla 9 del plan). */
+  /** Los filtros vacíos, `null` o `''` no se envían. */
   private parametros(
     filtro: FiltroAuditoria,
     pagina: number,

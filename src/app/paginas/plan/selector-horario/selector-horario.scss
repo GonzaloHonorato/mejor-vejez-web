@@ -1,23 +1,27 @@
-// Selector de horario — opción C. Sólo tokens semánticos
-// (`var(--mv-...)`): ver src/estilos/_tema.scss.
+// Selector de horario. Campos, botones y avisos son las clases globales `mv-`.
+@use 'estilos/puntos-quiebre' as pq;
 
 :host {
   display: block;
 }
 
 .horario {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: var(--mv-espacio-3);
+  min-width: 0;
   margin: 0;
-  padding: var(--mv-espacio-4);
-  border: 2px solid var(--mv-color-borde);
+  padding: var(--mv-espacio-3) var(--mv-espacio-4) var(--mv-espacio-4);
+  border: 1px solid var(--mv-color-borde);
   border-radius: var(--mv-radio-md);
+  background: var(--mv-color-superficie);
+
+  > .mv-boton {
+    justify-self: start;
+  }
 }
 
 legend {
   padding: 0 var(--mv-espacio-2);
-  font-weight: var(--mv-texto-peso-negrita);
 }
 
 .nota {
@@ -29,20 +33,11 @@ legend {
 .modos {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--mv-espacio-4);
-}
-
-.opcion {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--mv-espacio-2);
-  min-height: 48px;
-  cursor: pointer;
+  gap: 0 var(--mv-espacio-6);
 }
 
 .horas {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: var(--mv-espacio-3);
   margin: 0;
   padding: 0;
@@ -50,57 +45,22 @@ legend {
 }
 
 .fila {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--mv-espacio-2);
 }
 
-.fila .etiqueta {
+.hora {
   min-width: 4.5em;
 }
 
 .intervalo {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   gap: var(--mv-espacio-3);
-}
 
-.campo {
-  display: flex;
-  flex-direction: column;
-  gap: var(--mv-espacio-2);
-  flex: 1 1 8em;
-}
-
-.etiqueta {
-  font-weight: var(--mv-texto-peso-negrita);
-}
-
-.control {
-  min-height: 56px;
-  padding: 0 var(--mv-espacio-3);
-  border: 2px solid var(--mv-color-secundario);
-  border-radius: var(--mv-radio-md);
-  background: var(--mv-color-superficie);
-  color: var(--mv-color-texto);
-  font: inherit;
-}
-
-.boton {
-  align-self: flex-start;
-  min-height: 48px;
-  padding: 0 var(--mv-espacio-4);
-  border: 2px solid var(--mv-color-primario);
-  border-radius: var(--mv-radio-md);
-  background: var(--mv-color-superficie);
-  color: var(--mv-color-primario);
-  font-weight: var(--mv-texto-peso-negrita);
-  cursor: pointer;
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
+  @include pq.desde-tableta {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -116,14 +76,4 @@ legend {
     padding: 0;
     background: transparent;
   }
-}
-
-.error {
-  margin: 0;
-  padding: var(--mv-espacio-2) var(--mv-espacio-3);
-  border-radius: var(--mv-radio-sm);
-  background: var(--mv-color-error-fondo);
-  color: var(--mv-color-error);
-  font-size: var(--mv-texto-pequeno);
-  font-weight: var(--mv-texto-peso-negrita);
 }

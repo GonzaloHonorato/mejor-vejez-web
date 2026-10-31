@@ -5,12 +5,13 @@ import { Router, RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 
 import { AvisoSucesion } from './aviso-sucesion/aviso-sucesion';
+import { fechaHoraLegible, fechaLegible } from '../../nucleo/fecha-legible';
 import { SeccionPanel } from './seccion-panel/seccion-panel';
+import { Icono } from '../../compartido/icono/icono';
 import { RespuestaAdultoMayor } from '../../nucleo/adultos/modelos-adultos';
 import { ServicioAdultos } from '../../nucleo/adultos/servicio-adultos';
 import { ETIQUETA_TIPO_ALERTA } from '../../nucleo/alertas/alertas';
 import { ServicioAutenticacion } from '../../nucleo/autenticacion/servicio-autenticacion';
-import { formatearFecha, formatearHora } from '../../nucleo/fechas';
 import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
 import { EstadoSeccion, INTERVALO_REFRESCO_MS } from '../../nucleo/panel/estado-seccion';
 import {
@@ -35,34 +36,34 @@ const MENSAJE_CUENTA_GENERICO =
   'No pudimos validar tu cuenta. Cierra sesión e intenta ingresar de nuevo.';
 
 /**
- * Página "Panel familiar" (Tarea 4, Fase 6, HU-10): es la página de inicio.
- * Mantiene el saludo, el aviso de "sin grupos" y "Estado del servicio" (ya
- * existentes); agrega el panel con el selector de adulto y 5 secciones
+ * Página "Panel familiar": es la página de inicio. Encabezado con saludo y
+ * grupo activo, aviso de "sin grupos", accesos a Relevos y "Estado del
+ * servicio", y el panel con el selector de adulto y 5 secciones
  * independientes (tareas de hoy, alertas de atraso, próximos horarios,
  * citas y alertas preventivas), cada una con su propio `EstadoSeccion`
- * (regla 9 del plan) — así el fallo de una no bloquea a las demás.
+ * — así el fallo de una no bloquea a las demás.
  *
  * Tres `effect()` orquestan el panel, en este orden (como en `paginas/tareas`):
  * 1. la lista de adultos del selector solo cambia con el grupo activo;
  * 2. un cambio de grupo (no la carga inicial) hace volver el selector a
- *    "Todos" (regla 11);
+ *    "Todos";
  * 3. el grupo activo y el adulto elegido disparan `limpiar()` + `cargar()`
  *    de las 5 secciones en paralelo. El descarte de respuestas tardías de
  *    un grupo/adulto ya reemplazado lo resuelve `EstadoSeccion` por su
  *    cuenta (cada `limpiar()`/`cargar()` invalida la generación anterior).
  *
- * El refresco silencioso (regla 10) usa `setInterval` + `visibilitychange`,
+ * El refresco silencioso usa `setInterval` + `visibilitychange`,
  * limpiados en `DestroyRef`; solo refresca con la pestaña visible. Al volver
  * a visible, refresca solo si pasaron 30 s o más desde la última carga o
- * refresco (M-5): evita ráfagas al cambiar de pestaña varias veces rápido.
+ * refresco: evita ráfagas al cambiar de pestaña varias veces rápido.
  * Cuando sí refresca, reinicia el intervalo de 2 minutos desde ese momento.
  *
- * Al destruir la página (M-1), se cancelan las peticiones en vuelo de las 5
+ * Al destruir la página, se cancelan las peticiones en vuelo de las 5
  * secciones (`EstadoSeccion.limpiar()`) y la del selector de adultos.
  */
 @Component({
   selector: 'app-inicio',
-  imports: [RouterLink, ReactiveFormsModule, SeccionPanel, AvisoSucesion],
+  imports: [RouterLink, ReactiveFormsModule, SeccionPanel, AvisoSucesion, Icono],
   templateUrl: './inicio.html',
   styleUrl: './inicio.scss',
 })
@@ -84,9 +85,13 @@ export class Inicio implements OnInit {
   protected readonly fallo = signal<Fallo | null>(null);
   protected readonly falloCerrarSesion = signal(false);
 
-  protected readonly formatearFecha = formatearFecha;
-  protected readonly formatearHora = formatearHora;
+  protected readonly fechaHoraLegible = fechaHoraLegible;
+  protected readonly fechaLegible = fechaLegible;
   protected readonly etiquetaTipoAlerta = ETIQUETA_TIPO_ALERTA;
+  /** Filas que se muestran de las atrasadas y de las alertas recientes; el resto, con "Ver…". */
+  protected readonly maximoFilas = 3;
+  /** Filas que se muestran de los próximos horarios. */
+  protected readonly maximoHorarios = 5;
 
   /** Adultos del grupo activo para el selector ("Todos" + cada uno); solo cambia con el grupo. */
   protected readonly adultosSelector = signal<RespuestaAdultoMayor[]>([]);
@@ -103,9 +108,9 @@ export class Inicio implements OnInit {
   private idGrupoAnterior: number | null | undefined = undefined;
   /** Descarta respuestas de `ServicioAdultos.listar()` obsoletas (el grupo ya cambió de nuevo; mismo patrón de `paginas/tareas`). */
   private generacionAdultosSelector = 0;
-  /** Suscripción en vuelo de `ServicioAdultos.listar()`; se cancela al destruir (M-1). */
+  /** Suscripción en vuelo de `ServicioAdultos.listar()`; se cancela al destruir. */
   private suscripcionAdultos: Subscription | null = null;
-  /** Momento (`Date.now()`) de la última carga o refresco de las secciones (M-5). */
+  /** Momento (`Date.now()`) de la última carga o refresco de las secciones. */
   private ultimoRefrescoMs = 0;
 
   constructor() {
@@ -131,7 +136,7 @@ export class Inicio implements OnInit {
     });
 
     // 2) Si el grupo activo cambia de verdad (no en la carga inicial), el
-    // selector de adulto vuelve a "Todos" (regla 11): el adulto elegido
+    // selector de adulto vuelve a "Todos": el adulto elegido
     // puede no existir en el grupo nuevo.
     effect(() => {
       const grupo = this.activo();
@@ -147,7 +152,7 @@ export class Inicio implements OnInit {
       }
     });
 
-    // 3) Cambio de grupo o de adulto (regla 11): limpia y recarga las 5
+    // 3) Cambio de grupo o de adulto: limpia y recarga las 5
     // secciones en paralelo. `EstadoSeccion.limpiar()` invalida cualquier
     // respuesta en vuelo de la combinación anterior.
     effect(() => {
@@ -164,7 +169,7 @@ export class Inicio implements OnInit {
       this.cargarSecciones(grupo.idGrupo, idAdulto);
     });
 
-    // Al destruir la página (M-1): cancela las peticiones en vuelo de las 5
+    // Al destruir la página: cancela las peticiones en vuelo de las 5
     // secciones y la del selector de adultos (escriben señales de un
     // componente ya destruido si se dejan correr).
     this.destroyRef.onDestroy(() => {
@@ -209,7 +214,30 @@ export class Inicio implements OnInit {
     await this.router.navigateByUrl('/ingreso');
   }
 
-  /** Cambio del selector de adulto ("Todos"/un adulto puntual): recarga las 5 secciones (regla 11). */
+  /** Total de atrasadas para el enlace "Ver las N tareas atrasadas": nunca menos que las listadas. */
+  protected totalAtrasadas(datos: RespuestaPanelTareas): number {
+    return Math.max(datos.atrasadas, datos.tareasAtrasadas.length);
+  }
+
+  /**
+   * Nombre accesible del enlace de una fila: título, adulto, detalle opcional y
+   * fecha, para que dos filas con el mismo título se distingan.
+   */
+  protected etiquetaEnlace(
+    titulo: string,
+    nombreAdulto: string,
+    fecha: string,
+    detalle?: string | null,
+  ): string {
+    return [titulo, nombreAdulto, detalle, fecha].filter((parte) => !!parte).join(', ');
+  }
+
+  /** Etiqueta de un conteo en singular o plural ("1 pendiente", "2 pendientes"). */
+  protected plural(cantidad: number, singular: string, plural: string): string {
+    return cantidad === 1 ? singular : plural;
+  }
+
+  /** Cambio del selector de adulto ("Todos"/un adulto puntual): recarga las 5 secciones. */
   protected cambiarAdulto(): void {
     this.idAdultoSeleccionado.set(this.controlAdulto.value);
   }
@@ -244,7 +272,7 @@ export class Inicio implements OnInit {
     );
   }
 
-  /** Refresco silencioso (regla 10): solo si hay grupo activo; `EstadoSeccion.refrescar()` no hace nada sin una carga previa. */
+  /** Refresco silencioso: solo si hay grupo activo; `EstadoSeccion.refrescar()` no hace nada sin una carga previa. */
   private refrescarSecciones(): void {
     if (!this.activo()) return;
     this.ultimoRefrescoMs = Date.now();
@@ -258,7 +286,7 @@ export class Inicio implements OnInit {
   private iniciarRefresco(): void {
     let idIntervalo = this.crearIntervaloDeRefresco();
 
-    // M-5: varios regresos a "visible" en pocos segundos (cambios rápidos de
+    // Varios regresos a "visible" en pocos segundos (cambios rápidos de
     // pestaña) no generan una ráfaga de peticiones; solo refresca si pasaron
     // `DEBOUNCE_VISIBILIDAD_MS` o más desde la última carga/refresco, y en
     // ese caso reinicia el intervalo de 2 minutos desde ese momento.
@@ -286,7 +314,7 @@ export class Inicio implements OnInit {
   }
 }
 
-/** Antirrebote del refresco al volver a visible (M-5): ver `iniciarRefresco`. */
+/** Antirrebote del refresco al volver a visible: ver `iniciarRefresco`. */
 const DEBOUNCE_VISIBILIDAD_MS = 30_000;
 
 function clasificarFallo(error: unknown): Fallo {

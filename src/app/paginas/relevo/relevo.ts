@@ -7,24 +7,25 @@ import {
   RespuestaEstadoCatalogo,
   ServicioCatalogos,
 } from '../../nucleo/catalogos/servicio-catalogos';
+import { fechaHoraLegible } from '../../nucleo/fecha-legible';
 import { fechaEnSantiago, formatearFecha, formatearHora } from '../../nucleo/fechas';
 import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
 import { mensajeDeError } from '../../nucleo/http/mensaje-de-error';
 import { RespuestaDetalleRelevo, RespuestaRelevo } from '../../nucleo/relevos/modelos-relevos';
 import { ServicioRelevos } from '../../nucleo/relevos/servicio-relevos';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
+import { Icono } from '../../compartido/icono/icono';
 import { ReasignarTareas } from './reasignar-tareas/reasignar-tareas';
 
-/** Aviso exacto de la regla 29 del plan: la foto no se vuelve a calcular. */
+/** Aviso exacto de la foto del relevo: no se vuelve a calcular. */
 export const AVISO_FOTO_RELEVO =
   'Este resumen es una foto del momento del relevo; los estados actuales pueden haber cambiado.';
 
 /**
- * Página "Detalle del relevo" (`/relevos/:idRelevo`): datos del relevo y su
- * foto de tareas pendientes/alertas abiertas al momento de registrarlo
- * (regla 29 del plan). "Cancelar relevo" para el creador, el coordinador
- * del grupo o un administrador, y sólo mientras el relevo sigue
- * COMPLETADA.
+ * Página "Detalle del relevo" (`/relevos/:idRelevo`): datos del relevo, sus
+ * notas y su foto de tareas pendientes/alertas abiertas al momento de
+ * registrarlo. "Cancelar relevo" para el creador, el coordinador del grupo
+ * o un administrador, y sólo mientras el relevo sigue COMPLETADA.
  *
  * Sigue el mismo patrón de `paginas/alerta`/`paginas/tarea`: el `idRelevo`
  * viene fijo de la URL (`ActivatedRoute.snapshot`), y un `effect()` con el
@@ -34,7 +35,7 @@ export const AVISO_FOTO_RELEVO =
  */
 @Component({
   selector: 'app-relevo',
-  imports: [RouterLink, ReasignarTareas],
+  imports: [RouterLink, ReasignarTareas, Icono],
   templateUrl: './relevo.html',
   styleUrl: './relevo.scss',
 })
@@ -47,8 +48,7 @@ export class Relevo implements OnInit {
 
   protected readonly grupoActivo = inject(ServicioGrupoActivo);
   protected readonly activo = this.grupoActivo.activo;
-  protected readonly formatearFecha = formatearFecha;
-  protected readonly formatearHora = formatearHora;
+  protected readonly fechaHoraLegible = fechaHoraLegible;
   protected readonly avisoFoto = AVISO_FOTO_RELEVO;
 
   private readonly idRelevo = Number(this.ruta.snapshot.paramMap.get('idRelevo'));
@@ -68,7 +68,7 @@ export class Relevo implements OnInit {
   protected readonly alertasAbiertas = computed<RespuestaDetalleRelevo[]>(
     () => this.detalle()?.detalles.filter((item) => item.tipoElemento === 'ALERTA') ?? [],
   );
-  /** Sólo tiene sentido con el relevo ya cargado: en error o cargando, `detalle()` sigue en `null` (regla de `Alerta`). */
+  /** Sólo tiene sentido con el relevo ya cargado: en error o cargando, `detalle()` sigue en `null`, igual que en `Alerta`. */
   protected readonly sinElementos = computed(() => (this.detalle()?.detalles.length ?? 0) === 0);
 
   /** Código de estado actual del relevo, resuelto contra el catálogo recibido (igual que `Tarea.codigoActual`). */
@@ -81,10 +81,8 @@ export class Relevo implements OnInit {
   });
 
   /**
-   * El creador, el coordinador del grupo o un administrador, y sólo
-   * mientras el relevo está COMPLETADA (regla 29 del plan + regla 7 de la
-   * API, que también deja cancelar a un administrador sin membresía;
-   * corrección ronda 1 del controlador).
+   * El creador, el coordinador del grupo o un administrador (la API también
+   * lo deja sin membresía), y sólo mientras el relevo está COMPLETADA.
    */
   protected readonly puedeCancelar = computed(() => {
     const relevo = this.detalle();
@@ -96,11 +94,11 @@ export class Relevo implements OnInit {
   });
 
   /**
-   * Reasignar tareas pendientes a quien recibe (HU-11 → HU-06, decisión de
-   * Gonzalo 2026-10-27): solo coordinador del grupo o administrador (el rol
-   * se resuelve igual que en `puedeCancelar`, pero sin el creador: HU-06 no
-   * deja reasignar a un colaborador), con el relevo COMPLETADA y con tareas
-   * en el resumen. La API vuelve a validar todo (403/422).
+   * Reasignar tareas pendientes a quien recibe: solo coordinador del grupo o
+   * administrador (el rol se resuelve igual que en `puedeCancelar`, pero sin
+   * el creador: reasignar tareas no está permitido a un colaborador), con el
+   * relevo COMPLETADA y con tareas en el resumen. La API vuelve a validar
+   * todo (403/422).
    */
   protected readonly puedeReasignar = computed(() => {
     if (!this.detalle() || this.codigoActual() !== 'COMPLETADA') return false;
@@ -153,7 +151,17 @@ export class Relevo implements OnInit {
     return descripcionEstado(this.estadosRelevo(), idEstado);
   }
 
-  /** Fecha y hora de Santiago de un instante ISO, listas para mostrar juntas (ver `Tarea.fechaHora`). */
+  /** "Cancelada" no es un éxito: usa el tono de advertencia. */
+  protected tonoEstado(relevo: RespuestaRelevo): string {
+    return relevo.codigoEstado === 'CANCELADA' ? 'mv-chip--alerta' : 'mv-chip--exito';
+  }
+
+  protected reintentar(): void {
+    const grupo = this.activo();
+    if (grupo) this.cargar(grupo.idGrupo);
+  }
+
+  /** "dd-MM-yyyy HH:mm" en hora de Santiago: el motivo que queda registrado al reasignar. */
   protected fechaHora(iso: string): string {
     return `${formatearFecha(fechaEnSantiago(iso))} ${formatearHora(iso)}`;
   }

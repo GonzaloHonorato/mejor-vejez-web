@@ -2,8 +2,7 @@ import { RespuestaPersona } from '../auditoria/modelos-auditoria';
 import { RespuestaTarea } from '../tareas/modelos-tareas';
 
 /**
- * Contratos de `/api/grupos/{idGrupo}/sucesion` (Fase 7, Tarea 3 de la
- * API, HU-13). Interfaces idénticas a los records de la API, con los
+ * Contratos de `/api/grupos/{idGrupo}/sucesion`. Interfaces idénticas a los records de la API, con los
  * mismos nombres, sin el prefijo de paquete. Las fechas y los instantes
  * llegan como `string` (`OffsetDateTime` serializado por Jackson, con el
  * offset de Santiago). `RespuestaPersona` se define en `nucleo/auditoria`
@@ -11,9 +10,9 @@ import { RespuestaTarea } from '../tareas/modelos-tareas';
  */
 
 /**
- * Propuesta de sucesión de la coordinación (regla 24 del plan).
- * `condicionesPendientes` son las tareas abiertas del saliente (regla 19,
- * con el mismo `RespuestaTarea` de `nucleo/tareas`), calculadas en vivo
+ * Propuesta de sucesión de la coordinación.
+ * `condicionesPendientes` son las tareas abiertas del saliente (con el
+ * mismo `RespuestaTarea` de `nucleo/tareas`), calculadas en vivo
  * solo si la propuesta está `PENDIENTE` o `ACEPTADA`; en cualquier otro
  * estado, y en el historial, va vacía.
  */
@@ -43,7 +42,7 @@ export interface SolicitudCancelarSucesion {
 }
 
 /**
- * Una reasignación pedida al completar la sucesión (regla 15 del plan): la
+ * Una reasignación pedida al completar la sucesión: la
  * tarea `idTarea` (condición pendiente) pasa a `idUsuario`.
  */
 export interface SolicitudReasignacion {
