@@ -1,11 +1,21 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
+import { ServicioAutenticacion } from '../../nucleo/autenticacion/servicio-autenticacion';
 import { erroresDeCampos, mensajeDeError } from '../../nucleo/http/mensaje-de-error';
 import { RespuestaYo, ServicioYo } from '../../nucleo/usuarios/servicio-yo';
 import { CanalesNotificacion } from './canales-notificacion/canales-notificacion';
 
-/** Página "Mi perfil": correo de solo lectura, nombre y teléfono editables, y canales de notificación (Tarea 12). */
+const MENSAJES_ERROR_CLAVE_ACTUAL: Record<string, string> = {
+  'auth/wrong-password': 'La contraseña actual no es correcta.',
+  'auth/invalid-credential': 'La contraseña actual no es correcta.',
+};
+const MENSAJES_ERROR_CLAVE_NUEVA: Record<string, string> = {
+  'auth/weak-password': 'La nueva contraseña debe tener al menos 8 caracteres.',
+};
+const MENSAJE_ERROR_CLAVE_GENERICO = 'No pudimos cambiar tu contraseña. Intenta de nuevo.';
+
+/** Página "Mi perfil": correo de solo lectura, nombre y teléfono editables, canales de notificación y cambio de contraseña. */
 @Component({
   selector: 'app-mi-perfil',
   imports: [ReactiveFormsModule, CanalesNotificacion],
@@ -14,6 +24,7 @@ import { CanalesNotificacion } from './canales-notificacion/canales-notificacion
 })
 export class MiPerfil implements OnInit {
   private readonly servicioYo = inject(ServicioYo);
+  protected readonly auth = inject(ServicioAutenticacion);
 
   protected readonly yo = signal<RespuestaYo | null>(null);
   protected readonly guardando = signal(false);
@@ -24,6 +35,16 @@ export class MiPerfil implements OnInit {
   protected readonly formulario = inject(NonNullableFormBuilder).group({
     nombre: ['', Validators.required],
     telefono: [''],
+  });
+
+  protected readonly cambiandoClave = signal(false);
+  protected readonly confirmacionClave = signal(false);
+  protected readonly errorClave = signal<string | null>(null);
+
+  protected readonly formularioClave = inject(NonNullableFormBuilder).group({
+    actual: ['', Validators.required],
+    nueva: ['', [Validators.required, Validators.minLength(8)]],
+    confirmacion: ['', Validators.required],
   });
 
   ngOnInit(): void {
@@ -71,5 +92,42 @@ export class MiPerfil implements OnInit {
           }
         },
       });
+  }
+
+  /**
+   * Reautentica con la contraseña actual y fija la nueva. Oculta este
+   * bloque completo (ver plantilla) para cuentas sólo de Google, que no
+   * tienen contraseña que cambiar.
+   */
+  protected async cambiarClave(): Promise<void> {
+    if (this.cambiandoClave()) return;
+    this.errorClave.set(null);
+    this.confirmacionClave.set(false);
+    if (this.formularioClave.invalid) {
+      this.formularioClave.markAllAsTouched();
+      return;
+    }
+
+    const { actual, nueva, confirmacion } = this.formularioClave.getRawValue();
+    if (nueva !== confirmacion) {
+      this.errorClave.set('Las contraseñas nuevas no coinciden.');
+      return;
+    }
+
+    this.cambiandoClave.set(true);
+    try {
+      await this.auth.cambiarClave(actual, nueva);
+      this.cambiandoClave.set(false);
+      this.confirmacionClave.set(true);
+      this.formularioClave.reset();
+    } catch (error) {
+      this.cambiandoClave.set(false);
+      const codigo = (error as { code?: string } | null)?.code ?? '';
+      this.errorClave.set(
+        MENSAJES_ERROR_CLAVE_ACTUAL[codigo] ??
+          MENSAJES_ERROR_CLAVE_NUEVA[codigo] ??
+          MENSAJE_ERROR_CLAVE_GENERICO,
+      );
+    }
   }
 }

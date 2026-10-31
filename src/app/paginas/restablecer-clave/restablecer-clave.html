@@ -1,0 +1,68 @@
+<div class="pagina">
+  <header class="cabecera">
+    <span class="marca">
+      <span class="marca__isotipo" aria-hidden="true"></span>
+      Mejor Vejez
+    </span>
+  </header>
+
+  <main class="contenido">
+    <section class="tarjeta" aria-labelledby="restablecer-titulo">
+      <h1 id="restablecer-titulo">Restablecer contraseña</h1>
+
+      @switch (estado()) {
+        @case ('cargando') {
+          <p role="status">Comprobando el enlace…</p>
+        }
+
+        @case ('vencido') {
+          <p class="error" role="alert">{{ mensajeVencido() }}</p>
+          <a class="boton boton--primario" routerLink="/ingreso" [queryParams]="{ recuperar: 1 }">
+            Pedir otro enlace
+          </a>
+        }
+
+        @case ('exito') {
+          <p class="confirmacion" role="status">Tu contraseña se actualizó correctamente.</p>
+          <a class="boton boton--primario" routerLink="/ingreso">Ir a iniciar sesión</a>
+        }
+
+        @case ('listo') {
+          <p class="bajada">Cuenta: {{ correo() }}</p>
+
+          <form class="formulario" [formGroup]="formulario" (ngSubmit)="restablecer()" novalidate>
+            <div class="campo">
+              <label class="campo__etiqueta" for="restablecer-clave">Contraseña nueva</label>
+              <input
+                id="restablecer-clave"
+                class="campo__control"
+                type="password"
+                autocomplete="new-password"
+                formControlName="clave"
+              />
+            </div>
+
+            <div class="campo">
+              <label class="campo__etiqueta" for="restablecer-confirmacion">Confirma la contraseña</label>
+              <input
+                id="restablecer-confirmacion"
+                class="campo__control"
+                type="password"
+                autocomplete="new-password"
+                formControlName="confirmacion"
+              />
+            </div>
+
+            @if (errorFormulario(); as mensaje) {
+              <p class="error" role="alert">{{ mensaje }}</p>
+            }
+
+            <button type="submit" class="boton boton--primario" [disabled]="enviando()">
+              {{ enviando() ? 'Guardando…' : 'Guardar contraseña nueva' }}
+            </button>
+          </form>
+        }
+      }
+    </section>
+  </main>
+</div>

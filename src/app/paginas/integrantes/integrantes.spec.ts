@@ -58,6 +58,7 @@ async function configurar(opciones: {
     roles: vi.fn(() => of(ROLES)),
     integrantes: vi.fn(() => of(opciones.integrantesIniciales ?? [])),
     incorporar: vi.fn(),
+    crearIntegrante: vi.fn(),
     cambiarRol: vi.fn(),
     desactivar: vi.fn(),
     reactivar: vi.fn(),
@@ -104,6 +105,8 @@ async function configurar(opciones: {
     ],
   });
   const fixture = TestBed.createComponent(Integrantes);
+  // Adjunto al documento: el foco (ej. al volver al flujo de agregar por correo) necesita elementos conectados.
+  document.body.appendChild(fixture.nativeElement);
   await fixture.whenStable();
   return {
     fixture,
@@ -122,6 +125,10 @@ function botonConTexto(elemento: HTMLElement, texto: string): HTMLButtonElement 
 }
 
 describe('Integrantes', () => {
+  afterEach(() => {
+    document.body.innerHTML = '';
+  });
+
   it('coordinadorVeFormularioYAcciones', async () => {
     const { elemento } = await configurar({
       miRol: 'COORDINADOR',
@@ -394,6 +401,189 @@ describe('Integrantes', () => {
     TestBed.resetTestingModule();
     const { elemento: elementoColaborador } = await configurar({ miRol: 'COLABORADOR' });
     expect(elementoColaborador.querySelector('#integrantes-enlace-auditoria')).toBeFalsy();
+  });
+
+  it('crearIntegranteSoloVisibleParaCoordinador', async () => {
+    const { elemento: elementoCoordinador } = await configurar({ miRol: 'COORDINADOR' });
+    expect(botonConTexto(elementoCoordinador, 'Crear integrante nuevo')).toBeTruthy();
+
+    TestBed.resetTestingModule();
+    const { elemento: elementoColaborador } = await configurar({ miRol: 'COLABORADOR' });
+    expect(botonConTexto(elementoColaborador, 'Crear integrante nuevo')).toBeFalsy();
+  });
+
+  it('crearIntegranteMuestraClaveUnaVez', async () => {
+    const { fixture, elemento, servicioGrupos } = await configurar({ miRol: 'COORDINADOR' });
+    servicioGrupos.crearIntegrante.mockReturnValue(
+      of({
+        integrante: integrante(3, 'Carla', 1, 'COORDINADOR'),
+        claveTemporal: 'Ab3xZ9qLm2Pq',
+        correoEnviado: true,
+      }),
+    );
+
+    botonConTexto(elemento, 'Crear integrante nuevo')!.click();
+    await fixture.whenStable();
+
+    const campoNombre = elemento.querySelector<HTMLInputElement>('#integrante-crear-nombre')!;
+    campoNombre.value = 'Carla';
+    campoNombre.dispatchEvent(new Event('input'));
+    const campoEmail = elemento.querySelector<HTMLInputElement>('#integrante-crear-email')!;
+    campoEmail.value = 'carla@correo.cl';
+    campoEmail.dispatchEvent(new Event('input'));
+    elemento.querySelector<HTMLFormElement>('.crear-integrante form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    expect(servicioGrupos.crearIntegrante).toHaveBeenCalledWith(5, {
+      nombre: 'Carla',
+      email: 'carla@correo.cl',
+      idRol: 1,
+    });
+    const dialogo = elemento.querySelector('[role="dialog"]');
+    expect(dialogo?.textContent).toContain('Ab3xZ9qLm2Pq');
+  });
+
+  it('errorYaExisteAlCrearIntegranteSugiereAgregarPorCorreo', async () => {
+    const { fixture, elemento, servicioGrupos } = await configurar({ miRol: 'COORDINADOR' });
+    servicioGrupos.crearIntegrante.mockReturnValue(
+      throwError(
+        () =>
+          new HttpErrorResponse({
+            status: 409,
+            error: { detail: 'Ya existe una cuenta con ese correo' },
+          }),
+      ),
+    );
+
+    botonConTexto(elemento, 'Crear integrante nuevo')!.click();
+    await fixture.whenStable();
+
+    const campoNombre = elemento.querySelector<HTMLInputElement>('#integrante-crear-nombre')!;
+    campoNombre.value = 'Carla';
+    campoNombre.dispatchEvent(new Event('input'));
+    const campoEmail = elemento.querySelector<HTMLInputElement>('#integrante-crear-email')!;
+    campoEmail.value = 'carla@correo.cl';
+    campoEmail.dispatchEvent(new Event('input'));
+    elemento.querySelector<HTMLFormElement>('.crear-integrante form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    expect(elemento.querySelector('.crear-integrante [role="alert"]')?.textContent).toContain(
+      'Ya existe una cuenta con ese correo',
+    );
+    const sugerencia = botonConTexto(elemento, 'Si la persona ya tiene cuenta, agrégala por correo');
+    expect(sugerencia).toBeTruthy();
+
+    sugerencia!.click();
+    await fixture.whenStable();
+
+    expect(elemento.querySelector('.crear-integrante')).toBeFalsy();
+    expect(document.activeElement?.id).toBe('integrante-email');
+  });
+
+  it('demasiadosIntentosAlCrearIntegranteMuestraElDetalle', async () => {
+    const { fixture, elemento, servicioGrupos } = await configurar({ miRol: 'COORDINADOR' });
+    servicioGrupos.crearIntegrante.mockReturnValue(
+      throwError(
+        () =>
+          new HttpErrorResponse({
+            status: 429,
+            error: { detail: 'Demasiados intentos. Prueba más tarde.' },
+          }),
+      ),
+    );
+
+    botonConTexto(elemento, 'Crear integrante nuevo')!.click();
+    await fixture.whenStable();
+
+    const campoNombre = elemento.querySelector<HTMLInputElement>('#integrante-crear-nombre')!;
+    campoNombre.value = 'Carla';
+    campoNombre.dispatchEvent(new Event('input'));
+    const campoEmail = elemento.querySelector<HTMLInputElement>('#integrante-crear-email')!;
+    campoEmail.value = 'carla@correo.cl';
+    campoEmail.dispatchEvent(new Event('input'));
+    elemento.querySelector<HTMLFormElement>('.crear-integrante form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    expect(elemento.querySelector('.crear-integrante [role="alert"]')?.textContent).toContain(
+      'Demasiados intentos. Prueba más tarde.',
+    );
+  });
+
+  it('alCerrarDialogoDevuelveElFocoAlBotonCrearIntegranteNuevo', async () => {
+    const { fixture, elemento, servicioGrupos } = await configurar({ miRol: 'COORDINADOR' });
+    servicioGrupos.crearIntegrante.mockReturnValue(
+      of({
+        integrante: integrante(3, 'Carla', 1, 'COORDINADOR'),
+        claveTemporal: 'Ab3xZ9qLm2Pq',
+        correoEnviado: true,
+      }),
+    );
+
+    botonConTexto(elemento, 'Crear integrante nuevo')!.click();
+    await fixture.whenStable();
+    const campoNombre = elemento.querySelector<HTMLInputElement>('#integrante-crear-nombre')!;
+    campoNombre.value = 'Carla';
+    campoNombre.dispatchEvent(new Event('input'));
+    const campoEmail = elemento.querySelector<HTMLInputElement>('#integrante-crear-email')!;
+    campoEmail.value = 'carla@correo.cl';
+    campoEmail.dispatchEvent(new Event('input'));
+    elemento.querySelector<HTMLFormElement>('.crear-integrante form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    botonConTexto(elemento.querySelector('[role="dialog"]')!, 'Cerrar')!.click();
+    await fixture.whenStable();
+
+    expect(document.activeElement).toBe(botonConTexto(elemento, 'Crear integrante nuevo'));
+  });
+
+  it('nombreDemasiadoLargoMuestraMensajeAlCrearIntegrante', async () => {
+    const { fixture, elemento, servicioGrupos } = await configurar({ miRol: 'COORDINADOR' });
+
+    botonConTexto(elemento, 'Crear integrante nuevo')!.click();
+    await fixture.whenStable();
+    const campoNombre = elemento.querySelector<HTMLInputElement>('#integrante-crear-nombre')!;
+    campoNombre.value = 'A'.repeat(161);
+    campoNombre.dispatchEvent(new Event('input'));
+    const campoEmail = elemento.querySelector<HTMLInputElement>('#integrante-crear-email')!;
+    campoEmail.value = 'carla@correo.cl';
+    campoEmail.dispatchEvent(new Event('input'));
+    elemento.querySelector<HTMLFormElement>('.crear-integrante form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    expect(elemento.querySelector('#integrante-crear-nombre-error')?.textContent).toContain(
+      'no puede superar los 160 caracteres',
+    );
+    expect(servicioGrupos.crearIntegrante).not.toHaveBeenCalled();
+  });
+
+  it('erroresDeCamposAlCrearIntegranteSeMuestranPorCampo', async () => {
+    const { fixture, elemento, servicioGrupos } = await configurar({ miRol: 'COORDINADOR' });
+    servicioGrupos.crearIntegrante.mockReturnValue(
+      throwError(
+        () =>
+          new HttpErrorResponse({
+            status: 422,
+            error: { errores: [{ campo: 'nombre', mensaje: 'El nombre es obligatorio.' }] },
+          }),
+      ),
+    );
+
+    botonConTexto(elemento, 'Crear integrante nuevo')!.click();
+    await fixture.whenStable();
+    const campoNombre = elemento.querySelector<HTMLInputElement>('#integrante-crear-nombre')!;
+    campoNombre.value = 'Carla';
+    campoNombre.dispatchEvent(new Event('input'));
+    const campoEmail = elemento.querySelector<HTMLInputElement>('#integrante-crear-email')!;
+    campoEmail.value = 'carla@correo.cl';
+    campoEmail.dispatchEvent(new Event('input'));
+    elemento.querySelector<HTMLFormElement>('.crear-integrante form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    expect(elemento.querySelector('#integrante-crear-nombre-error')?.textContent).toContain(
+      'El nombre es obligatorio.',
+    );
+    // El mensaje genérico no se muestra: hay un error de campo específico.
+    expect(elemento.querySelector('.crear-integrante > p.error')).toBeFalsy();
   });
 
   it('seccionSucesionRecibeElContextoYSuCambioRecargaGrupoEIntegrantes', async () => {

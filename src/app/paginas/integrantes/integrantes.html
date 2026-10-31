@@ -91,6 +91,99 @@
     </ul>
 
     @if (puedeAdministrar()) {
+      @if (!creandoIntegrante()) {
+        <button
+          #botonCrearIntegranteNuevo
+          type="button"
+          class="boton boton--primario"
+          (click)="abrirCrearIntegrante()"
+        >
+          Crear integrante nuevo
+        </button>
+      }
+
+      @if (creandoIntegrante()) {
+        <section class="tarjeta crear-integrante" aria-labelledby="integrantes-crear-titulo">
+          <h2 id="integrantes-crear-titulo">Crear integrante nuevo</h2>
+
+          @if (errorCrearIntegrante(); as mensaje) {
+            <p class="error" role="alert">{{ mensaje }}</p>
+            @if (yaExisteCuentaIntegrante()) {
+              <button type="button" class="boton boton--contorno" (click)="irAAgregarPorCorreo()">
+                Si la persona ya tiene cuenta, agrégala por correo
+              </button>
+            }
+          }
+
+          <form [formGroup]="formularioCrearIntegrante" (ngSubmit)="crearIntegrante()" novalidate>
+            <div class="campo">
+              <label class="campo__etiqueta" for="integrante-crear-nombre">Nombre</label>
+              <input
+                id="integrante-crear-nombre"
+                class="campo__control"
+                type="text"
+                formControlName="nombre"
+                [attr.aria-invalid]="erroresCamposCrearIntegrante()['nombre'] ? true : null"
+                [attr.aria-describedby]="
+                  erroresCamposCrearIntegrante()['nombre'] ? 'integrante-crear-nombre-error' : null
+                "
+              />
+              @if (erroresCamposCrearIntegrante()['nombre']; as mensaje) {
+                <p id="integrante-crear-nombre-error" class="error" role="alert">{{ mensaje }}</p>
+              }
+            </div>
+
+            <div class="campo">
+              <label class="campo__etiqueta" for="integrante-crear-email">Correo</label>
+              <input
+                id="integrante-crear-email"
+                class="campo__control"
+                type="email"
+                formControlName="email"
+                [attr.aria-invalid]="
+                  formularioCrearIntegrante.controls.email.invalid &&
+                  formularioCrearIntegrante.controls.email.touched
+                    ? true
+                    : null
+                "
+              />
+              @if (
+                formularioCrearIntegrante.controls.email.invalid &&
+                formularioCrearIntegrante.controls.email.touched
+              ) {
+                <p id="integrante-crear-email-error" class="error" role="alert">
+                  Ingresa un correo válido.
+                </p>
+              }
+            </div>
+
+            <div class="campo">
+              <label class="campo__etiqueta" for="integrante-crear-rol">Rol</label>
+              <select id="integrante-crear-rol" class="campo__control" formControlName="idRol">
+                @for (rol of roles(); track rol.idRol) {
+                  <option [ngValue]="rol.idRol">{{ rol.nombreRol | titlecase }}</option>
+                }
+              </select>
+            </div>
+
+            <div class="tarjeta__acciones">
+              <button type="button" class="boton boton--contorno" (click)="cancelarCrearIntegrante()">
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                class="boton boton--primario"
+                [disabled]="formularioCrearIntegrante.invalid || guardandoCrearIntegrante()"
+              >
+                {{ guardandoCrearIntegrante() ? 'Creando…' : 'Crear integrante nuevo' }}
+              </button>
+            </div>
+          </form>
+        </section>
+      }
+    }
+
+    @if (puedeAdministrar()) {
       <section class="tarjeta" aria-labelledby="integrantes-agregar-titulo">
         <h2 id="integrantes-agregar-titulo">Agregar integrante</h2>
 
@@ -142,6 +235,15 @@
         [soyCoordinador]="soyCoordinador()"
         [esAdministrador]="esAdministrador()"
         (cambio)="alCambiarSucesion()"
+      />
+    }
+
+    @if (claveAMostrar(); as datos) {
+      <app-clave-temporal
+        [titulo]="datos.titulo"
+        [clave]="datos.clave"
+        [correoEnviado]="datos.correoEnviado"
+        (cerrar)="cerrarClave()"
       />
     }
   </div>

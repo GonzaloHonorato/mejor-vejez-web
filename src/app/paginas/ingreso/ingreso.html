@@ -73,6 +73,41 @@
             {{ enviando() ? 'Entrando…' : 'Entrar' }}
           </button>
         </form>
+
+        @if (!mostrarRecuperar()) {
+          <button type="button" id="ingreso-olvide" class="campo__accion" (click)="abrirRecuperar()">
+            ¿Olvidaste tu contraseña?
+          </button>
+        } @else {
+          <form class="formulario" [formGroup]="formularioRecuperar" (ngSubmit)="recuperarClave()" novalidate>
+            <div class="campo">
+              <label class="campo__etiqueta" for="recuperar-correo">
+                Escribe tu correo y te enviamos un enlace
+              </label>
+              <input
+                id="recuperar-correo"
+                class="campo__control"
+                type="email"
+                autocomplete="email"
+                inputmode="email"
+                formControlName="correo"
+                [attr.aria-invalid]="errorCorreoRecuperar() ? true : null"
+                [attr.aria-describedby]="errorCorreoRecuperar() ? 'recuperar-correo-error' : null"
+              />
+              @if (errorCorreoRecuperar(); as mensaje) {
+                <p id="recuperar-correo-error" class="error" role="alert">{{ mensaje }}</p>
+              }
+            </div>
+
+            <button type="submit" class="boton boton--contorno" [disabled]="enviandoRecuperar()">
+              {{ enviandoRecuperar() ? 'Enviando…' : 'Enviar enlace' }}
+            </button>
+
+            @if (mensajeRecuperar(); as mensaje) {
+              <p class="bajada" role="status">{{ mensaje }}</p>
+            }
+          </form>
+        }
       </div>
     </section>
   </main>

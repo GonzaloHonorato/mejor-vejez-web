@@ -1,9 +1,11 @@
 import { TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 
 import { MiPerfil } from './mi-perfil';
+import { ServicioAutenticacion } from '../../nucleo/autenticacion/servicio-autenticacion';
 
 const CANALES = {
   canales: [{ canal: 'CORREO', destino: 'ana@correo.cl', habilitado: true, predeterminado: true }],
@@ -57,6 +59,25 @@ async function configurar() {
 function escribir(campo: HTMLInputElement, valor: string): void {
   campo.value = valor;
   campo.dispatchEvent(new Event('input'));
+}
+
+async function configurarConAuth(auth: Record<string, unknown>) {
+  TestBed.configureTestingModule({
+    imports: [MiPerfil],
+    providers: [
+      provideRouter([]),
+      provideHttpClient(),
+      provideHttpClientTesting(),
+      { provide: ServicioAutenticacion, useValue: auth },
+    ],
+  });
+  const fixture = TestBed.createComponent(MiPerfil);
+  const http = TestBed.inject(HttpTestingController);
+  fixture.detectChanges();
+  http.expectOne((req) => req.method === 'GET' && req.url.endsWith('/api/yo')).flush(YO);
+  flushCanales(http);
+  await fixture.whenStable();
+  return { fixture, http, elemento: fixture.nativeElement as HTMLElement };
 }
 
 describe('MiPerfil', () => {
@@ -129,5 +150,33 @@ describe('MiPerfil', () => {
     expect(elemento.querySelector('[role="status"]')?.textContent ?? '').not.toContain(
       'Cambios guardados.',
     );
+  });
+
+  it('cambiarClaveOcultoParaCuentaGoogle', async () => {
+    const { elemento } = await configurarConAuth({ tieneAccesoConClave: () => false });
+
+    expect(elemento.querySelector('#clave-titulo')).toBeNull();
+  });
+
+  it('cambiarClaveActualIncorrectaMuestraError', async () => {
+    const cambiarClave = vi.fn().mockRejectedValue({ code: 'auth/wrong-password' });
+    const { fixture, elemento } = await configurarConAuth({
+      tieneAccesoConClave: () => true,
+      cambiarClave,
+    });
+
+    expect(elemento.querySelector('#clave-titulo')).not.toBeNull();
+
+    escribir(elemento.querySelector<HTMLInputElement>('#clave-actual')!, 'clave-mala');
+    escribir(elemento.querySelector<HTMLInputElement>('#clave-nueva')!, 'clave-nueva1');
+    escribir(elemento.querySelector<HTMLInputElement>('#clave-confirmacion')!, 'clave-nueva1');
+    elemento.querySelectorAll('form')[1].dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    expect(cambiarClave).toHaveBeenCalledWith('clave-mala', 'clave-nueva1');
+    const alerta = elemento.querySelector('#clave-titulo')
+      ?.closest('section')
+      ?.querySelector('[role="alert"]');
+    expect(alerta?.textContent).toContain('La contraseña actual no es correcta.');
   });
 });

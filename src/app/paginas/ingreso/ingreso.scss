@@ -1,6 +1,5 @@
-// Ingreso — opción C. Mobile-first (390px): pantalla completa con bloque de
-// título tenue. Escritorio (≥ 768px): tarjeta centrada de 480px.
-// Sólo tokens semánticos (`var(--mv-...)`): ver src/estilos/_tema.scss.
+// Ingreso — opción C. Mobile: pantalla completa. Escritorio (≥768px): tarjeta
+// centrada de 480px. Sólo tokens semánticos (`var(--mv-...)`): ver _tema.scss.
 
 .pagina {
   min-height: 100dvh;

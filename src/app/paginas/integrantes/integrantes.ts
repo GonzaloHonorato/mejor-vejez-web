@@ -1,5 +1,6 @@
 import { TitleCasePipe } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Component, ElementRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import {
   AbstractControl,
   FormControl,
@@ -10,12 +11,20 @@ import {
 } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
-import { mensajeDeError } from '../../nucleo/http/mensaje-de-error';
+import { ClaveTemporal } from '../../compartido/clave-temporal/clave-temporal';
+import { erroresDeCampos, mensajeDeError } from '../../nucleo/http/mensaje-de-error';
 import { RespuestaGrupo, RespuestaIntegrante, RespuestaRol } from '../../nucleo/grupos/modelos-grupos';
 import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
 import { ServicioGrupos } from '../../nucleo/grupos/servicio-grupos';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
 import { SeccionSucesion } from './seccion-sucesion/seccion-sucesion';
+
+/** Lo que muestra el diálogo de clave temporal al crear un integrante nuevo. */
+interface ClaveAMostrar {
+  titulo: string;
+  clave: string;
+  correoEnviado: boolean;
+}
 
 /**
  * Como `Validators.email`, pero ignora espacios al inicio/fin: sin esto, un
@@ -44,7 +53,7 @@ function validarCorreoConEspacios(control: AbstractControl<string>): ValidationE
  */
 @Component({
   selector: 'app-integrantes',
-  imports: [ReactiveFormsModule, RouterLink, TitleCasePipe, SeccionSucesion],
+  imports: [ReactiveFormsModule, RouterLink, TitleCasePipe, SeccionSucesion, ClaveTemporal],
   templateUrl: './integrantes.html',
   styleUrl: './integrantes.scss',
 })
@@ -117,6 +126,37 @@ export class Integrantes implements OnInit {
     idRol: this.fb.control<number | null>(null, Validators.required),
   });
 
+  /** "Crear integrante nuevo": abierto/cerrado, envío en curso y error. */
+  protected readonly creandoIntegrante = signal(false);
+  protected readonly guardandoCrearIntegrante = signal(false);
+  protected readonly errorCrearIntegrante = signal<string | null>(null);
+  protected readonly erroresCamposCrearIntegrante = signal<Record<string, string>>({});
+  /** 409 al crear: la decisión R11 sugiere agregar por correo en vez de crear la cuenta de nuevo. */
+  protected readonly yaExisteCuentaIntegrante = signal(false);
+  /**
+   * La clave temporal vive únicamente mientras este diálogo está montado
+   * (ver `ClaveTemporal`): al cerrarlo se vuelve a `null` y se descarta, sin
+   * quedar en ningún servicio, `localStorage` ni log.
+   */
+  protected readonly claveAMostrar = signal<ClaveAMostrar | null>(null);
+  /**
+   * Botón "Crear integrante nuevo" (toggle): se consulta de nuevo en cada
+   * lectura (signal de `viewChild`), así que siempre apunta a la instancia
+   * vigente aunque el `@if` la haya destruido y recreado mientras el
+   * formulario estuvo abierto.
+   */
+  private readonly botonCrearIntegranteNuevo = viewChild<ElementRef<HTMLButtonElement>>(
+    'botonCrearIntegranteNuevo',
+  );
+  /** Dónde devolver el foco al cerrar `ClaveTemporal`: se fija al abrir el flujo. */
+  private restaurarFoco: (() => void) | null = null;
+
+  protected readonly formularioCrearIntegrante = this.fb.group({
+    nombre: ['', [Validators.required, Validators.maxLength(160)]],
+    email: ['', [Validators.required, validarCorreoConEspacios]],
+    idRol: this.fb.control<number | null>(null, Validators.required),
+  });
+
   ngOnInit(): void {
     this.cargarGrupo();
     this.cargarIntegrantes();
@@ -132,6 +172,7 @@ export class Integrantes implements OnInit {
         this.roles.set(roles);
         if (roles.length > 0) {
           this.formulario.patchValue({ idRol: roles[0].idRol });
+          this.formularioCrearIntegrante.patchValue({ idRol: roles[0].idRol });
         }
       },
       error: (error: unknown) => this.error.set(mensajeDeError(error)),
@@ -164,6 +205,89 @@ export class Integrantes implements OnInit {
         this.error.set(mensajeDeError(error));
       },
     });
+  }
+
+  protected abrirCrearIntegrante(): void {
+    this.restaurarFoco = () => this.botonCrearIntegranteNuevo()?.nativeElement.focus();
+    this.creandoIntegrante.set(true);
+    this.errorCrearIntegrante.set(null);
+    this.erroresCamposCrearIntegrante.set({});
+    this.yaExisteCuentaIntegrante.set(false);
+    this.formularioCrearIntegrante.reset({
+      nombre: '',
+      email: '',
+      idRol: this.roles()[0]?.idRol ?? null,
+    });
+  }
+
+  protected cancelarCrearIntegrante(): void {
+    this.creandoIntegrante.set(false);
+  }
+
+  protected crearIntegrante(): void {
+    if (this.guardandoCrearIntegrante()) return;
+    if (this.formularioCrearIntegrante.invalid) {
+      this.formularioCrearIntegrante.markAllAsTouched();
+      this.errorCrearIntegrante.set(null);
+      this.erroresCamposCrearIntegrante.set(this.erroresLocalesNombreCrearIntegrante());
+      return;
+    }
+
+    this.errorCrearIntegrante.set(null);
+    this.erroresCamposCrearIntegrante.set({});
+    this.yaExisteCuentaIntegrante.set(false);
+    const { nombre, email, idRol } = this.formularioCrearIntegrante.getRawValue();
+    // El formulario es inválido (y crearIntegrante() retorna antes) mientras idRol sea null.
+    this.guardandoCrearIntegrante.set(true);
+    this.servicioGrupos.crearIntegrante(this.idGrupo, { nombre, email: email.trim(), idRol: idRol! }).subscribe({
+      next: (respuesta) => {
+        this.guardandoCrearIntegrante.set(false);
+        this.creandoIntegrante.set(false);
+        this.claveAMostrar.set({
+          titulo: 'Integrante creado',
+          clave: respuesta.claveTemporal,
+          correoEnviado: respuesta.correoEnviado,
+        });
+        this.cargarIntegrantes();
+      },
+      error: (error: unknown) => {
+        this.guardandoCrearIntegrante.set(false);
+        this.yaExisteCuentaIntegrante.set(error instanceof HttpErrorResponse && error.status === 409);
+        const campos = erroresDeCampos(error);
+        this.erroresCamposCrearIntegrante.set(campos);
+        if (Object.keys(campos).length === 0) {
+          this.errorCrearIntegrante.set(mensajeDeError(error));
+        }
+      },
+    });
+  }
+
+  /** Mensaje local para "nombre" cuando el formulario es inválido del lado del cliente (antes de llamar a la API). */
+  private erroresLocalesNombreCrearIntegrante(): Record<string, string> {
+    const control = this.formularioCrearIntegrante.controls.nombre;
+    if (control.hasError('required')) {
+      return { nombre: 'El nombre es obligatorio.' };
+    }
+    if (control.hasError('maxlength')) {
+      return { nombre: 'El nombre no puede superar los 160 caracteres.' };
+    }
+    return {};
+  }
+
+  /** Decisión R11: si ya existe una cuenta con ese correo, se sugiere el flujo de agregar por correo (abajo en esta misma página). */
+  protected irAAgregarPorCorreo(): void {
+    this.creandoIntegrante.set(false);
+    this.yaExisteCuentaIntegrante.set(false);
+    this.errorCrearIntegrante.set(null);
+    document.getElementById('integrante-email')?.focus();
+  }
+
+  /** Cierra `ClaveTemporal` y devuelve el foco a quien abrió el flujo que la mostró. */
+  protected cerrarClave(): void {
+    this.claveAMostrar.set(null);
+    const restaurar = this.restaurarFoco;
+    this.restaurarFoco = null;
+    restaurar?.();
   }
 
   protected cambiarRol(integrante: RespuestaIntegrante, idRol: number): void {

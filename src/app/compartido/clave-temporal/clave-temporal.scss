@@ -1,0 +1,91 @@
+// Diálogo "Contraseña temporal". Sólo tokens semánticos (`var(--mv-...)`):
+// ver src/estilos/_tema.scss.
+
+.clave-temporal__fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: var(--mv-color-texto);
+  opacity: 0.4;
+}
+
+.clave-temporal__caja {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 31;
+  display: flex;
+  flex-direction: column;
+  gap: var(--mv-espacio-3);
+  width: min(92vw, 420px);
+  max-height: 85dvh;
+  overflow-y: auto;
+  padding: var(--mv-espacio-5);
+  border-radius: var(--mv-radio-md);
+  background: var(--mv-color-superficie);
+  transform: translate(-50%, -50%);
+}
+
+h2 {
+  margin: 0;
+}
+
+.clave-temporal__aviso-correo {
+  margin: 0;
+  padding: var(--mv-espacio-2) var(--mv-espacio-3);
+  border-radius: var(--mv-radio-sm);
+  background: var(--mv-color-alerta-fondo);
+  color: var(--mv-color-alerta-texto);
+  font-size: var(--mv-texto-pequeno);
+  font-weight: var(--mv-texto-peso-negrita);
+}
+
+.clave-temporal__etiqueta {
+  margin: 0;
+  font-weight: var(--mv-texto-peso-negrita);
+}
+
+.clave-temporal__clave {
+  margin: 0;
+  padding: var(--mv-espacio-3) var(--mv-espacio-4);
+  border: 2px solid var(--mv-color-borde);
+  border-radius: var(--mv-radio-md);
+  background: var(--mv-color-fondo);
+  font-size: var(--mv-texto-grande);
+  letter-spacing: 0.05em;
+  word-break: break-all;
+}
+
+.clave-temporal__advertencia {
+  margin: 0;
+  color: var(--mv-color-secundario);
+  font-size: var(--mv-texto-pequeno);
+}
+
+.boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 var(--mv-espacio-4);
+  border-radius: var(--mv-radio-md);
+  font-weight: var(--mv-texto-peso-negrita);
+  cursor: pointer;
+
+  &--contorno {
+    border: 2px solid var(--mv-color-primario);
+    background: var(--mv-color-superficie);
+    color: var(--mv-color-primario);
+  }
+
+  &--primario {
+    border: 0;
+    background: var(--mv-color-primario);
+    color: var(--mv-color-sobre-primario);
+    min-height: 56px;
+
+    &:hover {
+      background: var(--mv-color-primario-hover);
+    }
+  }
+}

@@ -10,6 +10,76 @@
       <p class="error" role="alert">{{ mensaje }}</p>
     }
 
+    @if (!creandoUsuario()) {
+      <button #botonCrearUsuario type="button" class="boton boton--primario" (click)="abrirCrear()">
+        Crear usuario
+      </button>
+    }
+
+    @if (creandoUsuario()) {
+      <section class="tarjeta crear-usuario" aria-labelledby="usuarios-crear-titulo">
+        <h2 id="usuarios-crear-titulo">Crear usuario</h2>
+
+        @if (errorCrear(); as mensaje) {
+          <p class="error" role="alert">{{ mensaje }}</p>
+        }
+
+        <form [formGroup]="formularioCrear" (ngSubmit)="crear()" novalidate>
+          <div class="campo">
+            <label class="campo__etiqueta" for="usuario-crear-nombre">Nombre</label>
+            <input
+              id="usuario-crear-nombre"
+              class="campo__control"
+              type="text"
+              formControlName="nombre"
+              [attr.aria-invalid]="erroresCamposCrear()['nombre'] ? true : null"
+              [attr.aria-describedby]="erroresCamposCrear()['nombre'] ? 'usuario-crear-nombre-error' : null"
+            />
+            @if (erroresCamposCrear()['nombre']; as mensaje) {
+              <p id="usuario-crear-nombre-error" class="error" role="alert">{{ mensaje }}</p>
+            }
+          </div>
+
+          <div class="campo">
+            <label class="campo__etiqueta" for="usuario-crear-email">Correo</label>
+            <input
+              id="usuario-crear-email"
+              class="campo__control"
+              type="email"
+              formControlName="email"
+              [attr.aria-invalid]="erroresCamposCrear()['email'] ? true : null"
+              [attr.aria-describedby]="erroresCamposCrear()['email'] ? 'usuario-crear-email-error' : null"
+            />
+            @if (erroresCamposCrear()['email']; as mensaje) {
+              <p id="usuario-crear-email-error" class="error" role="alert">{{ mensaje }}</p>
+            }
+          </div>
+
+          <div class="campo">
+            <label class="campo__etiqueta" for="usuario-crear-telefono">Teléfono</label>
+            <input
+              id="usuario-crear-telefono"
+              class="campo__control"
+              type="tel"
+              formControlName="telefono"
+              [attr.aria-invalid]="erroresCamposCrear()['telefono'] ? true : null"
+              [attr.aria-describedby]="erroresCamposCrear()['telefono'] ? 'usuario-crear-telefono-error' : null"
+            />
+            @if (erroresCamposCrear()['telefono']; as mensaje) {
+              <p id="usuario-crear-telefono-error" class="error" role="alert">{{ mensaje }}</p>
+            }
+          </div>
+
+          <div class="tarjeta__acciones">
+            <button type="button" class="boton boton--contorno" (click)="cancelarCrear()">Cancelar</button>
+            <button type="submit" class="boton boton--primario" [disabled]="guardandoCrear()">
+              {{ guardandoCrear() ? 'Creando…' : 'Crear usuario' }}
+            </button>
+          </div>
+        </form>
+      </section>
+    }
+
     <form class="buscador" [formGroup]="formularioBusqueda" (ngSubmit)="buscar()" novalidate>
       <div class="campo">
         <label class="campo__etiqueta" for="usuarios-buscar">Buscar por nombre o correo</label>
@@ -54,6 +124,16 @@
           <button type="button" class="boton boton--contorno usuario__editar" (click)="editar(usuario)">
             Editar
           </button>
+          @if (puedeReenviarAcceso(usuario)) {
+            <button
+              type="button"
+              class="boton boton--contorno"
+              [disabled]="reenviando() === usuario.idUsuario"
+              (click)="reenviarAcceso(usuario)"
+            >
+              Reenviar accesos
+            </button>
+          }
         </li>
       } @empty {
         <p>No hay usuarios para mostrar.</p>
@@ -139,6 +219,15 @@
           </div>
         </form>
       </section>
+    }
+
+    @if (claveAMostrar(); as datos) {
+      <app-clave-temporal
+        [titulo]="datos.titulo"
+        [clave]="datos.clave"
+        [correoEnviado]="datos.correoEnviado"
+        (cerrar)="cerrarClave()"
+      />
     }
   </div>
 </div>

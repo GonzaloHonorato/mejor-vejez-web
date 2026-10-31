@@ -1,13 +1,21 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { FormControl, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
+import { ClaveTemporal } from '../../compartido/clave-temporal/clave-temporal';
 import { erroresDeCampos, mensajeDeError } from '../../nucleo/http/mensaje-de-error';
 import { RespuestaEstadoCatalogo, ServicioCatalogos } from '../../nucleo/catalogos/servicio-catalogos';
 import { RespuestaUsuario } from '../../nucleo/usuarios/modelos-usuarios';
 import { ServicioUsuarios } from '../../nucleo/usuarios/servicio-usuarios';
 
 const TAMANO_PAGINA = 10;
+
+/** Lo que muestra el diálogo de clave temporal: cuenta creada o acceso reenviado. */
+interface ClaveAMostrar {
+  titulo: string;
+  clave: string;
+  correoEnviado: boolean;
+}
 
 /**
  * Página "Administración de usuarios" (`/administracion/usuarios`, solo
@@ -19,7 +27,7 @@ const TAMANO_PAGINA = 10;
  */
 @Component({
   selector: 'app-administracion-usuarios',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, ClaveTemporal],
   templateUrl: './administracion-usuarios.html',
   styleUrl: './administracion-usuarios.scss',
 })
@@ -67,6 +75,35 @@ export class AdministracionUsuarios implements OnInit {
     nombre: ['', Validators.required],
     telefono: [''],
     esAdministrador: [false],
+  });
+
+  /** "Crear usuario": abierto/cerrado, envío en curso, error y campos. */
+  protected readonly creandoUsuario = signal(false);
+  protected readonly guardandoCrear = signal(false);
+  protected readonly errorCrear = signal<string | null>(null);
+  protected readonly erroresCamposCrear = signal<Record<string, string>>({});
+  /** Usuario cuyo "Reenviar accesos" está en curso (bloquea un segundo clic sobre la misma fila). */
+  protected readonly reenviando = signal<number | null>(null);
+  /**
+   * La clave temporal vive únicamente mientras este diálogo está montado
+   * (ver `ClaveTemporal`): al cerrarlo se vuelve a `null` y se descarta, sin
+   * quedar en ningún servicio, `localStorage` ni log.
+   */
+  protected readonly claveAMostrar = signal<ClaveAMostrar | null>(null);
+  /**
+   * Botón "Crear usuario" (toggle): se consulta de nuevo en cada lectura
+   * (signal de `viewChild`), así que siempre apunta a la instancia vigente
+   * aunque el `@if` la haya destruido y recreado mientras el formulario
+   * estuvo abierto.
+   */
+  private readonly botonCrearUsuario = viewChild<ElementRef<HTMLButtonElement>>('botonCrearUsuario');
+  /** Dónde devolver el foco al cerrar `ClaveTemporal`: se fija al abrir cada flujo. */
+  private restaurarFoco: (() => void) | null = null;
+
+  protected readonly formularioCrear = this.fb.group({
+    nombre: ['', [Validators.required, Validators.maxLength(160)]],
+    email: ['', [Validators.required, Validators.email]],
+    telefono: [''],
   });
 
   ngOnInit(): void {
@@ -158,6 +195,113 @@ export class AdministracionUsuarios implements OnInit {
           }
         },
       });
+  }
+
+  protected abrirCrear(): void {
+    this.restaurarFoco = () => this.botonCrearUsuario()?.nativeElement.focus();
+    this.creandoUsuario.set(true);
+    this.errorCrear.set(null);
+    this.erroresCamposCrear.set({});
+    this.formularioCrear.reset({ nombre: '', email: '', telefono: '' });
+  }
+
+  protected cancelarCrear(): void {
+    this.creandoUsuario.set(false);
+  }
+
+  protected crear(): void {
+    if (this.guardandoCrear()) return;
+    if (this.formularioCrear.invalid) {
+      this.formularioCrear.markAllAsTouched();
+      this.errorCrear.set(null);
+      this.erroresCamposCrear.set(this.erroresLocalesNombreCrear());
+      return;
+    }
+
+    this.errorCrear.set(null);
+    this.erroresCamposCrear.set({});
+    const { nombre, email, telefono } = this.formularioCrear.getRawValue();
+    this.guardandoCrear.set(true);
+    this.servicioUsuarios
+      .crear({ nombre, email, telefono: telefono.trim() === '' ? null : telefono })
+      .subscribe({
+        next: (respuesta) => {
+          this.guardandoCrear.set(false);
+          this.creandoUsuario.set(false);
+          this.claveAMostrar.set({
+            titulo: 'Cuenta creada',
+            clave: respuesta.claveTemporal,
+            correoEnviado: respuesta.correoEnviado,
+          });
+          this.cargar();
+        },
+        error: (error: unknown) => {
+          this.guardandoCrear.set(false);
+          const campos = erroresDeCampos(error);
+          this.erroresCamposCrear.set(campos);
+          if (Object.keys(campos).length === 0) {
+            this.errorCrear.set(mensajeDeError(error));
+          }
+        },
+      });
+  }
+
+  /** Mensaje local para "nombre" cuando el formulario es inválido del lado del cliente (antes de llamar a la API). */
+  private erroresLocalesNombreCrear(): Record<string, string> {
+    const control = this.formularioCrear.controls.nombre;
+    if (control.hasError('required')) {
+      return { nombre: 'El nombre es obligatorio.' };
+    }
+    if (control.hasError('maxlength')) {
+      return { nombre: 'El nombre no puede superar los 160 caracteres.' };
+    }
+    return {};
+  }
+
+  /**
+   * La API responde 422 a "Reenviar accesos" para un usuario que no está
+   * ACTIVO: el botón ni se ofrece. El estado real se busca en el catálogo
+   * cargado (`estados()`), no por un `idEstado` fijo (puede variar según
+   * el entorno/seed).
+   */
+  protected puedeReenviarAcceso(usuario: RespuestaUsuario): boolean {
+    return (
+      this.estados().find((estado) => estado.idEstado === usuario.idEstado)?.codigo === 'ACTIVO'
+    );
+  }
+
+  protected reenviarAcceso(usuarioObjetivo: RespuestaUsuario): void {
+    if (this.reenviando() !== null) return;
+    if (!window.confirm(`¿Reenviar los accesos a ${usuarioObjetivo.nombre}?`)) return;
+
+    // El botón de la fila no se destruye mientras dura el pedido: guardar la
+    // referencia directa (no hace falta volver a consultarla) basta.
+    const origen = document.activeElement as HTMLElement | null;
+    this.restaurarFoco = () => origen?.focus();
+    this.error.set(null);
+    this.reenviando.set(usuarioObjetivo.idUsuario);
+    this.servicioUsuarios.reenviarAcceso(usuarioObjetivo.idUsuario).subscribe({
+      next: (respuesta) => {
+        this.reenviando.set(null);
+        this.claveAMostrar.set({
+          titulo: 'Acceso reenviado',
+          clave: respuesta.claveTemporal,
+          correoEnviado: respuesta.correoEnviado,
+        });
+      },
+      error: (error: unknown) => {
+        this.reenviando.set(null);
+        this.error.set(mensajeDeError(error));
+      },
+    });
+  }
+
+  /** Cierra `ClaveTemporal` y devuelve el foco a quien abrió el flujo que la mostró. */
+  protected cerrarClave(): void {
+    this.claveAMostrar.set(null);
+    const restaurar = this.restaurarFoco;
+    this.restaurarFoco = null;
+    restaurar?.();
   }
 
   private cargar(): void {

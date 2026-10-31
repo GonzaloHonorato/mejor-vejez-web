@@ -1,18 +1,30 @@
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
+import { of, throwError } from 'rxjs';
 
 import { Ingreso } from './ingreso';
 import { ServicioAutenticacion } from '../../nucleo/autenticacion/servicio-autenticacion';
+import { ServicioRecuperarClave } from '../../nucleo/autenticacion/servicio-recuperar-clave';
 
-function configurar(ingresarConCorreo: ReturnType<typeof vi.fn>, volver: string | null = null) {
+function configurar(
+  ingresarConCorreo: ReturnType<typeof vi.fn>,
+  volver: string | null = null,
+  solicitarRecuperarClave: ReturnType<typeof vi.fn> = vi.fn(),
+  queryParams: Record<string, string> = {},
+) {
   TestBed.configureTestingModule({
     imports: [Ingreso],
     providers: [
       provideRouter([]),
       {
         provide: ActivatedRoute,
-        useValue: { snapshot: { queryParamMap: convertToParamMap(volver ? { volver } : {}) } },
+        useValue: {
+          snapshot: {
+            queryParamMap: convertToParamMap({ ...(volver ? { volver } : {}), ...queryParams }),
+          },
+        },
       },
       {
         provide: ServicioAutenticacion,
@@ -24,6 +36,7 @@ function configurar(ingresarConCorreo: ReturnType<typeof vi.fn>, volver: string 
           ingresarConGoogle: vi.fn(),
         },
       },
+      { provide: ServicioRecuperarClave, useValue: { solicitar: solicitarRecuperarClave } },
     ],
   });
 }
@@ -62,5 +75,67 @@ describe('Ingreso', () => {
 
     expect(ingresar).toHaveBeenCalledWith('ana@correo.cl', 'clave-buena');
     expect(navegar).toHaveBeenCalledWith('/estado');
+  });
+
+  it('olvideMuestraMismoMensajeSiempre', async () => {
+    const MENSAJE = 'Si el correo tiene una cuenta, te enviamos un enlace.';
+
+    async function recuperarYLeerMensaje(
+      solicitar: ReturnType<typeof vi.fn>,
+    ): Promise<string | null | undefined> {
+      TestBed.resetTestingModule();
+      configurar(vi.fn(), null, solicitar);
+      const fixture = TestBed.createComponent(Ingreso);
+      await fixture.whenStable();
+      const elemento = fixture.nativeElement as HTMLElement;
+      elemento.querySelector<HTMLButtonElement>('#ingreso-olvide')!.click();
+      await fixture.whenStable();
+      const campoCorreo = elemento.querySelector<HTMLInputElement>('#recuperar-correo')!;
+      campoCorreo.value = 'ana@correo.cl';
+      campoCorreo.dispatchEvent(new Event('input'));
+      elemento.querySelectorAll('form')[1].dispatchEvent(new Event('submit'));
+      await fixture.whenStable();
+      return elemento.querySelector('[role="status"]')?.textContent;
+    }
+
+    expect(await recuperarYLeerMensaje(vi.fn().mockReturnValue(of(undefined)))).toContain(MENSAJE);
+    expect(
+      await recuperarYLeerMensaje(vi.fn().mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })))),
+    ).toContain(MENSAJE);
+  });
+
+  it('abreElFormularioDeRecuperarSiVieneRecuperarEnLaUrl', async () => {
+    configurar(vi.fn(), null, vi.fn(), { recuperar: '1' });
+
+    const fixture = TestBed.createComponent(Ingreso);
+    await fixture.whenStable();
+    const elemento = fixture.nativeElement as HTMLElement;
+
+    expect(elemento.querySelector('#ingreso-olvide')).toBeFalsy();
+    expect(elemento.querySelector('#recuperar-correo')).toBeTruthy();
+  });
+
+  it('olvideMuestraElDetalleSiHayDemasiadosIntentos', async () => {
+    const error = new HttpErrorResponse({
+      status: 429,
+      error: { detail: 'Demasiados intentos. Prueba más tarde.' },
+    });
+    configurar(vi.fn(), null, vi.fn().mockReturnValue(throwError(() => error)));
+
+    const fixture = TestBed.createComponent(Ingreso);
+    await fixture.whenStable();
+    const elemento = fixture.nativeElement as HTMLElement;
+    elemento.querySelector<HTMLButtonElement>('#ingreso-olvide')!.click();
+    await fixture.whenStable();
+    elemento.querySelector<HTMLInputElement>('#recuperar-correo')!.value = 'ana@correo.cl';
+    elemento
+      .querySelector<HTMLInputElement>('#recuperar-correo')!
+      .dispatchEvent(new Event('input'));
+    elemento.querySelectorAll('form')[1].dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    expect(elemento.querySelector('[role="status"]')?.textContent).toContain(
+      'Demasiados intentos. Prueba más tarde.',
+    );
   });
 });

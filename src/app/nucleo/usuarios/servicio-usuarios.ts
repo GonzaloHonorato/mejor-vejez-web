@@ -3,7 +3,13 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { configuracionEjecucion } from '../configuracion/configuracion-ejecucion';
-import { RespuestaPagina, RespuestaUsuario } from './modelos-usuarios';
+import {
+  RespuestaAccesoReenviado,
+  RespuestaCuentaCreada,
+  RespuestaPagina,
+  RespuestaUsuario,
+  SolicitudCrearUsuario,
+} from './modelos-usuarios';
 
 /** Filtros aceptados por `GET /api/usuarios`. */
 export interface FiltroUsuarios {
@@ -24,6 +30,16 @@ export interface CambiosUsuario {
 export class ServicioUsuarios {
   private readonly http = inject(HttpClient);
   private readonly urlBase = `${configuracionEjecucion.urlApi}/api/usuarios`;
+
+  /** Crea una cuenta nueva (Firebase + `USUARIO`): la contraseña temporal vuelve una sola vez. */
+  crear(datos: SolicitudCrearUsuario): Observable<RespuestaCuentaCreada> {
+    return this.http.post<RespuestaCuentaCreada>(this.urlBase, datos);
+  }
+
+  /** Fija una contraseña temporal nueva y pide a Alertas que la reenvíe por correo. */
+  reenviarAcceso(idUsuario: number): Observable<RespuestaAccesoReenviado> {
+    return this.http.post<RespuestaAccesoReenviado>(`${this.urlBase}/${idUsuario}/reenviar-acceso`, {});
+  }
 
   listar(filtro: FiltroUsuarios = {}): Observable<RespuestaPagina<RespuestaUsuario>> {
     const parametros: Record<string, string> = {};

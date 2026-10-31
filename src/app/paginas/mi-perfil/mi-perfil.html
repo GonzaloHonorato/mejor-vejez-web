@@ -61,6 +61,61 @@
       </form>
     </section>
 
+    @if (auth.tieneAccesoConClave()) {
+      <section class="tarjeta" aria-labelledby="clave-titulo">
+        <h2 id="clave-titulo">Cambiar contraseña</h2>
+
+        <form [formGroup]="formularioClave" (ngSubmit)="cambiarClave()" novalidate>
+          <div class="campo">
+            <label class="campo__etiqueta" for="clave-actual">Contraseña actual</label>
+            <input
+              id="clave-actual"
+              class="campo__control"
+              type="password"
+              autocomplete="current-password"
+              formControlName="actual"
+            />
+          </div>
+
+          <div class="campo">
+            <label class="campo__etiqueta" for="clave-nueva">Contraseña nueva</label>
+            <input
+              id="clave-nueva"
+              class="campo__control"
+              type="password"
+              autocomplete="new-password"
+              formControlName="nueva"
+            />
+          </div>
+
+          <div class="campo">
+            <label class="campo__etiqueta" for="clave-confirmacion">Confirma la contraseña nueva</label>
+            <input
+              id="clave-confirmacion"
+              class="campo__control"
+              type="password"
+              autocomplete="new-password"
+              formControlName="confirmacion"
+            />
+          </div>
+
+          @if (errorClave(); as mensaje) {
+            <p class="error" role="alert">{{ mensaje }}</p>
+          }
+
+          <p class="confirmacion" role="status">
+            @if (confirmacionClave()) {
+              Contraseña actualizada.
+            }
+          </p>
+
+          <button type="submit" class="boton boton--primario" [disabled]="cambiandoClave()">
+            {{ cambiandoClave() ? 'Guardando…' : 'Cambiar contraseña' }}
+          </button>
+        </form>
+      </section>
+    }
+
     <app-canales-notificacion />
   </div>
 </div>

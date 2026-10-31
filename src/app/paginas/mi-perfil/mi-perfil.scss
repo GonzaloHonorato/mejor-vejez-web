@@ -30,6 +30,10 @@ h1 {
   max-width: var(--mv-ancho-lectura);
 }
 
+h2 {
+  margin: 0;
+}
+
 .campo {
   display: flex;
   flex-direction: column;

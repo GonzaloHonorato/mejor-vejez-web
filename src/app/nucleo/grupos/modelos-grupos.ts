@@ -28,3 +28,20 @@ export interface RespuestaIntegrante {
   fechaIncorporacion: string;
   fechaDesactivacion: string | null;
 }
+
+/** Datos para `POST /api/grupos/{idGrupo}/integrantes/nuevo` (coordinador o administrador). */
+export interface SolicitudCrearIntegrante {
+  nombre: string;
+  email: string;
+  idRol: number;
+}
+
+/**
+ * Contrato de `POST /api/grupos/{idGrupo}/integrantes/nuevo`: la contraseña
+ * temporal viaja una sola vez, en esta respuesta.
+ */
+export interface RespuestaIntegranteCreado {
+  integrante: RespuestaIntegrante;
+  claveTemporal: string;
+  correoEnviado: boolean;
+}

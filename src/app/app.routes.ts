@@ -16,6 +16,12 @@ export const routes: Routes = [
       import('./paginas/estado-servicio/estado-servicio').then((m) => m.EstadoServicio),
   },
   {
+    path: 'restablecer-clave',
+    title: 'Restablecer contraseña · Mejor Vejez',
+    loadComponent: () =>
+      import('./paginas/restablecer-clave/restablecer-clave').then((m) => m.RestablecerClave),
+  },
+  {
     path: '',
     canActivate: [guardAutenticado],
     loadComponent: () => import('./compartido/marco-app/marco-app').then((m) => m.MarcoApp),
@@ -58,9 +64,8 @@ export const routes: Routes = [
         loadComponent: () => import('./paginas/tareas/tareas').then((m) => m.Tareas),
       },
       {
-        // IMPORTANTE: 'tareas/nueva' debe quedar ANTES de 'tareas/:idTarea'
-        // (Tarea 11): si no, el router la confundiría con un idTarea
-        // literal "nueva".
+        // IMPORTANTE: 'tareas/nueva' debe quedar ANTES de 'tareas/:idTarea':
+        // si no, el router la confundiría con un idTarea literal "nueva".
         path: 'tareas/nueva',
         title: 'Nueva tarea · Mejor Vejez',
         data: { tituloPagina: 'Nueva tarea' },

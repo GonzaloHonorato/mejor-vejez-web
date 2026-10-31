@@ -3,7 +3,13 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { configuracionEjecucion } from '../configuracion/configuracion-ejecucion';
-import { RespuestaGrupo, RespuestaIntegrante, RespuestaRol } from './modelos-grupos';
+import {
+  RespuestaGrupo,
+  RespuestaIntegrante,
+  RespuestaIntegranteCreado,
+  RespuestaRol,
+  SolicitudCrearIntegrante,
+} from './modelos-grupos';
 
 /** Cambios aceptados por `PATCH /api/grupos/{idGrupo}`. */
 export interface CambiosGrupo {
@@ -49,6 +55,11 @@ export class ServicioGrupos {
 
   incorporar(idGrupo: number, datos: DatosIncorporarIntegrante): Observable<RespuestaIntegrante> {
     return this.http.post<RespuestaIntegrante>(`${this.urlBase}/${idGrupo}/integrantes`, datos);
+  }
+
+  /** Crea una cuenta nueva y la incorpora al grupo de una vez: la contraseña temporal vuelve una sola vez. */
+  crearIntegrante(idGrupo: number, datos: SolicitudCrearIntegrante): Observable<RespuestaIntegranteCreado> {
+    return this.http.post<RespuestaIntegranteCreado>(`${this.urlBase}/${idGrupo}/integrantes/nuevo`, datos);
   }
 
   cambiarRol(idGrupo: number, idIntegrante: number, idRol: number): Observable<RespuestaIntegrante> {

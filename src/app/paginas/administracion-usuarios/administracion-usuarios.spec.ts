@@ -36,13 +36,20 @@ function pagina(elementos: RespuestaUsuario[], total = elementos.length): Respue
 
 async function configurar(
   usuariosIniciales: RespuestaUsuario[] = [usuario(1, 'Ana')],
-  overrides: { listar?: ReturnType<typeof vi.fn>; estados?: ReturnType<typeof vi.fn> } = {},
+  overrides: {
+    listar?: ReturnType<typeof vi.fn>;
+    estados?: ReturnType<typeof vi.fn>;
+    crear?: ReturnType<typeof vi.fn>;
+    reenviarAcceso?: ReturnType<typeof vi.fn>;
+  } = {},
 ) {
   const servicioUsuarios = {
     listar: overrides.listar ?? vi.fn(() => of(pagina(usuariosIniciales))),
     obtener: vi.fn(),
     actualizar: vi.fn(),
     cambiarEstado: vi.fn(),
+    crear: overrides.crear ?? vi.fn(),
+    reenviarAcceso: overrides.reenviarAcceso ?? vi.fn(),
   };
   const servicioCatalogos = { estados: overrides.estados ?? vi.fn(() => of(ESTADOS)) };
 
@@ -55,6 +62,8 @@ async function configurar(
     ],
   });
   const fixture = TestBed.createComponent(AdministracionUsuarios);
+  // Adjunto al documento: las aserciones de foco necesitan elementos conectados.
+  document.body.appendChild(fixture.nativeElement);
   await fixture.whenStable();
   return {
     fixture,
@@ -69,7 +78,17 @@ function escribir(campo: HTMLInputElement, valor: string): void {
   campo.dispatchEvent(new Event('input'));
 }
 
+function botonConTexto(elemento: HTMLElement, texto: string): HTMLButtonElement | undefined {
+  return Array.from(elemento.querySelectorAll('button')).find((boton) =>
+    boton.textContent?.trim().includes(texto),
+  );
+}
+
 describe('AdministracionUsuarios', () => {
+  afterEach(() => {
+    document.body.innerHTML = '';
+  });
+
   it('buscaPorTexto', async () => {
     const { fixture, elemento, servicioUsuarios } = await configurar();
 
@@ -187,5 +206,152 @@ describe('AdministracionUsuarios', () => {
     expect(elemento.querySelector('[role="alert"]')?.textContent).toContain(
       'No pudimos cargar los estados.',
     );
+  });
+
+  it('crearUsuarioMuestraClaveUnaVez', async () => {
+    const { fixture, elemento, servicioUsuarios } = await configurar([]);
+    servicioUsuarios.crear.mockReturnValue(
+      of({ usuario: usuario(2, 'Beto'), claveTemporal: 'Ab3xZ9qLm2Pq', correoEnviado: true }),
+    );
+
+    botonConTexto(elemento, 'Crear usuario')!.click();
+    await fixture.whenStable();
+
+    escribir(elemento.querySelector<HTMLInputElement>('#usuario-crear-nombre')!, 'Beto');
+    escribir(elemento.querySelector<HTMLInputElement>('#usuario-crear-email')!, 'beto@correo.cl');
+    elemento.querySelector<HTMLFormElement>('.crear-usuario form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    expect(servicioUsuarios.crear).toHaveBeenCalledWith({
+      nombre: 'Beto',
+      email: 'beto@correo.cl',
+      telefono: null,
+    });
+    const dialogo = elemento.querySelector('[role="dialog"]');
+    expect(dialogo?.textContent).toContain('Ab3xZ9qLm2Pq');
+    expect(dialogo?.textContent).toContain('Esta contraseña no se volverá a mostrar');
+  });
+
+  it('errorYaExisteMuestraMensaje', async () => {
+    const { fixture, elemento, servicioUsuarios } = await configurar([]);
+    servicioUsuarios.crear.mockReturnValue(
+      throwError(
+        () =>
+          new HttpErrorResponse({
+            status: 409,
+            error: { detail: 'Ya existe una cuenta con ese correo' },
+          }),
+      ),
+    );
+
+    botonConTexto(elemento, 'Crear usuario')!.click();
+    await fixture.whenStable();
+
+    escribir(elemento.querySelector<HTMLInputElement>('#usuario-crear-nombre')!, 'Beto');
+    escribir(elemento.querySelector<HTMLInputElement>('#usuario-crear-email')!, 'beto@correo.cl');
+    elemento.querySelector<HTMLFormElement>('.crear-usuario form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    expect(elemento.querySelector('.crear-usuario [role="alert"]')?.textContent).toContain(
+      'Ya existe una cuenta con ese correo',
+    );
+    expect(elemento.querySelector('[role="dialog"]')).toBeFalsy();
+  });
+
+  it('reenviarAccesoPideConfirmacion', async () => {
+    const { fixture, elemento, servicioUsuarios } = await configurar([usuario(1, 'Ana')]);
+    servicioUsuarios.reenviarAcceso.mockReturnValue(of({ claveTemporal: 'Qw7mN4rTy8Hp', correoEnviado: false }));
+    const confirmar = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    botonConTexto(elemento, 'Reenviar accesos')!.click();
+    await fixture.whenStable();
+
+    expect(confirmar).toHaveBeenCalled();
+    expect(servicioUsuarios.reenviarAcceso).toHaveBeenCalledWith(1);
+    const dialogo = elemento.querySelector('[role="dialog"]');
+    expect(dialogo?.textContent).toContain('Qw7mN4rTy8Hp');
+    expect(dialogo?.querySelector('[role="alert"]')?.textContent).toContain('No pudimos enviar el correo');
+  });
+
+  it('noMuestraReenviarAccesosSiElUsuarioNoEstaActivo', async () => {
+    const { elemento } = await configurar([usuario(1, 'Ana', false, 2)]);
+
+    expect(botonConTexto(elemento, 'Reenviar accesos')).toBeFalsy();
+  });
+
+  it('reenviarAccesoCanceladoNoLlamaAlServicio', async () => {
+    const { fixture, elemento, servicioUsuarios } = await configurar([usuario(1, 'Ana')]);
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    botonConTexto(elemento, 'Reenviar accesos')!.click();
+    await fixture.whenStable();
+
+    expect(servicioUsuarios.reenviarAcceso).not.toHaveBeenCalled();
+  });
+
+  it('alCerrarDialogoLaClaveSeDescarta', async () => {
+    const { fixture, elemento, servicioUsuarios } = await configurar([usuario(1, 'Ana')]);
+    servicioUsuarios.reenviarAcceso.mockReturnValue(of({ claveTemporal: 'Qw7mN4rTy8Hp', correoEnviado: true }));
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    botonConTexto(elemento, 'Reenviar accesos')!.click();
+    await fixture.whenStable();
+    expect(elemento.querySelector('[role="dialog"]')?.textContent).toContain('Qw7mN4rTy8Hp');
+
+    botonConTexto(elemento.querySelector('[role="dialog"]')!, 'Cerrar')!.click();
+    await fixture.whenStable();
+
+    expect(elemento.querySelector('[role="dialog"]')).toBeFalsy();
+    expect(elemento.textContent).not.toContain('Qw7mN4rTy8Hp');
+  });
+
+  it('alCerrarDialogoDevuelveElFocoAlBotonCrearUsuario', async () => {
+    const { fixture, elemento, servicioUsuarios } = await configurar([]);
+    servicioUsuarios.crear.mockReturnValue(
+      of({ usuario: usuario(2, 'Beto'), claveTemporal: 'Ab3xZ9qLm2Pq', correoEnviado: true }),
+    );
+
+    botonConTexto(elemento, 'Crear usuario')!.click();
+    await fixture.whenStable();
+    escribir(elemento.querySelector<HTMLInputElement>('#usuario-crear-nombre')!, 'Beto');
+    escribir(elemento.querySelector<HTMLInputElement>('#usuario-crear-email')!, 'beto@correo.cl');
+    elemento.querySelector<HTMLFormElement>('.crear-usuario form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    botonConTexto(elemento.querySelector('[role="dialog"]')!, 'Cerrar')!.click();
+    await fixture.whenStable();
+
+    expect(document.activeElement).toBe(botonConTexto(elemento, 'Crear usuario'));
+  });
+
+  it('alCerrarDialogoDevuelveElFocoAlBotonReenviarAccesos', async () => {
+    const { fixture, elemento, servicioUsuarios } = await configurar([usuario(1, 'Ana')]);
+    servicioUsuarios.reenviarAcceso.mockReturnValue(of({ claveTemporal: 'Qw7mN4rTy8Hp', correoEnviado: true }));
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const botonReenviar = botonConTexto(elemento, 'Reenviar accesos')!;
+    botonReenviar.focus();
+
+    botonReenviar.click();
+    await fixture.whenStable();
+    botonConTexto(elemento.querySelector('[role="dialog"]')!, 'Cerrar')!.click();
+    await fixture.whenStable();
+
+    expect(document.activeElement).toBe(botonReenviar);
+  });
+
+  it('nombreDemasiadoLargoMuestraMensajeAlCrear', async () => {
+    const { fixture, elemento, servicioUsuarios } = await configurar([]);
+
+    botonConTexto(elemento, 'Crear usuario')!.click();
+    await fixture.whenStable();
+    escribir(elemento.querySelector<HTMLInputElement>('#usuario-crear-nombre')!, 'A'.repeat(161));
+    escribir(elemento.querySelector<HTMLInputElement>('#usuario-crear-email')!, 'beto@correo.cl');
+    elemento.querySelector<HTMLFormElement>('.crear-usuario form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    expect(elemento.querySelector('#usuario-crear-nombre-error')?.textContent).toContain(
+      'no puede superar los 160 caracteres',
+    );
+    expect(servicioUsuarios.crear).not.toHaveBeenCalled();
   });
 });

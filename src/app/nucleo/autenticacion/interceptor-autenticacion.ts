@@ -21,9 +21,18 @@ function esOrigenDeLaApi(url: string): boolean {
   }
 }
 
-/** Adjunta el ID token de Firebase sólo a las llamadas al origen de NUESTRA API. */
+/** true si la ruta es pública (`/api/publico/**`): nunca lleva Bearer, ni vencido ni vigente. */
+function esRutaPublica(url: string): boolean {
+  try {
+    return new URL(url, location.href).pathname.includes('/api/publico/');
+  } catch {
+    return false;
+  }
+}
+
+/** Adjunta el ID token de Firebase sólo a las llamadas al origen de NUESTRA API, salvo `/api/publico/**`. */
 export const interceptorAutenticacion: HttpInterceptorFn = (req, next) => {
-  if (!esOrigenDeLaApi(req.url)) {
+  if (!esOrigenDeLaApi(req.url) || esRutaPublica(req.url)) {
     return next(req);
   }
   const auth = inject(ServicioAutenticacion);

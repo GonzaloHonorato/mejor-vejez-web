@@ -46,4 +46,18 @@ describe('interceptorAutenticacion', () => {
   it('noAgregaElTokenAUnOrigenQueSoloEmpiezaIgual', async () => {
     expect(await cabeceraAutorizacionPara('https://api.x.cl.otro.com/api/yo')).toBeNull();
   });
+
+  it('noAgregaElTokenARutasPublicas', async () => {
+    expect(await cabeceraAutorizacionPara(`${URL_API}/api/publico/recuperar-clave`)).toBeNull();
+  });
+
+  it('agregaElTokenAUnaRutaQueSoloEmpiezaIgualQuePublico', async () => {
+    // '/api/publicos/x' NO es '/api/publico/**': no debe tratarse como ruta pública.
+    expect(await cabeceraAutorizacionPara(`${URL_API}/api/publicos/x`)).toBe('Bearer token-abc');
+  });
+
+  it('agregaElTokenARutaPublicoSinBarraFinal', async () => {
+    // '/api/publico' (sin la barra final) no matchea '/api/publico/': no es la ruta pública.
+    expect(await cabeceraAutorizacionPara(`${URL_API}/api/publico`)).toBe('Bearer token-abc');
+  });
 });

@@ -1,0 +1,32 @@
+<div class="clave-temporal__fondo" aria-hidden="true" (click)="cerrar.emit()"></div>
+
+<div
+  class="clave-temporal__caja"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="clave-temporal-titulo"
+  (keydown)="atraparFoco($event)"
+>
+  <h2 id="clave-temporal-titulo">{{ titulo() }}</h2>
+
+  @if (!correoEnviado()) {
+    <p class="clave-temporal__aviso-correo" role="alert">
+      No pudimos enviar el correo. Comparte esta contraseña directamente con la persona.
+    </p>
+  }
+
+  <p class="clave-temporal__etiqueta">Contraseña temporal</p>
+  <p class="clave-temporal__clave">{{ clave() }}</p>
+
+  <button type="button" class="clave-temporal__copiar boton boton--contorno" (click)="copiar()">
+    {{ copiada() ? 'Copiada' : 'Copiar' }}
+  </button>
+
+  @if (errorCopiar(); as mensaje) {
+    <p class="clave-temporal__advertencia" role="status">{{ mensaje }}</p>
+  }
+
+  <p class="clave-temporal__advertencia">Esta contraseña no se volverá a mostrar.</p>
+
+  <button type="button" class="boton boton--primario" (click)="cerrar.emit()">Cerrar</button>
+</div>
