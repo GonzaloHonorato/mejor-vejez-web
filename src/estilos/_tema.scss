@@ -97,4 +97,10 @@
   // Layout
   --mv-ancho-contenido: var(--mv-p-ancho-contenido);
   --mv-ancho-lectura: var(--mv-p-ancho-lectura);
+
+  // Desplazamiento: al traer a la vista un formulario, aviso o campo enfocado
+  // se deja este aire arriba y abajo; en celular, abajo también el alto de la
+  // barra de pestañas fija (ver `scroll-padding` en `_base.scss`).
+  --mv-desplazamiento-aire: var(--mv-espacio-4);
+  --mv-alto-pestanas: var(--mv-p-alto-pestanas);
 }

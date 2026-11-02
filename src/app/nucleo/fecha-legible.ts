@@ -68,3 +68,13 @@ export function fechaConAnio(iso: string | null | undefined): string {
 export function fechaHoraConAnio(iso: string): string {
   return `${fechaConAnio(iso)} · ${formatearHora(iso)}`;
 }
+
+/**
+ * Fecha calendario `yyyy-mm-dd` corta con el día de la semana, en minúscula,
+ * para ir dentro de una frase: "lun 2 nov", o "dom 8 nov 2026" con año.
+ */
+export function fechaCortaConDia(fecha: string, conAnio = false): string {
+  const [anio, mes, numero] = fecha.split('-').map(Number);
+  const corta = `${nombreDia(fecha).slice(0, 3)} ${numero} ${MESES[mes - 1]}`;
+  return conAnio ? `${corta} ${anio}` : corta;
+}

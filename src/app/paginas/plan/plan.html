@@ -32,7 +32,7 @@
     </section>
   } @else {
     @if (errorGeneral(); as mensaje) {
-      <div class="mv-aviso mv-aviso--error" role="alert">
+      <div id="plan-error-general" class="mv-aviso mv-aviso--error" role="alert">
         <p>{{ mensaje }}</p>
         @if (!plan()) {
           <button type="button" class="mv-boton" (click)="reintentar()">Reintentar</button>
@@ -94,7 +94,7 @@
           </div>
 
           @if (puedeAdministrar()) {
-            <div class="mv-tarjeta__pie">
+            <div id="plan-acciones" class="mv-tarjeta__pie">
               <app-boton-dividido
                 variante="secundario"
                 [principal]="accionPrincipalPlan()"
@@ -109,7 +109,7 @@
           }
         </section>
       } @else {
-        <section class="mv-tarjeta" aria-labelledby="plan-editar-titulo">
+        <section id="plan-editar" class="mv-tarjeta" aria-labelledby="plan-editar-titulo">
           <div class="mv-tarjeta__cabecera">
             <h2 id="plan-editar-titulo" class="mv-tarjeta__titulo">Editar plan</h2>
           </div>
@@ -181,17 +181,22 @@
 
       <section class="medicamentos" aria-labelledby="plan-medicamentos-titulo">
         <div class="medicamentos__cabecera">
-          <h2 id="plan-medicamentos-titulo">Medicamentos</h2>
+          <h2 id="plan-medicamentos-titulo" tabindex="-1">Medicamentos</h2>
           <span class="cuenta">{{ detalles().length }} {{ detalles().length === 1 ? 'medicamento' : 'medicamentos' }}</span>
           @if (puedeEditarMedicamentos() && !editando()) {
-            <button type="button" class="mv-boton mv-boton--primario" (click)="agregarMedicamento()">
+            <button
+              id="plan-agregar-medicamento"
+              type="button"
+              class="mv-boton mv-boton--primario"
+              (click)="agregarMedicamento()"
+            >
               Agregar medicamento
             </button>
           }
         </div>
 
         @if (errorAccionDetalle(); as mensaje) {
-          <p class="mv-aviso mv-aviso--error" role="alert">{{ mensaje }}</p>
+          <p id="plan-error-detalle" class="mv-aviso mv-aviso--error" role="alert">{{ mensaje }}</p>
         }
 
         @if (detalles().length === 0) {
@@ -272,7 +277,7 @@
                     }
                   </tr>
                   @if (fila.editandoCantidad) {
-                    <tr role="row" class="fila-cantidad">
+                    <tr role="row" class="fila-cantidad" [attr.data-id-cantidad]="d.idDetallePlan">
                       <td role="cell" [attr.colspan]="8">
                         <div class="mv-campo cantidad">
                           <label class="mv-campo__etiqueta" [attr.for]="'detalle-cantidad-' + d.idDetallePlan">

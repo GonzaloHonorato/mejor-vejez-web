@@ -12,9 +12,9 @@ import {
   normalizarTelefono,
   validadorTelefonoChilenoSalvo,
 } from '../../nucleo/telefono';
-import { dentroDe, enfocarPrimerCampoInvalido } from '../../nucleo/foco';
 import { RespuestaYo, ServicioYo } from '../../nucleo/usuarios/servicio-yo';
 import { CanalesNotificacion } from './canales-notificacion/canales-notificacion';
+import { dentroDe, enfocarPrimerCampoInvalido, mostrarAviso, porId } from '../../nucleo/foco';
 
 const MENSAJES_ERROR_CLAVE_ACTUAL: Record<string, string> = {
   'auth/wrong-password': 'La contraseña actual no es correcta.',
@@ -132,6 +132,8 @@ export class MiPerfil implements OnInit {
           this.erroresCampos.set(campos);
           if (Object.keys(campos).length === 0) {
             this.errorGeneral.set(mensajeDeError(error));
+            // El aviso va sobre el formulario; "Guardar" queda abajo.
+            mostrarAviso(porId('perfil-error-general'), this.injector);
           } else {
             this.enfocarPrimerInvalido();
           }
@@ -155,6 +157,7 @@ export class MiPerfil implements OnInit {
     this.confirmacionClave.set(false);
     if (this.formularioClave.invalid) {
       this.formularioClave.markAllAsTouched();
+      enfocarPrimerCampoInvalido(porId('perfil-formulario-clave'), this.injector);
       return;
     }
 

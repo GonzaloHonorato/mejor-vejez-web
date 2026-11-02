@@ -2,6 +2,8 @@
 // de `_tema.scss` — nunca primitivos ni valores literales.
 // Público: personas mayores → texto grande, alto contraste, objetivos
 // táctiles ≥ 48px.
+@use 'estilos/puntos-quiebre' as pq;
+
 *,
 *::before,
 *::after {
@@ -10,6 +12,16 @@
 
 html {
   font-size: 100%;
+  // Márgenes de todo `scrollIntoView` y del desplazamiento por foco sobre la
+  // página: la cabecera no es fija, así que arriba basta un poco de aire;
+  // en celular, abajo se descuenta la barra de pestañas fija para que nada
+  // enfocado o traído a la vista quede tapado por ella.
+  scroll-padding-top: var(--mv-desplazamiento-aire);
+  scroll-padding-bottom: calc(var(--mv-alto-pestanas) + var(--mv-desplazamiento-aire));
+
+  @include pq.desde-tableta {
+    scroll-padding-bottom: var(--mv-desplazamiento-aire);
+  }
 }
 
 body {

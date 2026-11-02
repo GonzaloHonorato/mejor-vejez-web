@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, Injector, OnInit, afterNextRender, computed, effect, inject, signal } from '@angular/core';
+import { Component, ElementRef, Injector, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { FormControl, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
@@ -13,10 +13,20 @@ import { RespuestaIntegrante } from '../../nucleo/grupos/modelos-grupos';
 import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
 import { ServicioGrupos } from '../../nucleo/grupos/servicio-grupos';
 import { erroresDeCampos, mensajeDeCampo, mensajeDeError } from '../../nucleo/http/mensaje-de-error';
-import { reconstruirHorario } from '../../nucleo/planificacion/horario';
+import { textoHorarioGuardado } from '../../nucleo/planificacion/horario-simple';
 import { RespuestaDetallePlan, RespuestaPlan } from '../../nucleo/planificacion/modelos-planificacion';
 import { ServicioPlanes } from '../../nucleo/planificacion/servicio-planes';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
+import {
+  dentroDe,
+  devolverFoco,
+  enfocarPrimerCampoInvalido,
+  mostrarAviso,
+  mostrarSeccion,
+  porId,
+  porSelector,
+  primeroQueExista,
+} from '../../nucleo/foco';
 
 /** Texto exacto de confirmación de "Eliminar" (plan y detalle): solo bajas físicas sin historial. */
 const CONFIRMACION_ELIMINAR = 'Solo si fue creado por error. Si tiene historial, desactívalo.';
@@ -70,18 +80,8 @@ function nombresUnicos(detalles: RespuestaDetallePlan[], inactivo: (d: Respuesta
   );
 }
 
-/**
- * Texto de lectura del horario guardado (`horas` expandidas): reconstruye
- * el contrato con `reconstruirHorario` (igual que `FormularioDetalle` al
- * editar) y lo describe en español.
- */
-function textoHorario(horas: string[]): string {
-  const horario = reconstruirHorario(horas);
-  if (horario.tipo === 'INTERVALO') {
-    return `Cada ${horario.frecuencia_horas} h de ${horario.hora_inicio} a ${horario.hora_fin}`;
-  }
-  return horario.horas.join(' · ');
-}
+/** Texto de lectura del horario guardado; ver `textoHorarioGuardado`. */
+const textoHorario = textoHorarioGuardado;
 
 /**
  * Página "Plan de medicamentos" (`/planes/:idPlan`): datos del plan
@@ -108,6 +108,7 @@ export class Plan implements OnInit {
   private readonly servicioYo = inject(ServicioYo);
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly injector = inject(Injector);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   protected readonly grupoActivo = inject(ServicioGrupoActivo);
   protected readonly activo = this.grupoActivo.activo;
@@ -405,11 +406,18 @@ export class Plan implements OnInit {
       vigenteHasta: plan.vigenteHasta ?? '',
     });
     this.editandoPlan.set(true);
+    mostrarSeccion(porId('plan-editar'), this.injector);
   }
 
   protected cancelarEdicionPlan(): void {
     this.editandoPlan.set(false);
     this.erroresCamposPlan.set({});
+    this.enfocarBotonDelPlan();
+  }
+
+  /** Devuelve el foco al botón "Editar" del plan, que reaparece al cerrar la edición. */
+  private enfocarBotonDelPlan(): void {
+    devolverFoco(porSelector('#plan-acciones .mv-boton-dividido__principal'), this.injector);
   }
 
   protected guardarPlan(): void {
@@ -418,6 +426,7 @@ export class Plan implements OnInit {
     if (!grupo || !plan || this.guardandoPlan()) return;
     if (this.formularioPlan.invalid) {
       this.formularioPlan.markAllAsTouched();
+      enfocarPrimerCampoInvalido(dentroDe(this.host, '#plan-editar form'), this.injector);
       return;
     }
 
@@ -436,6 +445,7 @@ export class Plan implements OnInit {
           this.guardandoPlan.set(false);
           this.editandoPlan.set(false);
           this.confirmacionEdicionPlan.set(true);
+          this.enfocarBotonDelPlan();
         },
         error: (error: unknown) => {
           this.guardandoPlan.set(false);
@@ -443,6 +453,9 @@ export class Plan implements OnInit {
           this.erroresCamposPlan.set(campos);
           if (Object.keys(campos).length === 0) {
             this.errorGeneral.set(mensajeDeError(error));
+            mostrarAviso(porId('plan-error-general'), this.injector);
+          } else {
+            enfocarPrimerCampoInvalido(dentroDe(this.host, '#plan-editar form'), this.injector);
           }
         },
       });
@@ -512,30 +525,34 @@ export class Plan implements OnInit {
     this.cargarPlan(this.idGrupoCargado);
   }
 
+  /** Abre el formulario bajo la grilla, lo trae a la vista y enfoca su primer campo. */
   protected agregarMedicamento(): void {
     this.detalleEnEdicion.set(null);
     this.agregandoDetalle.set(true);
+    this.mostrarFormularioDetalle();
   }
 
-  /** Abre el formulario bajo la grilla y enfoca su primer campo. */
+  /** Abre el formulario bajo la grilla, lo trae a la vista y enfoca su primer campo. */
   protected editarDetalle(detalle: RespuestaDetallePlan): void {
     this.agregandoDetalle.set(false);
     this.detalleEnEdicion.set(detalle);
-    afterNextRender(
-      () =>
-        document
-          .querySelector<HTMLElement>('app-formulario-detalle form :is(input, select, textarea):not(:disabled)')
-          ?.focus(),
-      { injector: this.injector },
-    );
+    this.mostrarFormularioDetalle();
   }
 
-  /** Cierra el formulario; si editaba un medicamento, el foco vuelve al botón de su fila. */
+  private mostrarFormularioDetalle(): void {
+    mostrarSeccion(porSelector('app-formulario-detalle'), this.injector);
+  }
+
+  /**
+   * Cierra el formulario; el foco vuelve al botón de la fila si editaba un
+   * medicamento, o a "Agregar medicamento" si agregaba uno.
+   */
   protected cerrarFormulario(): void {
     const editado = this.detalleEnEdicion();
     this.agregandoDetalle.set(false);
     this.detalleEnEdicion.set(null);
     if (editado) this.enfocarBotonDeFila(editado, 'principal');
+    else devolverFoco(porId('plan-agregar-medicamento'), this.injector);
   }
 
   protected alGuardarDetalle(): void {
@@ -552,9 +569,10 @@ export class Plan implements OnInit {
   /** Abre el campo "Cantidad disponible" bajo la fila y lo enfoca. */
   protected abrirCantidad(detalle: RespuestaDetallePlan): void {
     this.idDetalleCantidad.set(detalle.idDetallePlan);
-    afterNextRender(
-      () => document.getElementById(`detalle-cantidad-${detalle.idDetallePlan}`)?.focus(),
-      { injector: this.injector },
+    mostrarSeccion(
+      porSelector(`[data-id-cantidad="${detalle.idDetallePlan}"]`),
+      this.injector,
+      porId(`detalle-cantidad-${detalle.idDetallePlan}`),
     );
   }
 
@@ -566,15 +584,17 @@ export class Plan implements OnInit {
 
   /** Enfoca, tras el render, un lado del botón dividido de la fila del medicamento. */
   private enfocarBotonDeFila(detalle: RespuestaDetallePlan, lado: 'principal' | 'segmento'): void {
-    afterNextRender(
-      () =>
-        document
-          .querySelector<HTMLElement>(
-            `[data-id-detalle="${detalle.idDetallePlan}"] .mv-boton-dividido__${lado}`,
-          )
-          ?.focus(),
-      { injector: this.injector },
-    );
+    devolverFoco(porSelector(this.selectorBotonDeFila(detalle.idDetallePlan, lado)), this.injector);
+  }
+
+  private selectorBotonDeFila(idDetalle: number, lado: 'principal' | 'segmento'): string {
+    return `[data-id-detalle="${idDetalle}"] .mv-boton-dividido__${lado}`;
+  }
+
+  /** Muestra un error de acción sobre la grilla (puede quedar fuera de la vista). */
+  private errorDeDetalle(error: unknown): void {
+    this.errorAccionDetalle.set(mensajeDeError(error));
+    mostrarAviso(porId('plan-error-detalle'), this.injector);
   }
 
   protected desactivarDetalle(detalle: RespuestaDetallePlan): void {
@@ -586,11 +606,12 @@ export class Plan implements OnInit {
     this.servicioPlanes.desactivarDetalle(grupo.idGrupo, plan.idPlan, detalle.idDetallePlan).subscribe({
       next: () => {
         this.marcarEnAccion(detalle.idDetallePlan, false);
-        this.recargarPlan();
+        // La fila cambia de lugar (las inactivas van al final): el foco la sigue.
+        this.recargarPlan(() => this.enfocarBotonDeFila(detalle, 'principal'));
       },
       error: (error: unknown) => {
         this.marcarEnAccion(detalle.idDetallePlan, false);
-        this.errorAccionDetalle.set(mensajeDeError(error));
+        this.errorDeDetalle(error);
       },
     });
   }
@@ -604,11 +625,12 @@ export class Plan implements OnInit {
     this.servicioPlanes.reactivarDetalle(grupo.idGrupo, plan.idPlan, detalle.idDetallePlan).subscribe({
       next: () => {
         this.marcarEnAccion(detalle.idDetallePlan, false);
-        this.recargarPlan();
+        // La fila cambia de lugar (las inactivas van al final): el foco la sigue.
+        this.recargarPlan(() => this.enfocarBotonDeFila(detalle, 'principal'));
       },
       error: (error: unknown) => {
         this.marcarEnAccion(detalle.idDetallePlan, false);
-        this.errorAccionDetalle.set(mensajeDeError(error));
+        this.errorDeDetalle(error);
       },
     });
   }
@@ -620,9 +642,25 @@ export class Plan implements OnInit {
     if (!window.confirm(CONFIRMACION_ELIMINAR)) return;
 
     this.errorAccionDetalle.set(null);
+    // La fila desaparece: el foco pasa a la fila siguiente (o la anterior) y,
+    // si no queda ninguna, al título "Medicamentos". Nunca a `body`.
+    const filas = this.detalles();
+    const indice = filas.findIndex((d) => d.idDetallePlan === detalle.idDetallePlan);
+    const vecina = filas[indice + 1] ?? filas[indice - 1];
     this.servicioPlanes.eliminarDetalle(grupo.idGrupo, plan.idPlan, detalle.idDetallePlan).subscribe({
-      next: () => this.recargarPlan(),
-      error: (error: unknown) => this.errorAccionDetalle.set(mensajeDeError(error)),
+      next: () =>
+        this.recargarPlan(() =>
+          devolverFoco(
+            primeroQueExista(
+              vecina
+                ? porSelector(this.selectorBotonDeFila(vecina.idDetallePlan, 'principal'))
+                : () => null,
+              porId('plan-medicamentos-titulo'),
+            ),
+            this.injector,
+          ),
+        ),
+      error: (error: unknown) => this.errorDeDetalle(error),
     });
   }
 
@@ -650,7 +688,7 @@ export class Plan implements OnInit {
         },
         error: (error: unknown) => {
           this.marcarEnAccion(detalle.idDetallePlan, false);
-          this.errorAccionDetalle.set(mensajeDeError(error));
+          this.errorDeDetalle(error);
         },
       });
   }
@@ -688,7 +726,7 @@ export class Plan implements OnInit {
   }
 
   /** Recarga el plan y sus detalles tras una acción exitosa (alta, edición, cambio de estado, cantidad, eliminación). */
-  private recargarPlan(): void {
+  private recargarPlan(alTerminar?: () => void): void {
     const grupo = this.activo();
     if (!grupo) return;
     this.servicioPlanes.obtener(grupo.idGrupo, this.idPlan).subscribe({
@@ -696,8 +734,12 @@ export class Plan implements OnInit {
         this.plan.set(respuesta.plan);
         this.detalles.set(respuesta.detalles);
         this.resincronizarControlesCantidad(respuesta.detalles);
+        alTerminar?.();
       },
-      error: (error: unknown) => this.errorGeneral.set(mensajeDeError(error)),
+      error: (error: unknown) => {
+        this.errorGeneral.set(mensajeDeError(error));
+        mostrarAviso(porId('plan-error-general'), this.injector);
+      },
     });
   }
 

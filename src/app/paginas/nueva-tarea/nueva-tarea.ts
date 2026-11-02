@@ -1,4 +1,14 @@
-import { Component, DestroyRef, OnInit, computed, effect, inject, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  Injector,
+  OnInit,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
@@ -34,6 +44,13 @@ import {
 } from '../../nucleo/tareas/modelos-tareas';
 import { ServicioTareas } from '../../nucleo/tareas/servicio-tareas';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
+import {
+  dentroDe,
+  devolverFoco,
+  enfocarPrimerCampoInvalido,
+  mostrarSeccion,
+  SELECTOR_PRIMER_CAMPO,
+} from '../../nucleo/foco';
 
 type GrupoLinea = FormGroup<{
   idMedicamento: FormControl<number | null>;
@@ -110,6 +127,8 @@ function textoONulo(valor: string): string | null {
 })
 export class NuevaTarea implements OnInit {
   private readonly servicioTareas = inject(ServicioTareas);
+  private readonly injector = inject(Injector);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly servicioAdultos = inject(ServicioAdultos);
   private readonly servicioGrupos = inject(ServicioGrupos);
   private readonly servicioCatalogos = inject(ServicioCatalogos);
@@ -271,13 +290,33 @@ export class NuevaTarea implements OnInit {
     controles.idMedicamento.setValue(null);
   }
 
+  /** Agrega un medicamento al final, lo trae a la vista y enfoca su buscador. */
   protected agregarLinea(): void {
     this.compra.push(this.crearLinea());
+    const indice = this.compra.length - 1;
+    mostrarSeccion(() => this.lineas()[indice], this.injector);
   }
 
+  /**
+   * Quita un medicamento. Su botón "Quitar" desaparece: el foco pasa al
+   * primer campo del medicamento que quedó en su lugar (o del anterior).
+   */
   protected quitarLinea(indice: number): void {
     if (this.compra.length <= 1) return;
     this.compra.removeAt(indice);
+    const destino = Math.min(indice, this.compra.length - 1);
+    devolverFoco(
+      () => this.lineas()[destino]?.querySelector(SELECTOR_PRIMER_CAMPO),
+      this.injector,
+    );
+  }
+
+  private lineas(): NodeListOf<Element> {
+    return this.host.nativeElement.querySelectorAll('.compra-linea');
+  }
+
+  private enfocarPrimerError(): void {
+    enfocarPrimerCampoInvalido(dentroDe(this.host, 'form'), this.injector);
   }
 
   protected cancelar(): void {
@@ -287,7 +326,10 @@ export class NuevaTarea implements OnInit {
   protected enviar(): void {
     if (this.guardando()) return;
     this.formulario.markAllAsTouched();
-    if (this.formulario.invalid) return;
+    if (this.formulario.invalid) {
+      this.enfocarPrimerError();
+      return;
+    }
 
     const grupo = this.activo();
     if (!grupo) return;
@@ -336,6 +378,8 @@ export class NuevaTarea implements OnInit {
         this.erroresServidor.set(campos);
         if (Object.keys(campos).length === 0) {
           this.error.set(mensajeDeError(error));
+        } else {
+          this.enfocarPrimerError();
         }
       },
     });

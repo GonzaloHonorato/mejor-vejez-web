@@ -4,7 +4,6 @@ import {
   ElementRef,
   Injector,
   OnInit,
-  afterNextRender,
   computed,
   inject,
   signal,
@@ -31,6 +30,15 @@ import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
 import { ServicioGrupos } from '../../nucleo/grupos/servicio-grupos';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
 import { SeccionSucesion } from './seccion-sucesion/seccion-sucesion';
+import {
+  devolverFoco,
+  enfocarPrimerCampoInvalido,
+  mostrarAviso,
+  mostrarSeccion,
+  porId,
+  porSelector,
+  primeroQueExista,
+} from '../../nucleo/foco';
 
 /** Lo que muestra el diálogo de clave temporal al crear un integrante nuevo. */
 interface ClaveAMostrar {
@@ -210,7 +218,7 @@ export class Integrantes implements OnInit {
         this.esAdministrador.set(yo.esAdministrador);
         this.idUsuario.set(yo.idUsuario);
       },
-      error: (error: unknown) => this.error.set(mensajeDeError(error)),
+      error: (error: unknown) => this.mostrarError(error),
     });
     this.servicioGrupos.roles().subscribe({
       next: (roles) => {
@@ -220,7 +228,7 @@ export class Integrantes implements OnInit {
           this.formularioCrearIntegrante.patchValue({ idRol: roles[0].idRol });
         }
       },
-      error: (error: unknown) => this.error.set(mensajeDeError(error)),
+      error: (error: unknown) => this.mostrarError(error),
     });
   }
 
@@ -232,6 +240,7 @@ export class Integrantes implements OnInit {
     if (this.agregando()) return;
     if (this.formulario.invalid) {
       this.formulario.markAllAsTouched();
+      enfocarPrimerCampoInvalido(porSelector('#integrantes-agregar form'), this.injector);
       return;
     }
 
@@ -247,7 +256,7 @@ export class Integrantes implements OnInit {
       },
       error: (error: unknown) => {
         this.agregando.set(false);
-        this.error.set(mensajeDeError(error));
+        this.mostrarError(error);
       },
     });
   }
@@ -260,12 +269,12 @@ export class Integrantes implements OnInit {
   protected abrirAgregar(): void {
     this.creandoIntegrante.set(false);
     this.agregarAbierto.set(true);
-    this.enfocar(() => document.getElementById('integrante-email'));
+    mostrarSeccion(porId('integrantes-agregar'), this.injector, porId('integrante-email'));
   }
 
   protected cerrarAgregar(): void {
     this.agregarAbierto.set(false);
-    this.enfocar(() => document.getElementById('integrantes-abrir-agregar'));
+    devolverFoco(porId('integrantes-abrir-agregar'), this.injector);
   }
 
   protected alternarCrearIntegrante(): void {
@@ -285,12 +294,12 @@ export class Integrantes implements OnInit {
       email: '',
       idRol: this.roles()[0]?.idRol ?? null,
     });
-    this.enfocar(() => document.getElementById('integrante-crear-nombre'));
+    mostrarSeccion(porId('integrantes-crear'), this.injector, porId('integrante-crear-nombre'));
   }
 
   protected cancelarCrearIntegrante(): void {
     this.creandoIntegrante.set(false);
-    this.enfocar(() => this.botonCrearIntegranteNuevo()?.nativeElement ?? null);
+    devolverFoco(() => this.botonCrearIntegranteNuevo()?.nativeElement, this.injector);
   }
 
   protected crearIntegrante(): void {
@@ -299,6 +308,7 @@ export class Integrantes implements OnInit {
       this.formularioCrearIntegrante.markAllAsTouched();
       this.errorCrearIntegrante.set(null);
       this.erroresCamposCrearIntegrante.set(this.erroresLocalesNombreCrearIntegrante());
+      this.enfocarPrimerInvalidoDeCrear();
       return;
     }
 
@@ -326,9 +336,38 @@ export class Integrantes implements OnInit {
         this.erroresCamposCrearIntegrante.set(campos);
         if (Object.keys(campos).length === 0) {
           this.errorCrearIntegrante.set(mensajeDeError(error));
+          mostrarAviso(porId('integrantes-crear-error'), this.injector);
+        } else {
+          this.enfocarPrimerInvalidoDeCrear();
         }
       },
     });
+  }
+
+  private enfocarPrimerInvalidoDeCrear(): void {
+    enfocarPrimerCampoInvalido(porSelector('#integrantes-crear form'), this.injector);
+  }
+
+  /** Error de una acción: se muestra arriba de la página, quizá fuera de la vista. */
+  private mostrarError(error: unknown): void {
+    this.error.set(mensajeDeError(error));
+    mostrarAviso(porId('integrantes-error'), this.injector);
+  }
+
+  /**
+   * Devuelve el foco al "Editar" de la fila del integrante; si ya no está
+   * (se eliminó), al título "Integrantes". Nunca queda en `body`.
+   */
+  private enfocarFila(idIntegrante: number | undefined): void {
+    devolverFoco(
+      primeroQueExista(
+        idIntegrante === undefined
+          ? () => null
+          : porSelector(`#integrante-acciones-${idIntegrante} .mv-boton-dividido__principal`),
+        porId('integrantes-lista-titulo'),
+      ),
+      this.injector,
+    );
   }
 
   /** Mensaje local para "nombre" cuando el formulario es inválido del lado del cliente (antes de llamar a la API). */
@@ -382,17 +421,14 @@ export class Integrantes implements OnInit {
     }
     this.controlRol(integrante).setValue(integrante.idRol);
     this.editandoRol.set(integrante.idIntegrante);
-    this.enfocar(() => document.getElementById(`integrante-rol-${integrante.idIntegrante}`));
+    const campo = porId(`integrante-rol-${integrante.idIntegrante}`);
+    mostrarSeccion(() => campo()?.closest('tr'), this.injector, campo);
   }
 
   /** Cierra el selector de rol y devuelve el foco al "Editar" de la fila. */
   protected cerrarEdicionRol(integrante: RespuestaIntegrante): void {
     this.editandoRol.set(null);
-    this.enfocar(() =>
-      document.querySelector<HTMLElement>(
-        `#integrante-acciones-${integrante.idIntegrante} .mv-boton-dividido__principal`,
-      ),
-    );
+    this.enfocarFila(integrante.idIntegrante);
   }
 
   protected cambiarRol(integrante: RespuestaIntegrante, idRol: number): void {
@@ -404,7 +440,7 @@ export class Integrantes implements OnInit {
       },
       error: (error: unknown) => {
         // Revertimos el select recargando el estado real desde la API.
-        this.error.set(mensajeDeError(error));
+        this.mostrarError(error);
         this.cargarIntegrantes();
       },
     });
@@ -413,16 +449,16 @@ export class Integrantes implements OnInit {
   protected desactivar(integrante: RespuestaIntegrante): void {
     this.error.set(null);
     this.servicioGrupos.desactivar(this.idGrupo, integrante.idIntegrante).subscribe({
-      next: () => this.cargarIntegrantes(),
-      error: (error: unknown) => this.error.set(mensajeDeError(error)),
+      next: () => this.cargarIntegrantes(() => this.enfocarFila(integrante.idIntegrante)),
+      error: (error: unknown) => this.mostrarError(error),
     });
   }
 
   protected reactivar(integrante: RespuestaIntegrante): void {
     this.error.set(null);
     this.servicioGrupos.reactivar(this.idGrupo, integrante.idIntegrante).subscribe({
-      next: () => this.cargarIntegrantes(),
-      error: (error: unknown) => this.error.set(mensajeDeError(error)),
+      next: () => this.cargarIntegrantes(() => this.enfocarFila(integrante.idIntegrante)),
+      error: (error: unknown) => this.mostrarError(error),
     });
   }
 
@@ -430,9 +466,13 @@ export class Integrantes implements OnInit {
     if (!window.confirm('Solo si fue agregado por error.')) return;
 
     this.error.set(null);
+    // La fila desaparece: el foco pasa a la siguiente (o la anterior) o al título.
+    const filas = this.integrantesOrdenados();
+    const indice = filas.findIndex((i) => i.idIntegrante === integrante.idIntegrante);
+    const vecina = filas[indice + 1] ?? filas[indice - 1];
     this.servicioGrupos.eliminar(this.idGrupo, integrante.idIntegrante).subscribe({
-      next: () => this.cargarIntegrantes(),
-      error: (error: unknown) => this.error.set(mensajeDeError(error)),
+      next: () => this.cargarIntegrantes(() => this.enfocarFila(vecina?.idIntegrante)),
+      error: (error: unknown) => this.mostrarError(error),
     });
   }
 
@@ -445,7 +485,7 @@ export class Integrantes implements OnInit {
         await this.grupoActivo.cargar();
         this.router.navigateByUrl('/grupos');
       },
-      error: (error: unknown) => this.error.set(mensajeDeError(error)),
+      error: (error: unknown) => this.mostrarError(error),
     });
   }
 
@@ -479,7 +519,7 @@ export class Integrantes implements OnInit {
         },
         error: (error: unknown) => {
           this.cambiandoNotificaCoordinador.set(false);
-          this.error.set(mensajeDeError(error));
+          this.mostrarError(error);
           // El clic ya cambió el `checked` del DOM nativo, pero `grupo()` no
           // cambió: sin esto, Angular no repinta (el binding `[checked]` no
           // vio una expresión distinta) y el interruptor queda mostrando el
@@ -511,7 +551,7 @@ export class Integrantes implements OnInit {
     });
   }
 
-  private cargarIntegrantes(): void {
+  private cargarIntegrantes(alTerminar?: () => void): void {
     this.servicioGrupos.integrantes(this.idGrupo).subscribe({
       next: (integrantes) => {
         this.integrantes.set(integrantes);
@@ -522,13 +562,10 @@ export class Integrantes implements OnInit {
         for (const integrante of integrantes) {
           this.controlRol(integrante).setValue(integrante.idRol);
         }
+        alTerminar?.();
       },
       error: (error: unknown) => this.errorCargaIntegrantes.set(mensajeDeError(error)),
     });
   }
 
-  /** Enfoca el elemento cuando la vista ya lo pintó (los formularios se montan con `@if`). */
-  private enfocar(elemento: () => HTMLElement | null): void {
-    afterNextRender(() => elemento()?.focus(), { injector: this.injector });
-  }
 }

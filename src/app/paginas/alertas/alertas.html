@@ -113,7 +113,7 @@
       </div>
 
       @if (errorVisible(); as mensaje) {
-        <div class="mv-aviso mv-aviso--error" role="alert">
+        <div id="alertas-error" class="mv-aviso mv-aviso--error" role="alert">
           <p>{{ mensaje }}</p>
           <button type="button" class="mv-boton" (click)="reintentar()">Reintentar</button>
         </div>
@@ -145,6 +145,7 @@
         @let cerradas = pestana() === 'CERRADA';
         @let rotuloEstado = cerradas ? 'Estado / revisión' : 'Estado';
         <div
+          id="alertas-grilla"
           class="mv-grilla grilla-alertas"
           role="region"
           aria-label="Bandeja de alertas"

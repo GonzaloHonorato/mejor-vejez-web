@@ -262,3 +262,55 @@ describe('AccionesTarea', () => {
     expect(itemsMenu(elemento).map((item) => item.textContent?.trim())).toEqual(['Completar', 'No realizada']);
   });
 });
+
+// jsdom no implementa `scrollIntoView`: se instala un espía por prueba.
+describe('AccionesTarea: desplazamiento y foco', () => {
+  let desplazar: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    desplazar = vi.fn();
+    Element.prototype.scrollIntoView = desplazar as unknown as Element['scrollIntoView'];
+  });
+
+  afterEach(() => {
+    delete (Element.prototype as Partial<Element>).scrollIntoView;
+  });
+
+  /** El `block` con que se desplazó `elemento`, o `undefined` si no se desplazó. */
+  function bloqueDe(elemento: Element | null): ScrollLogicalPosition | undefined {
+    const i = desplazar.mock.contexts.indexOf(elemento);
+    return i < 0 ? undefined : (desplazar.mock.calls[i][0] as ScrollIntoViewOptions).block;
+  }
+
+  it('noRealizadaTraeElCampoDeObservacionALaVistaYVolverDevuelveElFoco', async () => {
+    const { fixture, elemento } = await configurar();
+
+    segmento(elemento)!.click();
+    await fixture.whenStable();
+    botonConTexto(elemento, 'No realizada')!.click();
+    await fixture.whenStable();
+
+    expect(bloqueDe(elemento.querySelector('.mv-campo'))).toBe('start');
+    expect(document.activeElement).toBe(elemento.querySelector('textarea'));
+
+    botonConTexto(elemento, 'Volver')!.click();
+    await fixture.whenStable();
+    expect(document.activeElement).toBe(segmento(elemento));
+    expect(bloqueDe(segmento(elemento))).toBe('nearest');
+  });
+
+  it('confirmarSinObservacionEnfocaElCampo', async () => {
+    const { fixture, elemento } = await configurar();
+    segmento(elemento)!.click();
+    await fixture.whenStable();
+    botonConTexto(elemento, 'No realizada')!.click();
+    await fixture.whenStable();
+    botonConTexto(elemento, 'Volver')!.focus();
+
+    botonConTexto(elemento, 'Confirmar')!.click();
+    await fixture.whenStable();
+
+    expect(document.activeElement).toBe(elemento.querySelector('textarea'));
+    expect(bloqueDe(elemento.querySelector('textarea'))).toBe('center');
+  });
+});

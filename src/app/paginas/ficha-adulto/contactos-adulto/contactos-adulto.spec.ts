@@ -671,3 +671,97 @@ describe('ContactosAdulto', () => {
     expect(elemento.textContent).toContain('Juana Pérez');
   });
 });
+
+// jsdom no implementa `scrollIntoView`: se instala un espía por prueba.
+describe('ContactosAdulto: desplazamiento y foco', () => {
+  let desplazar: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    desplazar = vi.fn();
+    Element.prototype.scrollIntoView = desplazar as unknown as Element['scrollIntoView'];
+  });
+
+  afterEach(() => {
+    delete (Element.prototype as Partial<Element>).scrollIntoView;
+  });
+
+  /** El `block` con que se desplazó `elemento`, o `undefined` si no se desplazó. */
+  function bloqueDe(elemento: Element | null): ScrollLogicalPosition | undefined {
+    const i = desplazar.mock.contexts.indexOf(elemento);
+    return i < 0 ? undefined : (desplazar.mock.calls[i][0] as ScrollIntoViewOptions).block;
+  }
+
+  /** Abre el menú del botón dividido con ese nombre accesible y elige el ítem con ese texto. */
+  async function elegirEnMenu(
+    fixture: { whenStable(): Promise<unknown> },
+    elemento: HTMLElement,
+    etiquetaMenu: string,
+    item: string,
+  ): Promise<void> {
+    const segmento = elemento.querySelector<HTMLButtonElement>(`[aria-label="${etiquetaMenu}"]`)!;
+    segmento.click();
+    await fixture.whenStable();
+    const menu = document.getElementById(segmento.getAttribute('aria-controls')!)!;
+    Array.from(menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'))
+      .find((b) => b.textContent?.trim() === item)!
+      .click();
+    await fixture.whenStable();
+  }
+
+  it('editarTraeLaFilaDeEdicionALaVistaDentroDeLaGrilla', async () => {
+    const { fixture, elemento } = await configurar({});
+
+    botonConTexto(elemento, 'Editar')!.click();
+    await fixture.whenStable();
+
+    const fila = elemento.querySelector('#contacto-nombre-1')!.closest('tr');
+    expect(bloqueDe(fila)).toBe('start');
+    expect(document.activeElement?.id).toBe('contacto-nombre-1');
+
+    botonConTexto(elemento, 'Cancelar')!.click();
+    await fixture.whenStable();
+    expect(bloqueDe(document.activeElement)).toBe('nearest');
+    expect(document.activeElement?.closest('#contacto-editar-1')).toBeTruthy();
+  });
+
+  it('eliminarLlevaElFocoALaFilaSiguienteYSinFilasAlTitulo', async () => {
+    let contactos = [
+      contacto({ idContacto: 1, nombreContacto: 'Juana Pérez', esPrincipal: true }),
+      contacto({ idContacto: 2, nombreContacto: 'Pedro Soto', esPrincipal: false }),
+    ];
+    const { fixture, elemento, servicioAdultos } = await configurar({ contactosImpl: () => of(contactos) });
+    const confirmar = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    servicioAdultos.eliminarContacto.mockImplementation(() => {
+      contactos = [contactos[1]];
+      return of(undefined);
+    });
+    await elegirEnMenu(fixture, elemento, 'Más acciones para Juana Pérez', 'Eliminar');
+    expect(document.activeElement).toBe(
+      elemento.querySelector('#contacto-editar-2 .mv-boton-dividido__principal'),
+    );
+
+    servicioAdultos.eliminarContacto.mockImplementation(() => {
+      contactos = [];
+      return of(undefined);
+    });
+    await elegirEnMenu(fixture, elemento, 'Más acciones para Pedro Soto', 'Eliminar');
+    expect(document.activeElement?.id).toBe('contactos-titulo');
+    confirmar.mockRestore();
+  });
+
+  it('errorDeUnaAccionTraeElAvisoALaVista', async () => {
+    const { fixture, elemento, servicioAdultos } = await configurar({
+      contactosIniciales: [contacto({ esPrincipal: false })],
+    });
+    servicioAdultos.designarPrincipal.mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 409, error: { detail: 'Conflicto' } })),
+    );
+
+    await elegirEnMenu(fixture, elemento, 'Más acciones para Juana Pérez', 'Hacer principal');
+
+    const aviso = elemento.querySelector('#contactos-error');
+    expect(aviso?.textContent).toContain('Conflicto');
+    expect(bloqueDe(aviso)).toBe('nearest');
+  });
+});

@@ -4,7 +4,6 @@ import {
   ElementRef,
   Injector,
   OnInit,
-  afterNextRender,
   computed,
   effect,
   inject,
@@ -31,7 +30,6 @@ import { AVISO_OPERATIVO, puedeAdministrarGrupo } from '../../nucleo/adultos/per
 import { ServicioAdultos } from '../../nucleo/adultos/servicio-adultos';
 import { ServicioCatalogos } from '../../nucleo/catalogos/servicio-catalogos';
 import { fechaConAnio } from '../../nucleo/fecha-legible';
-import { dentroDe, enfocarPrimerCampoInvalido } from '../../nucleo/foco';
 import { hoyEnSantiago } from '../../nucleo/fechas';
 import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
 import {
@@ -42,6 +40,14 @@ import {
 import { enlaceTelefono, formatearTelefono } from '../../nucleo/telefono';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
 import { detalleAdulto } from '../adultos/detalle-adulto';
+import {
+  dentroDe,
+  devolverFoco,
+  enfocarPrimerCampoInvalido,
+  mostrarAviso,
+  mostrarSeccion,
+  porId,
+} from '../../nucleo/foco';
 
 /**
  * Página "Ficha del adulto mayor" (`/adultos/:idAdulto`): datos del perfil,
@@ -222,7 +228,11 @@ export class FichaAdulto implements OnInit {
     this.erroresCampos.set({});
     this.rellenarFormulario(adulto);
     this.editando.set(true);
-    this.enfocar('ficha-nombre');
+    mostrarSeccion(
+      () => document.getElementById('ficha-formulario')?.closest('section'),
+      this.injector,
+      porId('ficha-nombre'),
+    );
   }
 
   protected cancelarEdicion(): void {
@@ -293,6 +303,7 @@ export class FichaAdulto implements OnInit {
           this.erroresCampos.set(campos);
           if (Object.keys(campos).length === 0) {
             this.errorGeneral.set(mensajeDeError(error));
+            mostrarAviso(porId('ficha-error-general'), this.injector);
           } else {
             this.enfocarPrimerInvalido();
           }
@@ -387,15 +398,12 @@ export class FichaAdulto implements OnInit {
     enfocarPrimerCampoInvalido(dentroDe(this.host, '#ficha-formulario'), this.injector);
   }
 
-  /** Enfoca el elemento `id`; si es el botón dividido, su acción principal. */
+  /** Devuelve el foco a `id`; si es el botón dividido, a su acción principal. */
   private enfocar(id: string): void {
-    afterNextRender(
-      () => {
-        const elemento = document.getElementById(id);
-        const principal = elemento?.querySelector<HTMLElement>('.mv-boton-dividido__principal');
-        (principal ?? elemento)?.focus();
-      },
-      { injector: this.injector },
+    const elemento = porId(id);
+    devolverFoco(
+      () => elemento()?.querySelector('.mv-boton-dividido__principal') ?? elemento(),
+      this.injector,
     );
   }
 

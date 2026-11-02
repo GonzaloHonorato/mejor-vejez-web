@@ -620,3 +620,56 @@ describe('Auditoria', () => {
     expect(estado?.querySelector('.mv-esqueleto')).toBeTruthy();
   });
 });
+
+// jsdom no implementa `scrollIntoView`: se instala un espía por prueba.
+describe('Auditoria: desplazamiento y foco', () => {
+  let desplazar: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    desplazar = vi.fn();
+    Element.prototype.scrollIntoView = desplazar as unknown as Element['scrollIntoView'];
+  });
+
+  afterEach(() => {
+    delete (Element.prototype as Partial<Element>).scrollIntoView;
+  });
+
+  /** El `block` con que se desplazó `elemento`, o `undefined` si no se desplazó. */
+  function bloqueDe(elemento: Element | null): ScrollLogicalPosition | undefined {
+    const i = desplazar.mock.contexts.indexOf(elemento);
+    return i < 0 ? undefined : (desplazar.mock.calls[i][0] as ScrollIntoViewOptions).block;
+  }
+
+  it('verDetallesTraeLaFilaDeDetalleALaVistaYDejaElFocoEnElBoton', async () => {
+    const { fixture, elemento } = await configurar();
+
+    const boton = await abrirDetalle(fixture, elemento);
+    boton.focus();
+
+    expect(bloqueDe(elemento.querySelector('#auditoria-detalle-1'))).toBe('nearest');
+    expect(document.activeElement).toBe(boton);
+  });
+
+  it('cambiarDePaginaEnfocaElPrimerEventoYAnunciaElTotal', async () => {
+    const { fixture, elemento } = await configurar({
+      consultarGrupoImpl: () => of(pagina([evento(1)], 45)),
+    });
+
+    elemento.querySelector<HTMLButtonElement>('.paginacion button:last-of-type')!.click();
+    await fixture.whenStable();
+
+    expect(document.activeElement).toBe(elemento.querySelector('#auditoria-grilla .ver-detalles'));
+    const resumen = elemento.querySelector('.resumen-eventos')!;
+    expect(resumen.getAttribute('aria-live')).toBe('polite');
+    expect(resumen.textContent?.trim()).not.toBe('');
+  });
+
+  it('aplicarFiltrosTraeLosResultadosALaVista', async () => {
+    const { fixture, elemento } = await configurar();
+
+    elemento.querySelector<HTMLFormElement>('.filtros form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    expect(bloqueDe(elemento.querySelector('#auditoria-actividad'))).toBe('nearest');
+  });
+});

@@ -53,7 +53,7 @@
       <div class="columnas">
         <section class="mv-tarjeta" aria-labelledby="tarea-datos-titulo">
           <div class="mv-tarjeta__cabecera">
-            <h2 id="tarea-datos-titulo" class="mv-tarjeta__titulo">Datos de la tarea</h2>
+            <h2 id="tarea-datos-titulo" class="mv-tarjeta__titulo" tabindex="-1">Datos de la tarea</h2>
           </div>
           <div class="mv-tarjeta__cuerpo bloques">
             <dl class="datos">
@@ -201,7 +201,7 @@
           </section>
 
           @if (puedeReasignar()) {
-            <section class="mv-tarjeta" aria-labelledby="tarea-reasignar-titulo">
+            <section id="tarea-reasignar" class="mv-tarjeta" aria-labelledby="tarea-reasignar-titulo">
               <div class="mv-tarjeta__cabecera">
                 <h2 id="tarea-reasignar-titulo" class="mv-tarjeta__titulo">Reasignar</h2>
               </div>

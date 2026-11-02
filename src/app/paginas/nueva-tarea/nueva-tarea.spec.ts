@@ -451,3 +451,108 @@ describe('NuevaTarea', () => {
     });
   });
 });
+
+// jsdom no implementa `scrollIntoView`: se instala un espía por prueba.
+describe('NuevaTarea: desplazamiento y foco', () => {
+  let desplazar: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    desplazar = vi.fn();
+    Element.prototype.scrollIntoView = desplazar as unknown as Element['scrollIntoView'];
+  });
+
+  afterEach(() => {
+    delete (Element.prototype as Partial<Element>).scrollIntoView;
+  });
+
+  /** El `block` con que se desplazó `elemento`, o `undefined` si no se desplazó. */
+  function bloqueDe(elemento: Element | null): ScrollLogicalPosition | undefined {
+    const i = desplazar.mock.contexts.indexOf(elemento);
+    return i < 0 ? undefined : (desplazar.mock.calls[i][0] as ScrollIntoViewOptions).block;
+  }
+
+  it('agregarMedicamentoTraeLaLineaNuevaALaVistaYQuitarlaDevuelveElFoco', async () => {
+    const { fixture, elemento } = await configurar();
+
+    Array.from(elemento.querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === 'Agregar medicamento')!
+      .click();
+    await fixture.whenStable();
+
+    const lineas = elemento.querySelectorAll('.compra-linea');
+    expect(bloqueDe(lineas[1])).toBe('start');
+    expect(lineas[1].contains(document.activeElement)).toBe(true);
+
+    Array.from(elemento.querySelectorAll('button'))
+      .find((b) => b.getAttribute('aria-label') === 'Quitar medicamento 2')!
+      .click();
+    await fixture.whenStable();
+
+    expect(elemento.querySelectorAll('.compra-linea')).toHaveLength(1);
+    expect(elemento.querySelector('.compra-linea')!.contains(document.activeElement)).toBe(true);
+  });
+
+  it('enviarIncompletoTraeElPrimerErrorALaVista', async () => {
+    const { fixture, elemento } = await configurar();
+
+    await enviar(fixture, elemento);
+
+    expect(desplazar).toHaveBeenCalled();
+    expect(desplazar.mock.calls[0][0]).toMatchObject({ block: 'center' });
+  });
+
+  /** Cada error visible queda enlazado a un campo con `aria-invalid="true"`. */
+  function expectErroresEnlazados(elemento: HTMLElement): void {
+    const errores = Array.from(elemento.querySelectorAll<HTMLElement>('.mv-campo__error[id]'));
+    expect(errores.length).toBeGreaterThan(0);
+    for (const error of errores) {
+      const campos = Array.from(
+        elemento.querySelectorAll(`[aria-describedby~="${error.id}"]`),
+      ).filter((campo) => campo.matches('input, select, textarea'));
+      expect(campos.length, error.id).toBeGreaterThan(0);
+      for (const campo of campos) expect(campo.getAttribute('aria-invalid'), error.id).toBe('true');
+    }
+  }
+
+  it('enviarVacioEnfocaElAdultoMarcadoYEnlazadoASuError', async () => {
+    const { fixture, elemento } = await configurar();
+
+    await enviar(fixture, elemento);
+
+    const activo = document.activeElement!;
+    expect(activo.id).toBe('nueva-tarea-adulto');
+    expect(activo.getAttribute('aria-invalid')).toBe('true');
+    expect(activo.getAttribute('aria-describedby')).toBe('nueva-tarea-adulto-error');
+    expect(bloqueDe(activo)).toBe('center');
+    expectErroresEnlazados(elemento);
+  });
+
+  it('compraConComunesListosEnfocaElPrimerCampoInvalidoDeLaLinea', async () => {
+    const { fixture, elemento } = await configurar();
+    await llenarComunes(elemento);
+    await elegirMedicamento(fixture, 0, PARACETAMOL);
+
+    await enviar(fixture, elemento);
+
+    const activo = document.activeElement!;
+    expect(activo.closest('.compra-linea')).toBeTruthy();
+    expect(activo.getAttribute('aria-invalid')).toBe('true');
+    expect(document.getElementById(activo.getAttribute('aria-describedby')!)).toBeTruthy();
+    expectErroresEnlazados(elemento);
+  });
+
+  it('citaVaciaEnfocaElMedicoMarcadoYEnlazado', async () => {
+    const { fixture, elemento } = await configurar();
+    radio(elemento, 'Cita o control médico').click();
+    await fixture.whenStable();
+    await llenarComunes(elemento);
+
+    await enviar(fixture, elemento);
+
+    const activo = document.activeElement!;
+    expect(activo.id).toBe('nueva-tarea-cita-medico');
+    expect(activo.getAttribute('aria-invalid')).toBe('true');
+    expect(activo.getAttribute('aria-describedby')).toBe('nueva-tarea-cita-medico-error');
+    expectErroresEnlazados(elemento);
+  });
+});

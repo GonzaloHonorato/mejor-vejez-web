@@ -597,3 +597,39 @@ describe('Adultos', () => {
     expect(servicioAdultos.listar).toHaveBeenCalledWith(2, false);
   });
 });
+
+// jsdom no implementa `scrollIntoView`: se instala un espía por prueba.
+describe('Adultos: desplazamiento y foco', () => {
+  let desplazar: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    desplazar = vi.fn();
+    Element.prototype.scrollIntoView = desplazar as unknown as Element['scrollIntoView'];
+  });
+
+  afterEach(() => {
+    delete (Element.prototype as Partial<Element>).scrollIntoView;
+  });
+
+  /** El `block` con que se desplazó `elemento`, o `undefined` si no se desplazó. */
+  function bloqueDe(elemento: Element | null): ScrollLogicalPosition | undefined {
+    const i = desplazar.mock.contexts.indexOf(elemento);
+    return i < 0 ? undefined : (desplazar.mock.calls[i][0] as ScrollIntoViewOptions).block;
+  }
+
+  it('agregarAdultoMayorTraeElFormularioALaVistaYAlCancelarVuelveAlBoton', async () => {
+    const { fixture, elemento } = await configurar();
+
+    await abrirFormulario(fixture, elemento);
+    expect(bloqueDe(elemento.querySelector('#adultos-alta'))).toBe('start');
+    expect(document.activeElement?.id).toBe('adulto-nombre');
+
+    Array.from(elemento.querySelectorAll<HTMLButtonElement>('#adultos-alta button'))
+      .find((b) => b.textContent?.trim() === 'Cancelar')!
+      .click();
+    await fixture.whenStable();
+    const boton = elemento.querySelector('#adultos-abrir-alta');
+    expect(document.activeElement).toBe(boton);
+    expect(bloqueDe(boton)).toBe('nearest');
+  });
+});

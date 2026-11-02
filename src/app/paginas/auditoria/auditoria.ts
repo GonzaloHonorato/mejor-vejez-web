@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, Injector, OnInit, computed, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 
@@ -18,6 +18,7 @@ import { descripcionEstado } from '../../nucleo/catalogos/descripcion-estado';
 import { RespuestaEstadoCatalogo, ServicioCatalogos } from '../../nucleo/catalogos/servicio-catalogos';
 import { fechaHoraLegible } from '../../nucleo/fecha-legible';
 import { mensajeDeError } from '../../nucleo/http/mensaje-de-error';
+import { enfocarPrimeraNueva, mostrarAviso, porId, traerALaVista } from '../../nucleo/foco';
 
 const TAMANO_PAGINA = 20;
 
@@ -74,6 +75,7 @@ function textoOUndefined(valor: string): string | undefined {
 })
 export class Auditoria implements OnInit {
   private readonly ruta = inject(ActivatedRoute);
+  private readonly injector = inject(Injector);
   private readonly servicioAuditoria = inject(ServicioAuditoria);
   private readonly servicioCatalogos = inject(ServicioCatalogos);
   private readonly fb = inject(NonNullableFormBuilder);
@@ -161,12 +163,19 @@ export class Auditoria implements OnInit {
     return this.detallesAbiertos().has(idEvento);
   }
 
+  /**
+   * Abre o cierra la fila de detalle. Al abrirla se trae a la vista (la
+   * grilla tiene scroll propio desde tableta); el foco queda en "Ver
+   * detalles", que anuncia `aria-expanded`.
+   */
   protected alternarDetalle(idEvento: number): void {
+    const abrir = !this.detalleAbierto(idEvento);
     this.detallesAbiertos.update((abiertos) => {
       const siguiente = new Set(abiertos);
       if (!siguiente.delete(idEvento)) siguiente.add(idEvento);
       return siguiente;
     });
+    if (abrir) traerALaVista(porId(`auditoria-detalle-${idEvento}`), this.injector);
   }
 
   protected detallesComoJson(detalles: Record<string, unknown>): string {
@@ -176,19 +185,30 @@ export class Auditoria implements OnInit {
   protected aplicarFiltros(): void {
     this.pagina.set(0);
     this.filtroAplicado.set(this.filtroActual());
-    this.cargar();
+    // Los resultados pueden quedar bajo el formulario (en celular, fuera de
+    // la vista): se trae su título a la vista y el total se anuncia.
+    this.cargar(() => traerALaVista(porId('auditoria-actividad'), this.injector));
   }
 
   protected paginaAnterior(): void {
     if (!this.hayPaginaAnterior() || this.cargando()) return;
     this.pagina.set(this.pagina() - 1);
-    this.cargar();
+    this.cargar(() => this.enfocarPrimeraFila());
   }
 
   protected paginaSiguiente(): void {
     if (!this.hayPaginaSiguiente() || this.cargando()) return;
     this.pagina.set(this.pagina() + 1);
-    this.cargar();
+    this.cargar(() => this.enfocarPrimeraFila());
+  }
+
+  /**
+   * Tras cambiar de página, el foco va al "Ver detalles" del primer evento:
+   * los botones de paginación se deshabilitan mientras carga y el foco se
+   * perdería en `body`.
+   */
+  private enfocarPrimeraFila(): void {
+    enfocarPrimeraNueva(porId('auditoria-grilla'), 'tbody tr:not(.fila-detalle)', 0, this.injector);
   }
 
   protected reintentar(): void {
@@ -209,7 +229,7 @@ export class Auditoria implements OnInit {
     };
   }
 
-  private cargar(): void {
+  private cargar(alTerminar?: () => void): void {
     this.error.set(null);
     this.cargando.set(true);
     const generacion = ++this.generacionCarga;
@@ -225,11 +245,13 @@ export class Auditoria implements OnInit {
         this.detallesAbiertos.set(new Set());
         this.total.set(respuesta.total);
         this.cargando.set(false);
+        alTerminar?.();
       },
       error: (error: unknown) => {
         if (generacion !== this.generacionCarga) return;
         this.cargando.set(false);
         this.error.set(mensajeDeError(error));
+        mostrarAviso(porId('auditoria-error'), this.injector);
       },
     });
   }

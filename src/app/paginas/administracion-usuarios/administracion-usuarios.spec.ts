@@ -594,3 +594,77 @@ describe('AdministracionUsuarios', () => {
     expect(elementoError.querySelector('.usuario__nombre')?.textContent?.trim()).toBe('Ana');
   });
 });
+
+// jsdom no implementa `scrollIntoView`: se instala un espía por prueba.
+describe('AdministracionUsuarios: desplazamiento y foco', () => {
+  let desplazar: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    desplazar = vi.fn();
+    Element.prototype.scrollIntoView = desplazar as unknown as Element['scrollIntoView'];
+  });
+
+  afterEach(() => {
+    delete (Element.prototype as Partial<Element>).scrollIntoView;
+  });
+
+  /** El `block` con que se desplazó `elemento`, o `undefined` si no se desplazó. */
+  function bloqueDe(elemento: Element | null): ScrollLogicalPosition | undefined {
+    const i = desplazar.mock.contexts.indexOf(elemento);
+    return i < 0 ? undefined : (desplazar.mock.calls[i][0] as ScrollIntoViewOptions).block;
+  }
+
+  it('editarTraeLaFilaDeEdicionALaVistaYGuardarDevuelveElFocoALaFila', async () => {
+    const { fixture, elemento, servicioUsuarios } = await configurar([usuario(1, 'Ana'), usuario(2, 'Beto')]);
+    servicioUsuarios.actualizar.mockReturnValue(of(usuario(2, 'Beto')));
+    const editar = elemento.querySelector<HTMLButtonElement>(
+      '#usuario-acciones-2 .mv-boton-dividido__principal',
+    )!;
+
+    editar.click();
+    await fixture.whenStable();
+    expect(bloqueDe(elemento.querySelector('.editar-usuario'))).toBe('start');
+    expect(document.activeElement?.id).toBe('usuario-nombre');
+
+    elemento.querySelector<HTMLFormElement>('.editar-usuario form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+    expect(elemento.querySelector('.editar-usuario')).toBeFalsy();
+    expect(document.activeElement).toBe(
+      elemento.querySelector('#usuario-acciones-2 .mv-boton-dividido__principal'),
+    );
+  });
+
+  it('crearUsuarioTraeElFormularioALaVistaYAlCancelarVuelveAlBoton', async () => {
+    const { fixture, elemento } = await configurar();
+
+    botonConTexto(elemento, 'Crear usuario')!.click();
+    await fixture.whenStable();
+    expect(bloqueDe(elemento.querySelector('#usuarios-crear'))).toBe('start');
+    expect(document.activeElement?.id).toBe('usuario-crear-nombre');
+
+    botonConTexto(elemento.querySelector('#usuarios-crear')!, 'Cancelar')!.click();
+    await fixture.whenStable();
+    const abrir = elemento.querySelector('#usuarios-abrir-crear');
+    expect(document.activeElement).toBe(abrir);
+    expect(bloqueDe(abrir)).toBe('nearest');
+  });
+
+  it('cambiarDePaginaEnfocaLaPrimeraFila', async () => {
+    const primera = Array.from({ length: 10 }, (_, i) => usuario(i + 1, `Persona${i + 1}`));
+    const listar = vi.fn((filtro: { pagina: number }) =>
+      of(
+        filtro.pagina === 0
+          ? { ...pagina(primera, 11) }
+          : { ...pagina([usuario(11, 'Zoe')], 11), pagina: 1 },
+      ),
+    );
+    const { fixture, elemento } = await configurar(primera, { listar });
+
+    botonConTexto(elemento, 'Siguiente')!.click();
+    await fixture.whenStable();
+
+    expect(document.activeElement).toBe(
+      elemento.querySelector('#usuario-acciones-11 .mv-boton-dividido__principal'),
+    );
+  });
+});

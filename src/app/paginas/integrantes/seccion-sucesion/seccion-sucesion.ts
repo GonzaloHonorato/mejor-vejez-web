@@ -1,4 +1,15 @@
-import { Component, DestroyRef, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  Injector,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  untracked,
+} from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Observable, Subscription, forkJoin } from 'rxjs';
 
@@ -10,6 +21,13 @@ import { RespuestaIntegrante } from '../../../nucleo/grupos/modelos-grupos';
 import { mensajeDeError } from '../../../nucleo/http/mensaje-de-error';
 import { RespuestaPropuesta, SolicitudReasignacion } from '../../../nucleo/sucesion/modelos-sucesion';
 import { ServicioSucesion } from '../../../nucleo/sucesion/servicio-sucesion';
+import {
+  devolverFoco,
+  mostrarAviso,
+  mostrarSeccion,
+  porId,
+  rescatarFoco,
+} from '../../../nucleo/foco';
 
 /** Rol que se excluye del selector de candidato. */
 const ROL_COORDINADOR = 'COORDINADOR';
@@ -56,6 +74,7 @@ export const LARGO_MAXIMO_MOTIVO = 500;
 })
 export class SeccionSucesion {
   private readonly servicioSucesion = inject(ServicioSucesion);
+  private readonly injector = inject(Injector);
   private readonly servicioCatalogos = inject(ServicioCatalogos);
 
   readonly idGrupo = input.required<number>();
@@ -187,10 +206,12 @@ export class SeccionSucesion {
   protected pedirCancelar(): void {
     this.controlMotivo.setValue('');
     this.confirmandoCancelar.set(true);
+    mostrarSeccion(porId('sucesion-confirmar'), this.injector);
   }
 
   protected volverDeCancelar(): void {
     this.confirmandoCancelar.set(false);
+    devolverFoco(porId('sucesion-pedir-cancelar'), this.injector);
   }
 
   protected confirmarCancelar(propuesta: RespuestaPropuesta): void {
@@ -222,11 +243,17 @@ export class SeccionSucesion {
     accion.subscribe({
       next: () => {
         this.confirmandoCancelar.set(false);
-        this.cargar(this.idGrupo(), () => this.procesando.set(false));
+        // El botón pulsado suele desaparecer (la propuesta cambió de estado):
+        // el foco va al título de la sección en vez de perderse en `body`.
+        this.cargar(this.idGrupo(), () => {
+          this.procesando.set(false);
+          rescatarFoco(porId('sucesion-titulo'), this.injector);
+        });
         this.cambio.emit();
       },
       error: (error: unknown) => {
         this.error.set(mensajeDeError(error));
+        mostrarAviso(porId('sucesion-error'), this.injector);
         // Un 409/422 suele significar que la propuesta o la membresía
         // cambiaron: se recarga el estado real y se avisa igual a la
         // página, para que también recargue los integrantes.

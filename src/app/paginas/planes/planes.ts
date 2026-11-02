@@ -1,8 +1,8 @@
 import {
   Component,
+  ElementRef,
   Injector,
   OnInit,
-  afterNextRender,
   computed,
   effect,
   inject,
@@ -23,6 +23,14 @@ import { erroresDeCampos, mensajeDeCampo, mensajeDeError } from '../../nucleo/ht
 import { RespuestaPlan } from '../../nucleo/planificacion/modelos-planificacion';
 import { ServicioPlanes } from '../../nucleo/planificacion/servicio-planes';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
+import {
+  dentroDe,
+  devolverFoco,
+  enfocarPrimerCampoInvalido,
+  mostrarAviso,
+  mostrarSeccion,
+  porId,
+} from '../../nucleo/foco';
 
 /**
  * Página "Medicamentos" (`/planes`): lista de planes de medicamentos del
@@ -47,6 +55,7 @@ export class Planes implements OnInit {
   private readonly router = inject(Router);
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly injector = inject(Injector);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   protected readonly grupoActivo = inject(ServicioGrupoActivo);
   protected readonly activo = this.grupoActivo.activo;
@@ -222,16 +231,12 @@ export class Planes implements OnInit {
 
   protected abrirAlta(): void {
     this.altaAbierta.set(true);
-    this.enfocar('plan-adulto');
+    mostrarSeccion(porId('planes-alta'), this.injector, porId('plan-adulto'));
   }
 
   protected cerrarAlta(): void {
     this.altaAbierta.set(false);
-    this.enfocar('planes-abrir-alta');
-  }
-
-  private enfocar(id: string): void {
-    afterNextRender(() => document.getElementById(id)?.focus(), { injector: this.injector });
+    devolverFoco(porId('planes-abrir-alta'), this.injector);
   }
 
   protected alternarMostrarInactivos(): void {
@@ -291,6 +296,7 @@ export class Planes implements OnInit {
 
     if (this.formulario.invalid) {
       this.formulario.markAllAsTouched();
+      this.enfocarPrimerInvalido();
       return;
     }
 
@@ -314,9 +320,16 @@ export class Planes implements OnInit {
           this.erroresCampos.set(campos);
           if (Object.keys(campos).length === 0) {
             this.errorGeneral.set(mensajeDeError(error));
+            mostrarAviso(porId('planes-alta-error'), this.injector);
+          } else {
+            this.enfocarPrimerInvalido();
           }
         },
       });
+  }
+
+  private enfocarPrimerInvalido(): void {
+    enfocarPrimerCampoInvalido(dentroDe(this.host, '#planes-alta form'), this.injector);
   }
 
   private cargar(idGrupo: number, incluirInactivos: boolean, idAdulto: number | null): void {

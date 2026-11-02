@@ -1,11 +1,11 @@
 <section class="mv-tarjeta" aria-labelledby="contactos-titulo">
   <div class="mv-tarjeta__cabecera">
-    <h2 id="contactos-titulo" class="mv-tarjeta__titulo">Contactos de emergencia</h2>
+    <h2 id="contactos-titulo" class="mv-tarjeta__titulo" tabindex="-1">Contactos de emergencia</h2>
   </div>
 
   <div class="mv-tarjeta__cuerpo cuerpo">
     @if (error(); as mensaje) {
-      <p class="mv-aviso mv-aviso--error" role="alert">{{ mensaje }}</p>
+      <p id="contactos-error" class="mv-aviso mv-aviso--error" role="alert">{{ mensaje }}</p>
     }
 
     @if (errorCarga(); as mensaje) {

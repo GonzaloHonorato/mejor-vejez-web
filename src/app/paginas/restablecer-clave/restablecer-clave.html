@@ -45,7 +45,12 @@
                 type="password"
                 autocomplete="new-password"
                 formControlName="clave"
+                [attr.aria-invalid]="mensajeClave() ? true : null"
+                [attr.aria-describedby]="mensajeClave() ? 'restablecer-clave-error' : null"
               />
+              @if (mensajeClave(); as m) {
+                <p id="restablecer-clave-error" class="mv-campo__error" role="alert">{{ m }}</p>
+              }
             </div>
 
             <div class="mv-campo">
@@ -58,11 +63,24 @@
                 type="password"
                 autocomplete="new-password"
                 formControlName="confirmacion"
+                [attr.aria-invalid]="mensajeConfirmacion() || noCoinciden() ? true : null"
+                [attr.aria-describedby]="
+                  mensajeConfirmacion()
+                    ? 'restablecer-confirmacion-error'
+                    : noCoinciden()
+                      ? 'restablecer-error'
+                      : null
+                "
               />
+              @if (mensajeConfirmacion(); as m) {
+                <p id="restablecer-confirmacion-error" class="mv-campo__error" role="alert">
+                  {{ m }}
+                </p>
+              }
             </div>
 
             @if (errorFormulario(); as mensaje) {
-              <p class="mv-aviso mv-aviso--error" role="alert">{{ mensaje }}</p>
+              <p id="restablecer-error" class="mv-aviso mv-aviso--error" role="alert">{{ mensaje }}</p>
             }
 
             <button

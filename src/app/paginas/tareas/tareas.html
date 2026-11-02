@@ -144,11 +144,12 @@
     <section class="agenda" aria-labelledby="tareas-agenda">
       <div class="agenda__cabecera">
         <h2 id="tareas-agenda">Agenda del día</h2>
-        @if (!cargando() && !error()) {
-          <span class="cuenta">
+        <!-- Siempre presente: anuncia el total al cambiar de día o de filtro, aunque la agenda quede fuera de la vista. -->
+        <span class="cuenta" aria-live="polite" aria-atomic="true">
+          @if (!cargando() && !error()) {
             {{ tareasVisibles().length }} {{ plural(tareasVisibles().length, 'tarea', 'tareas') }}
-          </span>
-        }
+          }
+        </span>
       </div>
 
       @if (cargando()) {

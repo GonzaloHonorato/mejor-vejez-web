@@ -1,11 +1,12 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, Injector, OnInit, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { mensajeDeError } from '../../nucleo/http/mensaje-de-error';
 import { ServicioAutenticacion } from '../../nucleo/autenticacion/servicio-autenticacion';
 import { ServicioRecuperarClave } from '../../nucleo/autenticacion/servicio-recuperar-clave';
+import { enfocarPrimerCampoInvalido, mostrarSeccion, porSelector } from '../../nucleo/foco';
 
 const MENSAJES_ERROR: Record<string, string> = {
   'auth/invalid-credential': 'Correo o contraseña incorrectos.',
@@ -31,6 +32,7 @@ export class Ingreso implements OnInit {
   private readonly auth = inject(ServicioAutenticacion);
   private readonly servicioRecuperarClave = inject(ServicioRecuperarClave);
   private readonly router = inject(Router);
+  private readonly injector = inject(Injector);
   private readonly ruta = inject(ActivatedRoute);
 
   protected readonly habilitado = this.auth.habilitado;
@@ -58,7 +60,8 @@ export class Ingreso implements OnInit {
    */
   ngOnInit(): void {
     if (this.ruta.snapshot.queryParamMap.has('recuperar')) {
-      this.abrirRecuperar();
+      // Al llegar con `?recuperar` no se mueve el foco: la página recién carga.
+      this.abrirRecuperar(false);
     }
   }
 
@@ -92,11 +95,17 @@ export class Ingreso implements OnInit {
     }
   }
 
-  protected abrirRecuperar(): void {
+  /**
+   * Muestra el formulario de recuperación. Al pulsar "¿Olvidaste tu
+   * contraseña?" ese botón desaparece: el formulario se trae a la vista y
+   * su campo recibe el foco.
+   */
+  protected abrirRecuperar(enfocar = true): void {
     this.mostrarRecuperar.set(true);
     this.mensajeRecuperar.set(null);
     this.errorCorreoRecuperar.set(null);
     this.formularioRecuperar.reset({ correo: '' });
+    if (enfocar) mostrarSeccion(porSelector('form.recuperar'), this.injector);
   }
 
   /**
@@ -110,6 +119,7 @@ export class Ingreso implements OnInit {
     if (this.formularioRecuperar.invalid) {
       this.formularioRecuperar.markAllAsTouched();
       this.errorCorreoRecuperar.set('Escribe un correo válido.');
+      enfocarPrimerCampoInvalido(porSelector('form.recuperar'), this.injector);
       return;
     }
     this.enviandoRecuperar.set(true);

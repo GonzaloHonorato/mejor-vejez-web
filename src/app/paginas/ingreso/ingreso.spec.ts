@@ -182,3 +182,46 @@ describe('Ingreso', () => {
     expect(alternar.textContent?.trim()).toBe('Ocultar');
   });
 });
+
+// jsdom no implementa `scrollIntoView`: se instala un espía por prueba.
+describe('Ingreso: desplazamiento y foco', () => {
+  let desplazar: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    desplazar = vi.fn();
+    Element.prototype.scrollIntoView = desplazar as unknown as Element['scrollIntoView'];
+  });
+
+  afterEach(() => {
+    delete (Element.prototype as Partial<Element>).scrollIntoView;
+  });
+
+  /** El `block` con que se desplazó `elemento`, o `undefined` si no se desplazó. */
+  function bloqueDe(elemento: Element | null): ScrollLogicalPosition | undefined {
+    const i = desplazar.mock.contexts.indexOf(elemento);
+    return i < 0 ? undefined : (desplazar.mock.calls[i][0] as ScrollIntoViewOptions).block;
+  }
+
+  it('olvideTraeElFormularioALaVistaYEnfocaElCorreo', async () => {
+    configurar(vi.fn());
+    const fixture = TestBed.createComponent(Ingreso);
+    await fixture.whenStable();
+    const elemento = fixture.nativeElement as HTMLElement;
+    document.body.appendChild(elemento);
+
+    elemento.querySelector<HTMLButtonElement>('#ingreso-olvide')!.click();
+    await fixture.whenStable();
+
+    expect(bloqueDe(elemento.querySelector('form.recuperar'))).toBe('start');
+    expect(document.activeElement?.id).toBe('recuperar-correo');
+  });
+
+  it('llegarConRecuperarNoMueveElFoco', async () => {
+    configurar(vi.fn(), null, vi.fn(), { recuperar: '1' });
+    const fixture = TestBed.createComponent(Ingreso);
+    await fixture.whenStable();
+
+    expect((fixture.nativeElement as HTMLElement).querySelector('form.recuperar')).toBeTruthy();
+    expect(desplazar).not.toHaveBeenCalled();
+  });
+});

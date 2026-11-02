@@ -1,4 +1,5 @@
 import {
+  fechaCortaConDia,
   fechaConAnio,
   fechaHoraConAnio,
   fechaHoraLegible,
@@ -80,5 +81,17 @@ describe('fechaConAnio', () => {
 describe('fechaHoraConAnio', () => {
   it('agregaLaHoraDeSantiago', () => {
     expect(fechaHoraConAnio('2026-11-03T13:00:00Z')).toBe('3 nov 2026 · 10:00');
+  });
+});
+
+describe('fechaCortaConDia', () => {
+  it('diaAbreviadoEnMinusculaNumeroYMes', () => {
+    expect(fechaCortaConDia('2026-11-02')).toBe('lun 2 nov');
+    expect(fechaCortaConDia('2026-11-07')).toBe('sáb 7 nov');
+  });
+
+  it('conAnioAgregaElAnio', () => {
+    expect(fechaCortaConDia('2026-11-08', true)).toBe('dom 8 nov 2026');
+    expect(fechaCortaConDia('2027-01-01', true)).toBe('vie 1 ene 2027');
   });
 });

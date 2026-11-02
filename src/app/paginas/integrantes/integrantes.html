@@ -45,7 +45,7 @@
 
 <div class="contenido">
   @if (error(); as mensaje) {
-    <p class="mv-aviso mv-aviso--error" role="alert">{{ mensaje }}</p>
+    <p id="integrantes-error" class="mv-aviso mv-aviso--error" role="alert">{{ mensaje }}</p>
   }
 
   <div id="integrantes-agregar" class="registro">
@@ -199,7 +199,7 @@
   </div>
 
   <section class="seccion" aria-labelledby="integrantes-lista-titulo">
-    <h2 id="integrantes-lista-titulo" class="seccion__titulo">Integrantes</h2>
+    <h2 id="integrantes-lista-titulo" class="seccion__titulo" tabindex="-1">Integrantes</h2>
 
     @if (errorCarga(); as mensaje) {
       <div class="mv-aviso mv-aviso--error" role="alert">

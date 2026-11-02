@@ -3,7 +3,6 @@ import {
   ElementRef,
   Injector,
   OnInit,
-  afterNextRender,
   computed,
   effect,
   inject,
@@ -24,7 +23,6 @@ import {
   RespuestaOpcionCatalogo,
   ServicioCatalogos,
 } from '../../nucleo/catalogos/servicio-catalogos';
-import { dentroDe, enfocarPrimerCampoInvalido } from '../../nucleo/foco';
 import { hoyEnSantiago } from '../../nucleo/fechas';
 import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
 import { detalleAdulto } from './detalle-adulto';
@@ -44,6 +42,14 @@ import {
   validadorTelefonoChileno,
 } from '../../nucleo/telefono';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
+import {
+  dentroDe,
+  devolverFoco,
+  enfocarPrimerCampoInvalido,
+  mostrarAviso,
+  mostrarSeccion,
+  porId,
+} from '../../nucleo/foco';
 
 type CampoContacto = 'nombre' | 'idParentesco' | 'telefono';
 
@@ -185,7 +191,8 @@ export class Adultos implements OnInit {
   protected alternarFormulario(): void {
     const abrir = !this.formularioAbierto();
     this.formularioAbierto.set(abrir);
-    this.enfocar(abrir ? 'adulto-nombre' : 'adultos-abrir-alta');
+    if (abrir) mostrarSeccion(porId('adultos-alta'), this.injector, porId('adulto-nombre'));
+    else devolverFoco(porId('adultos-abrir-alta'), this.injector);
   }
 
   protected cerrarFormulario(): void {
@@ -193,11 +200,7 @@ export class Adultos implements OnInit {
     this.formulario.reset();
     this.errorGeneral.set(null);
     this.erroresCampos.set({});
-    this.enfocar('adultos-abrir-alta');
-  }
-
-  private enfocar(id: string): void {
-    afterNextRender(() => document.getElementById(id)?.focus(), { injector: this.injector });
+    devolverFoco(porId('adultos-abrir-alta'), this.injector);
   }
 
   protected reintentar(): void {
@@ -290,6 +293,7 @@ export class Adultos implements OnInit {
           this.erroresCampos.set(campos);
           if (Object.keys(campos).length === 0) {
             this.errorGeneral.set(mensajeDeError(error));
+            mostrarAviso(porId('adultos-alta-error'), this.injector);
           } else {
             this.enfocarPrimerInvalido();
           }

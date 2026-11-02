@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { Component, Injector, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { descripcionEstado } from '../../nucleo/catalogos/descripcion-estado';
@@ -16,6 +16,7 @@ import { ServicioRelevos } from '../../nucleo/relevos/servicio-relevos';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
 import { Icono } from '../../compartido/icono/icono';
 import { ReasignarTareas } from './reasignar-tareas/reasignar-tareas';
+import { porId, rescatarFoco } from '../../nucleo/foco';
 
 /** Aviso exacto de la foto del relevo: no se vuelve a calcular. */
 export const AVISO_FOTO_RELEVO =
@@ -41,6 +42,7 @@ export const AVISO_FOTO_RELEVO =
 })
 export class Relevo implements OnInit {
   private readonly ruta = inject(ActivatedRoute);
+  private readonly injector = inject(Injector);
   private readonly router = inject(Router);
   private readonly servicioRelevos = inject(ServicioRelevos);
   private readonly servicioCatalogos = inject(ServicioCatalogos);
@@ -175,8 +177,9 @@ export class Relevo implements OnInit {
     this.servicioRelevos.cancelar(grupo.idGrupo, this.idRelevo).subscribe({
       next: () => {
         this.cancelando.set(false);
-        // Recarga el detalle completo: el estado ya pasó a CANCELADA.
-        this.cargar(grupo.idGrupo);
+        // Recarga el detalle completo: el estado ya pasó a CANCELADA. La
+        // tarjeta "Cancelar relevo" desaparece: el foco va a "Datos del relevo".
+        this.cargar(grupo.idGrupo, () => rescatarFoco(porId('relevo-datos-titulo'), this.injector));
       },
       error: (error: unknown) => {
         this.cancelando.set(false);
@@ -185,7 +188,7 @@ export class Relevo implements OnInit {
     });
   }
 
-  private cargar(idGrupo: number): void {
+  private cargar(idGrupo: number, alTerminar?: () => void): void {
     this.cargando.set(true);
     this.noEncontrado.set(false);
     this.error.set(null);
@@ -193,6 +196,7 @@ export class Relevo implements OnInit {
       next: (detalle) => {
         this.detalle.set(detalle);
         this.cargando.set(false);
+        alTerminar?.();
       },
       error: (error: unknown) => {
         this.cargando.set(false);

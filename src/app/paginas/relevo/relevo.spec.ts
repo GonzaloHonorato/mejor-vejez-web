@@ -584,3 +584,40 @@ describe('Relevo', () => {
     });
   });
 });
+
+// jsdom no implementa `scrollIntoView`: se instala un espía por prueba.
+describe('Relevo: desplazamiento y foco', () => {
+  let desplazar: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    desplazar = vi.fn();
+    Element.prototype.scrollIntoView = desplazar as unknown as Element['scrollIntoView'];
+  });
+
+  afterEach(() => {
+    delete (Element.prototype as Partial<Element>).scrollIntoView;
+  });
+
+  /** El `block` con que se desplazó `elemento`, o `undefined` si no se desplazó. */
+  function bloqueDe(elemento: Element | null): ScrollLogicalPosition | undefined {
+    const i = desplazar.mock.contexts.indexOf(elemento);
+    return i < 0 ? undefined : (desplazar.mock.calls[i][0] as ScrollIntoViewOptions).block;
+  }
+
+  it('cancelarElRelevoLlevaElFocoALosDatosYNoABody', async () => {
+    const obtenerImpl = vi
+      .fn()
+      .mockReturnValueOnce(of(relevo()))
+      .mockReturnValueOnce(of(relevo({ idEstado: ID_ESTADO_CANCELADA })));
+    const { fixture, elemento } = await configurar({ activo: grupo(1, 'COORDINADOR'), obtenerImpl });
+    document.body.appendChild(elemento);
+
+    const boton = botonConTexto(elemento, 'Cancelar relevo')!;
+    boton.focus();
+    boton.click();
+    await fixture.whenStable();
+
+    expect(botonConTexto(elemento, 'Cancelar relevo')).toBeFalsy();
+    expect(document.activeElement?.id).toBe('relevo-datos-titulo');
+  });
+});

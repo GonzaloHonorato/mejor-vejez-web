@@ -359,3 +359,39 @@ describe('Grupos', () => {
     expect(grupoActivo.cargar).toHaveBeenCalledTimes(2);
   });
 });
+
+// jsdom no implementa `scrollIntoView`: se instala un espía por prueba.
+describe('Grupos: desplazamiento y foco', () => {
+  let desplazar: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    desplazar = vi.fn();
+    Element.prototype.scrollIntoView = desplazar as unknown as Element['scrollIntoView'];
+  });
+
+  afterEach(() => {
+    delete (Element.prototype as Partial<Element>).scrollIntoView;
+  });
+
+  /** El `block` con que se desplazó `elemento`, o `undefined` si no se desplazó. */
+  function bloqueDe(elemento: Element | null): ScrollLogicalPosition | undefined {
+    const i = desplazar.mock.contexts.indexOf(elemento);
+    return i < 0 ? undefined : (desplazar.mock.calls[i][0] as ScrollIntoViewOptions).block;
+  }
+
+  it('crearGrupoTraeElFormularioALaVistaYAlCancelarVuelveAlBoton', async () => {
+    const { fixture, elemento } = await configurar([grupo(1, 'Familia Rojas', 'COORDINADOR')]);
+
+    await abrirCrear(fixture);
+    expect(bloqueDe(elemento.querySelector('#grupos-crear'))).toBe('start');
+    expect(document.activeElement?.id).toBe('grupo-nombre');
+
+    Array.from(elemento.querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === 'Cancelar')!
+      .click();
+    await fixture.whenStable();
+    const boton = elemento.querySelector('#grupos-abrir-crear');
+    expect(document.activeElement).toBe(boton);
+    expect(bloqueDe(boton)).toBe('nearest');
+  });
+});

@@ -1,6 +1,6 @@
 <section class="mv-tarjeta" aria-labelledby="sucesion-titulo">
   <div class="mv-tarjeta__cabecera">
-    <h2 id="sucesion-titulo" class="mv-tarjeta__titulo">Sucesión de la coordinación</h2>
+    <h2 id="sucesion-titulo" class="mv-tarjeta__titulo" tabindex="-1">Sucesión de la coordinación</h2>
   </div>
 
   <div class="mv-tarjeta__cuerpo cuerpo">
@@ -18,7 +18,7 @@
     }
 
     @if (error(); as mensaje) {
-      <p class="mv-aviso mv-aviso--error" role="alert">{{ mensaje }}</p>
+      <p id="sucesion-error" class="mv-aviso mv-aviso--error" role="alert">{{ mensaje }}</p>
     }
 
     @if (puedeProponer()) {
@@ -119,7 +119,7 @@
 
       @if (puedeGestionar()) {
         @if (confirmandoCancelar()) {
-          <div class="confirmar">
+          <div id="sucesion-confirmar" class="confirmar">
             <div class="mv-campo">
               <label class="mv-campo__etiqueta" for="sucesion-motivo">Motivo (opcional)</label>
               <textarea
@@ -142,7 +142,12 @@
             </div>
           </div>
         } @else {
-          <button type="button" class="mv-boton mv-boton--peligro" (click)="pedirCancelar()">
+          <button
+            id="sucesion-pedir-cancelar"
+            type="button"
+            class="mv-boton mv-boton--peligro"
+            (click)="pedirCancelar()"
+          >
             Cancelar propuesta
           </button>
         }

@@ -61,7 +61,7 @@
     </section>
   } @else {
     @if (errorGeneral(); as mensaje) {
-      <div class="mv-aviso mv-aviso--error" role="alert">
+      <div id="ficha-error-general" class="mv-aviso mv-aviso--error" role="alert">
         <p>{{ mensaje }}</p>
         @if (!adulto()) {
           <button type="button" class="mv-boton" (click)="reintentar()">Reintentar</button>

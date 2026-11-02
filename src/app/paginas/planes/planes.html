@@ -35,13 +35,13 @@
   } @else {
     <div id="planes-alta" class="alta">
       @if (puedeAdministrar() && altaAbierta()) {
-        <section class="mv-tarjeta" aria-labelledby="planes-nuevo-titulo">
+        <section id="planes-alta" class="mv-tarjeta" aria-labelledby="planes-nuevo-titulo">
           <div class="mv-tarjeta__cabecera">
             <h2 id="planes-nuevo-titulo" class="mv-tarjeta__titulo">Nuevo plan</h2>
           </div>
           <div class="mv-tarjeta__cuerpo">
             @if (errorGeneral(); as mensaje) {
-              <p class="mv-aviso mv-aviso--error" role="alert">{{ mensaje }}</p>
+              <p id="planes-alta-error" class="mv-aviso mv-aviso--error" role="alert">{{ mensaje }}</p>
             }
 
             <form class="formulario" [formGroup]="formulario" (ngSubmit)="crear()" novalidate>

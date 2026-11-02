@@ -7,7 +7,7 @@
     <p class="ayuda">Dónde quieres recibir los avisos de las alertas.</p>
 
     @if (errorGeneral(); as mensaje) {
-      <div class="mv-aviso mv-aviso--error" role="alert">
+      <div id="canales-error-general" class="mv-aviso mv-aviso--error" role="alert">
         <p>{{ mensaje }}</p>
         @if (cargaFallida()) {
           <button type="button" class="mv-boton" (click)="reintentar()">Reintentar</button>

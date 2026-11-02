@@ -724,6 +724,10 @@
   @include pq.desde-tableta {
     max-height: var(--grilla-alto, 32rem);
     overflow: auto;
+    // Lo que se trae a la vista dentro de la grilla (una fila de edición)
+    // queda bajo el encabezado fijo: su alto es el relleno de `th` más una
+    // línea de texto y su borde inferior.
+    scroll-padding-top: calc(2 * var(--mv-espacio-3) + 1lh + 1px);
     border: 1px solid var(--mv-color-borde);
     border-radius: var(--mv-radio-lg);
     background: var(--mv-color-superficie);

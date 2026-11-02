@@ -2,7 +2,6 @@ import {
   Component,
   Injector,
   OnInit,
-  afterNextRender,
   computed,
   effect,
   inject,
@@ -31,6 +30,15 @@ import { RespuestaRelevoResumen, SolicitudRegistrarRelevo } from '../../nucleo/r
 import { ServicioRelevos } from '../../nucleo/relevos/servicio-relevos';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
 import { Icono } from '../../compartido/icono/icono';
+import {
+  devolverFoco,
+  enfocarPrimerCampoInvalido,
+  enfocarPrimeraNueva,
+  mostrarAviso,
+  mostrarSeccion,
+  porId,
+  porSelector,
+} from '../../nucleo/foco';
 
 const TAMANO_PAGINA = 20;
 /** `notas` admite hasta 2000 caracteres (`@Size` de la API). */
@@ -301,12 +309,12 @@ export class Relevos implements OnInit {
 
   protected abrirFormulario(): void {
     this.formularioAbierto.set(true);
-    this.enfocar('relevos-adulto');
+    mostrarSeccion(porId('relevos-registrar'), this.injector, porId('relevos-adulto'));
   }
 
   protected cerrarFormulario(): void {
     this.formularioAbierto.set(false);
-    this.enfocar('relevos-abrir-registro');
+    devolverFoco(porId('relevos-abrir-registro'), this.injector);
   }
 
   protected alternarFormulario(): void {
@@ -340,6 +348,7 @@ export class Relevos implements OnInit {
     if (!grupo || this.cargandoMas()) return;
 
     const generacion = this.generacionCarga;
+    const yaCargados = this.elementos().length;
     const siguientePagina = Math.floor(this.elementos().length / TAMANO_PAGINA);
     this.cargandoMas.set(true);
     this.servicioRelevos
@@ -354,6 +363,7 @@ export class Relevos implements OnInit {
           if (generacion !== this.generacionCarga) return;
           this.elementos.update((actuales) => [...actuales, ...respuesta.elementos]);
           this.total.set(respuesta.total);
+          enfocarPrimeraNueva(porId('relevos-grilla'), 'tbody tr', yaCargados, this.injector);
         },
         error: (error: unknown) => {
           this.cargandoMas.set(false);
@@ -372,7 +382,10 @@ export class Relevos implements OnInit {
   protected registrar(): void {
     if (this.guardando()) return;
     this.formulario.markAllAsTouched();
-    if (this.formulario.invalid) return;
+    if (this.formulario.invalid) {
+      this.enfocarPrimerInvalido();
+      return;
+    }
 
     const grupo = this.activo();
     if (!grupo) return;
@@ -399,9 +412,16 @@ export class Relevos implements OnInit {
         this.erroresServidor.set(campos);
         if (Object.keys(campos).length === 0) {
           this.errorFormulario.set(mensajeDeError(error));
+          mostrarAviso(porId('relevos-registrar-error'), this.injector);
+        } else {
+          this.enfocarPrimerInvalido();
         }
       },
     });
+  }
+
+  private enfocarPrimerInvalido(): void {
+    enfocarPrimerCampoInvalido(porSelector('#relevos-registrar form'), this.injector);
   }
 
   private cargar(idGrupo: number, idAdulto: number | null): void {
@@ -425,9 +445,6 @@ export class Relevos implements OnInit {
       });
   }
 
-  private enfocar(id: string): void {
-    afterNextRender(() => document.getElementById(id)?.focus(), { injector: this.injector });
-  }
 
   private leerIdAdultoDeLaUrl(): number | null {
     const valor = this.ruta.snapshot.queryParamMap.get('idAdulto');

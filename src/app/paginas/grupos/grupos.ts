@@ -2,7 +2,6 @@ import {
   Component,
   Injector,
   OnInit,
-  afterNextRender,
   computed,
   inject,
   signal,
@@ -20,6 +19,7 @@ import { RespuestaGrupo } from '../../nucleo/grupos/modelos-grupos';
 import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
 import { ServicioGrupos } from '../../nucleo/grupos/servicio-grupos';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
+import { devolverFoco, mostrarSeccion, porId } from '../../nucleo/foco';
 
 /**
  * Página "Grupos": mis grupos (con mi rol), creación plegada tras la acción
@@ -100,12 +100,12 @@ export class Grupos implements OnInit {
   protected abrirFormulario(): void {
     this.errorCrear.set(null);
     this.formularioAbierto.set(true);
-    this.enfocar('grupo-nombre');
+    mostrarSeccion(porId('grupos-crear'), this.injector, porId('grupo-nombre'));
   }
 
   protected cerrarFormulario(): void {
     this.formularioAbierto.set(false);
-    this.enfocar('grupos-abrir-crear');
+    devolverFoco(porId('grupos-abrir-crear'), this.injector);
   }
 
   protected usar(idGrupo: number): void {
@@ -159,9 +159,6 @@ export class Grupos implements OnInit {
     }
   }
 
-  private enfocar(id: string): void {
-    afterNextRender(() => document.getElementById(id)?.focus(), { injector: this.injector });
-  }
 
   private cargarTodos(): void {
     this.servicioGrupos.listar(true).subscribe((grupos) => this.listaTodos.set(grupos));

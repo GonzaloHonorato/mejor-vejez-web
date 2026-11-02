@@ -392,3 +392,49 @@ describe('Alerta', () => {
     expect(enlace).toBeDefined();
   });
 });
+
+// jsdom no implementa `scrollIntoView`: se instala un espía por prueba.
+describe('Alerta: desplazamiento y foco', () => {
+  let desplazar: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    desplazar = vi.fn();
+    Element.prototype.scrollIntoView = desplazar as unknown as Element['scrollIntoView'];
+  });
+
+  afterEach(() => {
+    delete (Element.prototype as Partial<Element>).scrollIntoView;
+  });
+
+  /** El `block` con que se desplazó `elemento`, o `undefined` si no se desplazó. */
+  function bloqueDe(elemento: Element | null): ScrollLogicalPosition | undefined {
+    const i = desplazar.mock.contexts.indexOf(elemento);
+    return i < 0 ? undefined : (desplazar.mock.calls[i][0] as ScrollIntoViewOptions).block;
+  }
+
+  it('cerrarLaAlertaLlevaElFocoAlTituloDeLaRevisionYNoABody', async () => {
+    const cerrada = detalle({
+      alerta: alerta({
+        idEstado: ID_ESTADO_CERRADA,
+        revisor: { idUsuario: 1, nombre: 'Ana' },
+        fechaRevision: '2026-11-02T10:00:00-03:00',
+        observacionCierre: 'Listo.',
+      }),
+    });
+    const obtenerImpl = vi.fn().mockReturnValueOnce(of(detalle())).mockReturnValueOnce(of(cerrada));
+    const { fixture, elemento } = await configurar({ obtenerImpl, cerrarImpl: vi.fn(() => of(cerrada)) });
+    document.body.appendChild(elemento);
+
+    const textarea = elemento.querySelector<HTMLTextAreaElement>('#alerta-cierre-observacion')!;
+    textarea.value = 'Listo.';
+    textarea.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    const boton = botonConTexto(elemento, 'Cerrar alerta')!;
+    boton.focus();
+    boton.click();
+    await fixture.whenStable();
+
+    expect(botonConTexto(elemento, 'Cerrar alerta')).toBeFalsy();
+    expect(document.activeElement?.id).toBe('alerta-revision-titulo');
+  });
+});

@@ -15,12 +15,12 @@ import {
   normalizarTelefono,
   validadorTelefonoChilenoSalvo,
 } from '../../../nucleo/telefono';
-import { dentroDe, enfocarPrimerCampoInvalido } from '../../../nucleo/foco';
 import {
   RespuestaCanales,
   ServicioCanales,
   SolicitudCanal,
 } from '../../../nucleo/usuarios/servicio-canales';
+import { dentroDe, enfocarPrimerCampoInvalido, mostrarAviso, porId } from '../../../nucleo/foco';
 
 /**
  * "Canales de notificación" en Mi perfil: correo (siempre aparece, con el
@@ -149,6 +149,8 @@ export class CanalesNotificacion implements OnInit {
       error: (error: unknown) => {
         this.guardando.set(false);
         this.errorGeneral.set(mensajeDeError(error));
+        // El aviso va sobre el formulario; "Guardar" queda abajo.
+        mostrarAviso(porId('canales-error-general'), this.injector);
       },
     });
   }

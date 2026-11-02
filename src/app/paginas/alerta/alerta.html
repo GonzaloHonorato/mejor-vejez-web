@@ -108,7 +108,7 @@
           @if (datos.alerta.revisor) {
             <section class="mv-tarjeta" aria-labelledby="alerta-revision-titulo">
               <div class="mv-tarjeta__cabecera">
-                <h2 id="alerta-revision-titulo" class="mv-tarjeta__titulo">Alerta cerrada</h2>
+                <h2 id="alerta-revision-titulo" class="mv-tarjeta__titulo" tabindex="-1">Alerta cerrada</h2>
               </div>
               <div class="mv-tarjeta__cuerpo contenido">
                 <p class="texto-libre">
@@ -148,7 +148,7 @@
                 </div>
 
                 @if (errorCierre(); as mensaje) {
-                  <p class="mv-aviso mv-aviso--error" role="alert">{{ mensaje }}</p>
+                  <p id="alerta-cierre-error" class="mv-aviso mv-aviso--error" role="alert">{{ mensaje }}</p>
                 }
 
                 <button

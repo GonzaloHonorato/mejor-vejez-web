@@ -101,13 +101,16 @@
       <h2 id="auditoria-actividad" class="actividad__titulo">
         {{ modoGlobal ? 'Actividad de todos los grupos' : 'Actividad del grupo' }}
       </h2>
-      @if (!cargando() && !error() && total() > 0) {
-        <p class="resumen-eventos">{{ textoTotal() }}</p>
-      }
+      <!-- Siempre presente: así el lector de pantalla anuncia el total al filtrar o paginar. -->
+      <p class="resumen-eventos" aria-live="polite" aria-atomic="true">
+        @if (!cargando() && !error() && total() > 0) {
+          {{ textoTotal() }}
+        }
+      </p>
     </div>
 
     @if (error(); as mensaje) {
-      <div class="mv-aviso mv-aviso--error" role="alert">
+      <div id="auditoria-error" class="mv-aviso mv-aviso--error" role="alert">
         <p>{{ mensaje }}</p>
         <button type="button" class="mv-boton" (click)="reintentar()">Reintentar</button>
       </div>
@@ -130,7 +133,13 @@
     }
 
     @if (!cargando() && elementos().length > 0) {
-      <div class="mv-grilla" role="region" aria-labelledby="auditoria-actividad" tabindex="0">
+      <div
+        id="auditoria-grilla"
+        class="mv-grilla"
+        role="region"
+        aria-labelledby="auditoria-actividad"
+        tabindex="0"
+      >
         <table class="mv-grilla__tabla" role="table">
           <thead role="rowgroup">
             <tr role="row">

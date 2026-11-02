@@ -1,8 +1,10 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, ElementRef, Injector, OnInit, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { ServicioAutenticacion } from '../../nucleo/autenticacion/servicio-autenticacion';
+import { dentroDe, enfocarPrimerCampoInvalido, rescatarFoco } from '../../nucleo/foco';
+import { mensajeDeCampo } from '../../nucleo/http/mensaje-de-error';
 
 /** Código vencido o ya usado: mismo trato, se ofrece pedir otro enlace. */
 const MENSAJES_CODIGO_VENCIDO: Record<string, string> = {
@@ -15,6 +17,7 @@ const MENSAJE_ERROR_CODIGO_GENERICO = 'No pudimos validar el enlace. Intenta de 
 const MENSAJES_ERROR_CLAVE: Record<string, string> = {
   'auth/weak-password': 'La contraseña debe tener al menos 8 caracteres.',
 };
+const MENSAJE_NO_COINCIDEN = 'Las contraseñas no coinciden.';
 const MENSAJE_ERROR_CLAVE_GENERICO = 'No pudimos cambiar tu contraseña. Intenta de nuevo.';
 
 type Estado = 'cargando' | 'listo' | 'vencido' | 'exito';
@@ -33,6 +36,8 @@ type Estado = 'cargando' | 'listo' | 'vencido' | 'exito';
 export class RestablecerClave implements OnInit {
   private readonly auth = inject(ServicioAutenticacion);
   private readonly ruta = inject(ActivatedRoute);
+  private readonly injector = inject(Injector);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   protected readonly estado = signal<Estado>('cargando');
   protected readonly correo = signal<string | null>(null);
@@ -80,16 +85,40 @@ export class RestablecerClave implements OnInit {
     }
   }
 
+  /** Error de "Contraseña nueva": requerida o muy corta (tras tocarla o enviar). */
+  protected mensajeClave(): string | null {
+    const control = this.formulario.controls.clave;
+    const requerido = mensajeDeCampo(control, {}, 'clave', 'Ingresa la contraseña nueva');
+    if (requerido) return requerido;
+    return control.touched && control.hasError('minlength') ? 'Usa al menos 8 caracteres' : null;
+  }
+
+  protected mensajeConfirmacion(): string | null {
+    return mensajeDeCampo(
+      this.formulario.controls.confirmacion,
+      {},
+      'confirmacion',
+      'Confirma la contraseña nueva',
+    );
+  }
+
+  /** Las claves no coinciden: el error general describe la confirmación. */
+  protected noCoinciden(): boolean {
+    return this.errorFormulario() === MENSAJE_NO_COINCIDEN;
+  }
+
   protected async restablecer(): Promise<void> {
     if (this.enviando()) return;
     this.errorFormulario.set(null);
     if (this.formulario.invalid) {
       this.formulario.markAllAsTouched();
+      enfocarPrimerCampoInvalido(dentroDe(this.host, 'form'), this.injector);
       return;
     }
     const { clave, confirmacion } = this.formulario.getRawValue();
     if (clave !== confirmacion) {
-      this.errorFormulario.set('Las contraseñas no coinciden.');
+      this.errorFormulario.set(MENSAJE_NO_COINCIDEN);
+      enfocarPrimerCampoInvalido(dentroDe(this.host, 'form'), this.injector);
       return;
     }
 
@@ -98,6 +127,8 @@ export class RestablecerClave implements OnInit {
       await this.auth.confirmarRecuperarClave(this.codigo, clave);
       this.enviando.set(false);
       this.estado.set('exito');
+      // El formulario desaparece: el foco pasa al enlace "Ir a iniciar sesión".
+      rescatarFoco(dentroDe(this.host, '.mv-boton--primario'), this.injector);
     } catch (error) {
       this.enviando.set(false);
       const codigoError = (error as { code?: string } | null)?.code ?? '';
@@ -105,6 +136,7 @@ export class RestablecerClave implements OnInit {
       if (mensajeVencido) {
         this.mensajeVencido.set(mensajeVencido);
         this.estado.set('vencido');
+        rescatarFoco(dentroDe(this.host, '.mv-boton--primario'), this.injector);
         return;
       }
       this.errorFormulario.set(MENSAJES_ERROR_CLAVE[codigoError] ?? MENSAJE_ERROR_CLAVE_GENERICO);

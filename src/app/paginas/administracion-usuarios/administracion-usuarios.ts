@@ -3,7 +3,6 @@ import {
   ElementRef,
   Injector,
   OnInit,
-  afterNextRender,
   computed,
   inject,
   signal,
@@ -18,7 +17,6 @@ import { Icono } from '../../compartido/icono/icono';
 import { inicialesDe } from '../../compartido/marco-app/identidad-usuario';
 import { erroresDeCampos, mensajeDeError } from '../../nucleo/http/mensaje-de-error';
 import { RespuestaEstadoCatalogo, ServicioCatalogos } from '../../nucleo/catalogos/servicio-catalogos';
-import { dentroDe, enfocarPrimerCampoInvalido } from '../../nucleo/foco';
 import {
   AYUDA_TELEFONO,
   MENSAJE_TELEFONO_CHILENO,
@@ -31,6 +29,17 @@ import {
 } from '../../nucleo/telefono';
 import { RespuestaUsuario } from '../../nucleo/usuarios/modelos-usuarios';
 import { ServicioUsuarios } from '../../nucleo/usuarios/servicio-usuarios';
+import {
+  dentroDe,
+  devolverFoco,
+  enfocarPrimerCampoInvalido,
+  enfocarPrimeraNueva,
+  mostrarAviso,
+  mostrarSeccion,
+  porId,
+  porSelector,
+  primeroQueExista,
+} from '../../nucleo/foco';
 
 const TAMANO_PAGINA = 10;
 
@@ -154,13 +163,13 @@ export class AdministracionUsuarios implements OnInit {
   protected paginaAnterior(): void {
     if (this.pagina() === 0) return;
     this.pagina.set(this.pagina() - 1);
-    this.cargar();
+    this.cargar(() => this.enfocarPrimeraFila());
   }
 
   protected siguientePagina(): void {
     if (!this.hayMasPaginas()) return;
     this.pagina.set(this.pagina() + 1);
-    this.cargar();
+    this.cargar(() => this.enfocarPrimeraFila());
   }
 
   /**
@@ -203,9 +212,9 @@ export class AdministracionUsuarios implements OnInit {
   protected cambiarEstado(usuario: RespuestaUsuario, idEstado: number): void {
     this.error.set(null);
     this.servicioUsuarios.cambiarEstado(usuario.idUsuario, idEstado).subscribe({
-      next: () => this.cargar(),
+      next: () => this.cargar(() => this.enfocarFila(usuario)),
       error: (error: unknown) => {
-        this.error.set(mensajeDeError(error));
+        this.mostrarError(error);
         this.cargar();
       },
     });
@@ -220,15 +229,37 @@ export class AdministracionUsuarios implements OnInit {
       telefono: formatearTelefono(usuario.telefono),
       esAdministrador: usuario.esAdministrador,
     });
-    this.enfocar('usuario-nombre');
+    // La fila de edición vive dentro de la grilla (con scroll propio desde
+    // tableta): `scrollIntoView` mueve la grilla y la página.
+    mostrarSeccion(porSelector('.editar-usuario'), this.injector, porId('usuario-nombre'));
   }
 
   protected cancelarEdicion(): void {
     const usuario = this.editando();
     this.editando.set(null);
-    if (usuario) {
-      this.enfocarElemento(`#usuario-acciones-${usuario.idUsuario} .mv-boton-dividido__principal`);
-    }
+    if (usuario) this.enfocarFila(usuario);
+  }
+
+  /** Devuelve el foco al "Editar" de la fila del usuario (o al título de la lista si ya no está). */
+  private enfocarFila(usuario: RespuestaUsuario): void {
+    devolverFoco(
+      primeroQueExista(
+        porSelector(`#usuario-acciones-${usuario.idUsuario} .mv-boton-dividido__principal`),
+        porId('usuarios-titulo'),
+      ),
+      this.injector,
+    );
+  }
+
+  /** Tras cambiar de página, el foco va a la primera fila: el botón pulsado pudo deshabilitarse. */
+  private enfocarPrimeraFila(): void {
+    enfocarPrimeraNueva(porId('usuarios-grilla'), 'tbody tr:not(.fila-edicion)', 0, this.injector);
+  }
+
+  /** Error de una acción de fila: se muestra arriba de la lista, quizá fuera de la vista. */
+  private mostrarError(error: unknown): void {
+    this.error.set(mensajeDeError(error));
+    mostrarAviso(porId('usuarios-error'), this.injector);
   }
 
   protected guardar(): void {
@@ -259,7 +290,7 @@ export class AdministracionUsuarios implements OnInit {
         next: () => {
           this.guardando.set(false);
           this.editando.set(null);
-          this.cargar();
+          this.cargar(() => this.enfocarFila(usuario));
         },
         error: (error: unknown) => {
           this.guardando.set(false);
@@ -267,6 +298,7 @@ export class AdministracionUsuarios implements OnInit {
           this.erroresCampos.set(campos);
           if (Object.keys(campos).length === 0) {
             this.errorEdicion.set(mensajeDeError(error));
+            mostrarAviso(porSelector('.editar-usuario .mv-aviso--error'), this.injector);
           } else {
             this.enfocarPrimerInvalido('.editar-usuario form');
           }
@@ -280,12 +312,12 @@ export class AdministracionUsuarios implements OnInit {
     this.errorCrear.set(null);
     this.erroresCamposCrear.set({});
     this.formularioCrear.reset({ nombre: '', email: '', telefono: '' });
-    this.enfocar('usuario-crear-nombre');
+    mostrarSeccion(porId('usuarios-crear'), this.injector, porId('usuario-crear-nombre'));
   }
 
   protected cancelarCrear(): void {
     this.creandoUsuario.set(false);
-    this.enfocar('usuarios-abrir-crear');
+    devolverFoco(porId('usuarios-abrir-crear'), this.injector);
   }
 
   protected alternarCrear(): void {
@@ -342,6 +374,7 @@ export class AdministracionUsuarios implements OnInit {
           this.erroresCamposCrear.set(campos);
           if (Object.keys(campos).length === 0) {
             this.errorCrear.set(mensajeDeError(error));
+            mostrarAviso(porSelector('.crear-usuario .mv-aviso--error'), this.injector);
           } else {
             this.enfocarPrimerInvalido('.crear-usuario form');
           }
@@ -412,7 +445,7 @@ export class AdministracionUsuarios implements OnInit {
       },
       error: (error: unknown) => {
         this.reenviando.set(null);
-        this.error.set(mensajeDeError(error));
+        this.mostrarError(error);
       },
     });
   }
@@ -429,17 +462,7 @@ export class AdministracionUsuarios implements OnInit {
     this.cargar();
   }
 
-  private enfocar(id: string): void {
-    afterNextRender(() => document.getElementById(id)?.focus(), { injector: this.injector });
-  }
-
-  private enfocarElemento(selector: string): void {
-    afterNextRender(() => document.querySelector<HTMLElement>(selector)?.focus(), {
-      injector: this.injector,
-    });
-  }
-
-  private cargar(): void {
+  private cargar(alTerminar?: () => void): void {
     this.cargando.set(true);
     this.errorCarga.set(null);
     const { texto } = this.formularioBusqueda.getRawValue();
@@ -454,6 +477,7 @@ export class AdministracionUsuarios implements OnInit {
           this.cargando.set(false);
           this.usuarios.set(respuesta.elementos);
           this.total.set(respuesta.total);
+          alTerminar?.();
         },
         error: (error: unknown) => {
           this.cargando.set(false);

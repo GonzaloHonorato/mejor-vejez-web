@@ -2,7 +2,10 @@ import { NgTemplateOutlet } from '@angular/common';
 import {
   Component,
   DestroyRef,
+  ElementRef,
+  Injector,
   OnInit,
+  afterNextRender,
   computed,
   inject,
   input,
@@ -14,12 +17,15 @@ import {
   AbstractControl,
   NonNullableFormBuilder,
   ReactiveFormsModule,
+  ValidationErrors,
   Validators,
 } from '@angular/forms';
+import { map } from 'rxjs';
 
 import { BuscadorMedicamento } from '../buscador-medicamento/buscador-medicamento';
 import { SelectorHorario } from '../selector-horario/selector-horario';
 import { RespuestaOpcionCatalogo } from '../../../nucleo/catalogos/servicio-catalogos';
+import { fechaConAnio } from '../../../nucleo/fecha-legible';
 import { hoyEnSantiago } from '../../../nucleo/fechas';
 import { RespuestaIntegrante } from '../../../nucleo/grupos/modelos-grupos';
 import {
@@ -29,9 +35,20 @@ import {
 } from '../../../nucleo/http/mensaje-de-error';
 import {
   HorarioJson,
+  expandirHorario,
   reconstruirHorario,
   validarHorario,
 } from '../../../nucleo/planificacion/horario';
+import {
+  INTERVALOS_SIMPLES,
+  configuracionSimpleDeHoras,
+  diasEntre,
+  esHoraSimpleValida,
+  fechaFinSimple,
+  horarioSimple,
+  horasDesdePrimeraToma,
+  resumenSimple,
+} from '../../../nucleo/planificacion/horario-simple';
 import {
   RespuestaDetallePlan,
   RespuestaMedicamento,
@@ -39,8 +56,24 @@ import {
   SolicitudGuardarDetalle,
 } from '../../../nucleo/planificacion/modelos-planificacion';
 import { ServicioPlanes } from '../../../nucleo/planificacion/servicio-planes';
+import { dentroDe, enfocarPrimerCampoInvalido, mostrarAviso } from '../../../nucleo/foco';
 
 type ModoTermino = 'AUTOMATICO' | 'MANUAL';
+
+/** Simple: primera toma + cada N horas + N días. Avanzado: el formulario completo. */
+type ModoConfiguracion = 'SIMPLE' | 'AVANZADO';
+
+const DIAS_POR_DEFECTO = 7;
+const MAXIMO_DIAS = 365;
+const MENSAJE_PRIMERA_TOMA = 'Indica la hora de la primera toma';
+const MENSAJE_CADA = 'Elige cada cuántas horas';
+const MENSAJE_DURANTE = 'Indica un número entero de días entre 1 y 365';
+
+/** `null` vacío lo resuelve `required`; aquí solo se exige que sea entero. */
+function entero(control: AbstractControl): ValidationErrors | null {
+  const valor = control.value;
+  return valor === null || valor === '' || Number.isInteger(Number(valor)) ? null : { entero: true };
+}
 
 /** Campos cuyo aviso se arma con `mensajeDeCampo` (error de la API o requerido local). */
 type CampoConAviso =
@@ -99,6 +132,8 @@ function textoONulo(valor: string): string | null {
 export class FormularioDetalle implements OnInit {
   private readonly servicioPlanes = inject(ServicioPlanes);
   private readonly fb = inject(NonNullableFormBuilder);
+  private readonly injector = inject(Injector);
+  private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
 
   readonly idGrupo = input.required<number>();
   readonly plan = input.required<RespuestaPlan>();
@@ -136,6 +171,24 @@ export class FormularioDetalle implements OnInit {
     instrucciones: [''],
   });
 
+  /**
+   * Modo simple (por defecto al agregar). Lo que no se muestra en simple
+   * (cantidades, término, responsable, instrucciones) queda en `formulario`
+   * con su valor actual: por defecto al agregar, el guardado al editar.
+   */
+  protected readonly simple = this.fb.group({
+    primeraToma: ['08:00', [Validators.required, Validators.pattern(/^([01]\d|2[0-3]):[0-5]\d$/)]],
+    cada: this.fb.control<number>(8),
+    durante: this.fb.control<number | null>(DIAS_POR_DEFECTO, [
+      Validators.required,
+      Validators.min(1),
+      Validators.max(MAXIMO_DIAS),
+      entero,
+    ]),
+  });
+  protected readonly intervalos = INTERVALOS_SIMPLES;
+  protected readonly modo = signal<ModoConfiguracion>('SIMPLE');
+
   /** Nombre del medicamento elegido (el id va en el control `idMedicamento`). */
   protected readonly nombreMedicamento = signal<string | null>(null);
   protected readonly diasElegidos = signal<ReadonlySet<number>>(new Set());
@@ -156,6 +209,68 @@ export class FormularioDetalle implements OnInit {
       initialValue: 'AUTOMATICO' as ModoTermino,
     },
   );
+
+  private readonly valoresSimples = toSignal(
+    this.simple.valueChanges.pipe(map(() => this.simple.getRawValue())),
+    { initialValue: this.simple.getRawValue() },
+  );
+  private readonly valores = toSignal(
+    this.formulario.valueChanges.pipe(map(() => this.formulario.getRawValue())),
+    { initialValue: this.formulario.getRawValue() },
+  );
+
+  /** Días del modo simple como número entero válido, o `null`. */
+  private readonly diasSimples = computed(() => {
+    const durante = this.valoresSimples().durante;
+    if (durante === null || (durante as unknown) === '') return null;
+    const dias = Number(durante);
+    return Number.isInteger(dias) && dias >= 1 && dias <= MAXIMO_DIAS ? dias : null;
+  });
+
+  /** Último día en simple, o `null` si falta "Durante" o "Desde". */
+  private readonly finSimple = computed(() => {
+    const dias = this.diasSimples();
+    const desde = this.valores().fechaInicio;
+    return dias === null || desde === '' ? null : fechaFinSimple(desde, dias);
+  });
+
+  /** "Desde" fuera de la vigencia del plan (la misma regla que aplica el core). */
+  private readonly desdeFueraDelPlan = computed(() => {
+    const desde = this.valores().fechaInicio;
+    const { vigenteDesde, vigenteHasta } = this.plan();
+    return desde !== '' && (desde < vigenteDesde || (vigenteHasta !== null && desde > vigenteHasta));
+  });
+
+  /** Con la duración elegida termina después del fin del plan. */
+  private readonly terminaDespuesDelPlan = computed(() => {
+    const fin = this.finSimple();
+    const hasta = this.plan().vigenteHasta;
+    return fin !== null && hasta !== null && fin > hasta;
+  });
+
+  /** Resumen en vivo del modo simple; vacío mientras falte algo. */
+  protected readonly resumen = computed(() => {
+    const { primeraToma, cada } = this.valoresSimples();
+    const dias = this.diasSimples();
+    const desde = this.valores().fechaInicio;
+    if (!esHoraSimpleValida(primeraToma) || !INTERVALOS_SIMPLES.includes(cada)) return '';
+    if (dias === null || desde === '') return '';
+    return resumenSimple(primeraToma, cada, desde, dias);
+  });
+
+  /**
+   * La configuración avanzada actual se puede expresar en simple: todos los
+   * días, horas equiespaciadas que cubren el día con un intervalo de la
+   * lista y fecha de fin definida (de 1 a 365 días).
+   */
+  protected readonly expresableEnSimple = computed(() => {
+    const { horario, fechaInicio, fechaFin } = this.valores();
+    if (!this.todosLosDias() || horario === null || validarHorario(horario) !== null) return false;
+    if (configuracionSimpleDeHoras(expandirHorario(horario)) === null) return false;
+    if (fechaInicio === '' || fechaFin === '') return false;
+    const dias = diasEntre(fechaInicio, fechaFin);
+    return dias >= 1 && dias <= MAXIMO_DIAS;
+  });
 
   /** " (en comprimido(s))" según la unidad elegida, o vacío si aún no hay unidad. */
   protected readonly enUnidad = computed(() => {
@@ -202,6 +317,12 @@ export class FormularioDetalle implements OnInit {
         fechaInicio = hasta;
       }
       this.formulario.patchValue({ fechaInicio, fechaFin: hasta ?? '' });
+      // Los 7 días por defecto no pasan del fin del plan.
+      if (hasta !== null) {
+        this.simple.controls.durante.setValue(
+          Math.min(DIAS_POR_DEFECTO, diasEntre(fechaInicio, hasta)),
+        );
+      }
       return;
     }
 
@@ -229,6 +350,97 @@ export class FormularioDetalle implements OnInit {
         detalle.modoCalculoTermino === 'MANUAL' ? (detalle.fechaEstimadaTermino ?? '') : '',
       idResponsablePredeterminado: responsableSigueActivo ? idResponsable : null,
       instrucciones: detalle.instrucciones ?? '',
+    });
+
+    if (this.expresableEnSimple()) {
+      this.avanzadoASimple(false);
+    } else {
+      this.modo.set('AVANZADO');
+    }
+  }
+
+  /** Mensaje de error de un campo del modo simple ("Desde" usa `mensajeDesde`). */
+  protected mensajeSimple(campo: 'primeraToma' | 'cada' | 'durante'): string | null {
+    const control: AbstractControl = this.simple.controls[campo];
+    const mostrar = control.touched || this.intentoEnviar();
+    if (campo === 'primeraToma') {
+      return mostrar && control.invalid ? MENSAJE_PRIMERA_TOMA : null;
+    }
+    if (campo === 'cada') {
+      return mostrar && !INTERVALOS_SIMPLES.includes(this.valoresSimples().cada) ? MENSAJE_CADA : null;
+    }
+    const deServidor = this.erroresServidor()['fechaFin'];
+    if (deServidor) return deServidor;
+    if (mostrar && control.invalid) return MENSAJE_DURANTE;
+    if (this.terminaDespuesDelPlan()) {
+      return `Con esa duración termina después del fin del plan (${fechaConAnio(this.plan().vigenteHasta)}); elige menos días`;
+    }
+    return null;
+  }
+
+  /** "Desde" en simple: lo de siempre (API o requerido) más la vigencia del plan. */
+  protected mensajeDesde(): string | null {
+    const mensaje = this.mensaje('fechaInicio');
+    if (mensaje || !this.desdeFueraDelPlan()) return mensaje;
+    const { vigenteDesde, vigenteHasta } = this.plan();
+    const rango = vigenteHasta
+      ? `del ${fechaConAnio(vigenteDesde)} al ${fechaConAnio(vigenteHasta)}`
+      : `desde el ${fechaConAnio(vigenteDesde)}`;
+    return `Elige una fecha dentro de la vigencia del plan (${rango})`;
+  }
+
+  /** Cambia de modo y lleva el foco al primer campo del modo nuevo. */
+  protected cambiarModo(modo: ModoConfiguracion): void {
+    if (modo === 'AVANZADO') {
+      this.simpleAAvanzado();
+    } else {
+      if (!this.expresableEnSimple()) return;
+      this.avanzadoASimple();
+    }
+    this.modo.set(modo);
+    const destino = modo === 'AVANZADO' ? '#detalle-todos-dias' : '#detalle-primera-toma';
+    const elemento = dentroDe(this.host, destino);
+    afterNextRender(() => (elemento() as HTMLElement | null)?.focus(), {
+      injector: this.injector,
+    });
+  }
+
+  /**
+   * Lleva lo simple al formulario avanzado: todos los días, las horas
+   * calculadas como horas fijas y la fecha de fin. Lo que esté incompleto en
+   * simple no se copia.
+   */
+  private simpleAAvanzado(): void {
+    const { primeraToma, cada } = this.simple.getRawValue();
+    this.diasElegidos.set(new Set(this.dias().map((d) => d.idOpcion)));
+    if (esHoraSimpleValida(primeraToma) && INTERVALOS_SIMPLES.includes(cada)) {
+      this.formulario.controls.horario.setValue(horarioSimple(primeraToma, cada));
+    }
+    const fin = this.finSimple();
+    if (fin !== null) {
+      this.formulario.controls.fechaFin.setValue(fin);
+    }
+  }
+
+  /**
+   * Lleva lo avanzado (ya comprobado con `expresableEnSimple`) al modo simple.
+   * Con `conservarPrimeraToma`, si las horas son las mismas se mantiene la
+   * primera toma que eligió la persona (08:00 cada 8, no 00:00); al abrir un
+   * detalle guardado no hay elección previa y se usa la hora más temprana.
+   */
+  private avanzadoASimple(conservarPrimeraToma = true): void {
+    const { horario, fechaInicio, fechaFin } = this.formulario.getRawValue();
+    const horas = expandirHorario(horario!);
+    const configuracion = configuracionSimpleDeHoras(horas)!;
+    const primeraActual = this.simple.controls.primeraToma.value;
+    const mismaSerie =
+      conservarPrimeraToma &&
+      esHoraSimpleValida(primeraActual) &&
+      horasDesdePrimeraToma(primeraActual, configuracion.cada).sort().join() === horas.join();
+    this.simple.setValue({
+      primeraToma: mismaSerie ? primeraActual : configuracion.primeraToma,
+      cada: configuracion.cada,
+      durante: diasEntre(fechaInicio, fechaFin),
     });
   }
 
@@ -294,6 +506,15 @@ export class FormularioDetalle implements OnInit {
     this.intentoEnviar.set(true);
     this.formulario.markAllAsTouched();
 
+    if (this.modo() === 'SIMPLE') {
+      this.simple.markAllAsTouched();
+      if (this.simple.invalid || this.desdeFueraDelPlan() || this.terminaDespuesDelPlan()) {
+        this.enfocarPrimerError();
+        return;
+      }
+      this.simpleAAvanzado();
+    }
+
     const valores = this.formulario.getRawValue();
     const horario = valores.horario;
     if (
@@ -301,6 +522,7 @@ export class FormularioDetalle implements OnInit {
       this.diasElegidos().size === 0 ||
       validarHorario(horario) !== null
     ) {
+      this.enfocarPrimerError();
       return;
     }
 
@@ -351,8 +573,16 @@ export class FormularioDetalle implements OnInit {
         this.erroresServidor.set(campos);
         if (Object.keys(campos).length === 0) {
           this.error.set(mensajeDeError(error));
+          mostrarAviso(dentroDe(this.host, '.error-formulario'), this.injector);
+        } else {
+          this.enfocarPrimerError();
         }
       },
     });
+  }
+
+  /** Lleva a la vista (y al foco, si es un campo) el primer error del formulario. */
+  private enfocarPrimerError(): void {
+    enfocarPrimerCampoInvalido(dentroDe(this.host, 'form'), this.injector);
   }
 }

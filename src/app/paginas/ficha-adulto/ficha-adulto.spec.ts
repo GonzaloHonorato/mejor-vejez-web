@@ -539,3 +539,38 @@ describe('FichaAdulto', () => {
     expect(navegar).not.toHaveBeenCalledWith('/adultos');
   });
 });
+
+// jsdom no implementa `scrollIntoView`: se instala un espía por prueba.
+describe('FichaAdulto: desplazamiento y foco', () => {
+  let desplazar: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    desplazar = vi.fn();
+    Element.prototype.scrollIntoView = desplazar as unknown as Element['scrollIntoView'];
+  });
+
+  afterEach(() => {
+    delete (Element.prototype as Partial<Element>).scrollIntoView;
+  });
+
+  /** El `block` con que se desplazó `elemento`, o `undefined` si no se desplazó. */
+  function bloqueDe(elemento: Element | null): ScrollLogicalPosition | undefined {
+    const i = desplazar.mock.contexts.indexOf(elemento);
+    return i < 0 ? undefined : (desplazar.mock.calls[i][0] as ScrollIntoViewOptions).block;
+  }
+
+  it('editarPerfilTraeElFormularioALaVistaYAlCancelarVuelveAlBoton', async () => {
+    const { fixture, elemento } = await configurar({});
+
+    botonConTexto(elemento, 'Editar perfil')!.click();
+    await fixture.whenStable();
+    expect(bloqueDe(elemento.querySelector('#ficha-formulario')!.closest('section'))).toBe('start');
+    expect(document.activeElement?.id).toBe('ficha-nombre');
+
+    botonConTexto(elemento, 'Cancelar')!.click();
+    await fixture.whenStable();
+    const editar = botonConTexto(elemento, 'Editar perfil')!;
+    expect(document.activeElement).toBe(editar);
+    expect(bloqueDe(editar)).toBe('nearest');
+  });
+});

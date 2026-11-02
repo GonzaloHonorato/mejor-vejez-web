@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { Component, Injector, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -18,6 +18,7 @@ import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
 import { mensajeDeError } from '../../nucleo/http/mensaje-de-error';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
 import { Icono } from '../../compartido/icono/icono';
+import { mostrarAviso, porId, rescatarFoco } from '../../nucleo/foco';
 
 /**
  * Página "Detalle de la alerta" (`/alertas/:idAlerta`): datos de la alerta,
@@ -44,6 +45,7 @@ import { Icono } from '../../compartido/icono/icono';
 })
 export class Alerta implements OnInit {
   private readonly ruta = inject(ActivatedRoute);
+  private readonly injector = inject(Injector);
   private readonly router = inject(Router);
   private readonly servicioAlertas = inject(ServicioAlertas);
   private readonly servicioCatalogos = inject(ServicioCatalogos);
@@ -212,16 +214,20 @@ export class Alerta implements OnInit {
           this.formularioCierre.reset({ observacion: '' });
           this.confirmacionCierre.set('Alerta cerrada.');
           // Recarga el detalle completo: revisor, fecha y observación de cierre.
-          this.cargar(grupo.idGrupo);
+          // El formulario desaparece: el foco va al título "Alerta cerrada".
+          this.cargar(grupo.idGrupo, () =>
+            rescatarFoco(porId('alerta-revision-titulo'), this.injector),
+          );
         },
         error: (error: unknown) => {
           this.cerrando.set(false);
           this.errorCierre.set(mensajeDeError(error));
+          mostrarAviso(porId('alerta-cierre-error'), this.injector);
         },
       });
   }
 
-  private cargar(idGrupo: number): void {
+  private cargar(idGrupo: number, alTerminar?: () => void): void {
     this.cargando.set(true);
     this.noEncontrado.set(false);
     this.error.set(null);
@@ -229,6 +235,7 @@ export class Alerta implements OnInit {
       next: (detalle) => {
         this.detalle.set(detalle);
         this.cargando.set(false);
+        alTerminar?.();
       },
       error: (error: unknown) => {
         this.cargando.set(false);

@@ -846,3 +846,40 @@ describe('Alertas', () => {
     expect(elemento.textContent).toContain('Mensaje de la alerta 1');
   });
 });
+
+// jsdom no implementa `scrollIntoView`: se instala un espía por prueba.
+describe('Alertas: desplazamiento y foco', () => {
+  let desplazar: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    desplazar = vi.fn();
+    Element.prototype.scrollIntoView = desplazar as unknown as Element['scrollIntoView'];
+  });
+
+  afterEach(() => {
+    delete (Element.prototype as Partial<Element>).scrollIntoView;
+  });
+
+  /** El `block` con que se desplazó `elemento`, o `undefined` si no se desplazó. */
+  function bloqueDe(elemento: Element | null): ScrollLogicalPosition | undefined {
+    const i = desplazar.mock.contexts.indexOf(elemento);
+    return i < 0 ? undefined : (desplazar.mock.calls[i][0] as ScrollIntoViewOptions).block;
+  }
+
+  it('cargarMasEnfocaLaPrimeraAlertaNueva', async () => {
+    const listar = vi.fn((_idGrupo: number, filtro?: FiltroAlertas) => {
+      if (filtro?.tamano === 1) return of(pagina([], 0, 0, 1));
+      return filtro?.pagina === 0
+        ? of(pagina([alerta({ idAlerta: 1, mensajeAlerta: 'Primera' })], 2, 0))
+        : of(pagina([alerta({ idAlerta: 2, mensajeAlerta: 'Segunda' })], 2, 1));
+    });
+    const { fixture, elemento } = await configurar({ listar });
+
+    botonConTexto(elemento, 'Cargar más').click();
+    await fixture.whenStable();
+
+    const filas = elemento.querySelectorAll('#alertas-grilla tbody > tr');
+    expect(document.activeElement).toBe(filas[1].querySelector('a[href]'));
+    expect(bloqueDe(document.activeElement)).toBe('nearest');
+  });
+});

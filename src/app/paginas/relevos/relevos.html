@@ -51,6 +51,7 @@
                 id="relevos-adulto"
                 class="mv-campo__control"
                 formControlName="idAdulto"
+                [attr.aria-invalid]="mensaje('idAdulto') ? true : null"
                 [attr.aria-describedby]="mensaje('idAdulto') ? 'relevos-adulto-error' : null"
               >
                 <option [ngValue]="null">Selecciona…</option>
@@ -69,6 +70,7 @@
                 id="relevos-saliente"
                 class="mv-campo__control"
                 formControlName="idUsuarioSaliente"
+                [attr.aria-invalid]="mensaje('idUsuarioSaliente') ? true : null"
                 [attr.aria-describedby]="
                   mensaje('idUsuarioSaliente') ? 'relevos-saliente-error' : null
                 "
@@ -91,6 +93,7 @@
                 id="relevos-entrante"
                 class="mv-campo__control"
                 formControlName="idUsuarioEntrante"
+                [attr.aria-invalid]="mensaje('idUsuarioEntrante') ? true : null"
                 [attr.aria-describedby]="
                   mensaje('idUsuarioEntrante') ? 'relevos-entrante-error' : null
                 "
@@ -121,7 +124,7 @@
             </div>
 
             @if (errorFormulario(); as mensaje) {
-              <p class="mv-aviso mv-aviso--error" role="alert">{{ mensaje }}</p>
+              <p id="relevos-registrar-error" class="mv-aviso mv-aviso--error" role="alert">{{ mensaje }}</p>
             }
 
             <div class="botones">
@@ -200,7 +203,13 @@
       }
 
       @if (elementos().length > 0) {
-        <div class="mv-grilla" role="region" aria-labelledby="relevos-lista-titulo" tabindex="0">
+        <div
+          id="relevos-grilla"
+          class="mv-grilla"
+          role="region"
+          aria-labelledby="relevos-lista-titulo"
+          tabindex="0"
+        >
           <table class="mv-grilla__tabla" role="table">
             <thead role="rowgroup">
               <tr role="row">

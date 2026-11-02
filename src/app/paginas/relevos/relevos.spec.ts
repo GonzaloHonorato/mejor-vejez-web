@@ -615,3 +615,65 @@ describe('Relevos', () => {
     });
   });
 });
+
+// jsdom no implementa `scrollIntoView`: se instala un espía por prueba.
+describe('Relevos: desplazamiento y foco', () => {
+  let desplazar: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    desplazar = vi.fn();
+    Element.prototype.scrollIntoView = desplazar as unknown as Element['scrollIntoView'];
+  });
+
+  afterEach(() => {
+    delete (Element.prototype as Partial<Element>).scrollIntoView;
+  });
+
+  /** El `block` con que se desplazó `elemento`, o `undefined` si no se desplazó. */
+  function bloqueDe(elemento: Element | null): ScrollLogicalPosition | undefined {
+    const i = desplazar.mock.contexts.indexOf(elemento);
+    return i < 0 ? undefined : (desplazar.mock.calls[i][0] as ScrollIntoViewOptions).block;
+  }
+
+  it('registrarRelevoTraeElFormularioALaVistaYAlCancelarVuelveAlBoton', async () => {
+    const { fixture, elemento } = await configurar();
+
+    await abrirFormulario(fixture, elemento);
+    expect(bloqueDe(elemento.querySelector('#relevos-registrar'))).toBe('start');
+    expect(document.activeElement?.id).toBe('relevos-adulto');
+
+    botonConTexto(elemento, 'Cancelar')!.click();
+    await fixture.whenStable();
+    const boton = elemento.querySelector('#relevos-abrir-registro');
+    expect(document.activeElement).toBe(boton);
+    expect(bloqueDe(boton)).toBe('nearest');
+  });
+
+  it('enviarVacioEnfocaElPrimerCampoInvalido', async () => {
+    const { fixture, elemento } = await configurar();
+    await abrirFormulario(fixture, elemento);
+
+    await enviar(fixture, elemento);
+
+    expect(document.activeElement?.id).toBe('relevos-adulto');
+    expect(document.activeElement?.getAttribute('aria-invalid')).toBe('true');
+    expect(bloqueDe(document.activeElement)).toBe('center');
+  });
+
+  it('cargarMasEnfocaElPrimerRelevoNuevo', async () => {
+    const primera = Array.from({ length: 20 }, (_, i) => resumen(i + 1));
+    const { fixture, elemento } = await configurar({
+      listarImpl: (_idGrupo, filtro) =>
+        filtro?.pagina === 0
+          ? of({ ...pagina(primera), total: 21 })
+          : of({ ...pagina([resumen(21)]), pagina: 1, total: 21 }),
+    });
+
+    botonConTexto(elemento, 'Cargar más')!.click();
+    await fixture.whenStable();
+
+    const filas = elemento.querySelectorAll('#relevos-grilla tbody tr');
+    expect(filas).toHaveLength(21);
+    expect(document.activeElement).toBe(filas[20].querySelector('a.mv-fila__enlace'));
+  });
+});

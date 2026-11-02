@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { Component, Injector, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
@@ -24,6 +24,13 @@ import {
 } from '../../nucleo/tareas/modelos-tareas';
 import { ServicioTareas } from '../../nucleo/tareas/servicio-tareas';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
+import {
+  enfocarPrimerCampoInvalido,
+  mostrarAviso,
+  porId,
+  porSelector,
+  rescatarFoco,
+} from '../../nucleo/foco';
 
 const TONO_ESTADO: Partial<Record<CodigoEstadoTarea, string>> = {
   PENDIENTE: 'mv-chip--alerta',
@@ -57,6 +64,7 @@ function textoONulo(valor: string): string | null {
 })
 export class Tarea implements OnInit {
   private readonly ruta = inject(ActivatedRoute);
+  private readonly injector = inject(Injector);
   private readonly router = inject(Router);
   private readonly servicioTareas = inject(ServicioTareas);
   private readonly servicioGrupos = inject(ServicioGrupos);
@@ -239,14 +247,19 @@ export class Tarea implements OnInit {
   protected recargar(): void {
     const grupo = this.activo();
     if (!grupo) return;
-    this.cargar(grupo.idGrupo);
+    // Si la tarea quedó cerrada, sus acciones desaparecen: el foco va al
+    // título "Datos de la tarea" en vez de perderse en `body`.
+    this.cargar(grupo.idGrupo, () => rescatarFoco(porId('tarea-datos-titulo'), this.injector));
   }
 
   protected reasignar(): void {
     const grupo = this.activo();
     if (!grupo || this.reasignando()) return;
     this.formularioReasignar.markAllAsTouched();
-    if (this.formularioReasignar.invalid) return;
+    if (this.formularioReasignar.invalid) {
+      this.enfocarPrimerInvalidoDeReasignar();
+      return;
+    }
 
     const { idUsuario, motivo } = this.formularioReasignar.getRawValue();
     const solicitud: SolicitudAsignarTarea = { idUsuario: idUsuario!, motivo: textoONulo(motivo) };
@@ -269,12 +282,19 @@ export class Tarea implements OnInit {
         this.erroresReasignar.set(campos);
         if (Object.keys(campos).length === 0) {
           this.errorReasignar.set(mensajeDeError(error));
+          mostrarAviso(porSelector('#tarea-reasignar .mv-aviso--error'), this.injector);
+        } else {
+          this.enfocarPrimerInvalidoDeReasignar();
         }
       },
     });
   }
 
-  private cargar(idGrupo: number): void {
+  private enfocarPrimerInvalidoDeReasignar(): void {
+    enfocarPrimerCampoInvalido(porSelector('#tarea-reasignar form'), this.injector);
+  }
+
+  private cargar(idGrupo: number, alTerminar?: () => void): void {
     this.cargando.set(true);
     this.noEncontrado.set(false);
     this.error.set(null);
@@ -282,6 +302,7 @@ export class Tarea implements OnInit {
       next: (detalle) => {
         this.detalle.set(detalle);
         this.cargando.set(false);
+        alTerminar?.();
       },
       error: (error: unknown) => {
         this.cargando.set(false);

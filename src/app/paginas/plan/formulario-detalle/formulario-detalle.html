@@ -1,11 +1,15 @@
 <section class="formulario" aria-labelledby="detalle-titulo">
-  <h3 id="detalle-titulo" class="titulo">{{ detalle() ? 'Editar medicamento' : 'Agregar medicamento' }}</h3>
+  <h3 id="detalle-titulo" class="titulo">
+    {{ detalle() ? 'Editar medicamento' : 'Agregar medicamento' }}
+  </h3>
   <p class="mv-aviso mv-aviso--info">{{ aviso }}</p>
 
   <form class="detalle" [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
     @if (nombreMedicamento(); as nombre) {
       <div class="elegido">
-        <p class="elegido__nombre"><span class="mv-campo__etiqueta">Medicamento:</span> {{ nombre }}</p>
+        <p class="elegido__nombre">
+          <span class="mv-campo__etiqueta">Medicamento:</span> {{ nombre }}
+        </p>
         <button type="button" class="mv-boton" (click)="cambiarMedicamento()">
           Cambiar medicamento
         </button>
@@ -14,6 +18,7 @@
       <app-buscador-medicamento
         [idGrupo]="idGrupo()"
         [presentaciones]="presentaciones()"
+        [descritoPor]="mensaje('idMedicamento') ? 'detalle-idMedicamento-error' : null"
         (elegido)="elegirMedicamento($event)"
       />
       <ng-container *ngTemplateOutlet="campoError; context: { campo: 'idMedicamento' }" />
@@ -32,6 +37,7 @@
           id="detalle-presentacion"
           class="mv-campo__control"
           formControlName="idPresentacion"
+          [attr.aria-invalid]="mensaje('idPresentacion') ? true : null"
           [attr.aria-describedby]="
             mensaje('idPresentacion') ? 'detalle-idPresentacion-error' : null
           "
@@ -50,6 +56,8 @@
           class="mv-campo__control"
           type="text"
           formControlName="concentracion"
+          [attr.aria-invalid]="mensaje('concentracion') ? true : null"
+          [attr.aria-describedby]="mensaje('concentracion') ? 'detalle-concentracion-error' : null"
         />
         <ng-container *ngTemplateOutlet="campoError; context: { campo: 'concentracion' }" />
       </div>
@@ -66,6 +74,7 @@
           step="0.001"
           min="0.001"
           formControlName="dosisCantidad"
+          [attr.aria-invalid]="mensaje('dosisCantidad') ? true : null"
           [attr.aria-describedby]="mensaje('dosisCantidad') ? 'detalle-dosisCantidad-error' : null"
         />
         <ng-container *ngTemplateOutlet="campoError; context: { campo: 'dosisCantidad' }" />
@@ -76,6 +85,7 @@
           id="detalle-unidad"
           class="mv-campo__control"
           formControlName="idUnidadDosis"
+          [attr.aria-invalid]="mensaje('idUnidadDosis') ? true : null"
           [attr.aria-describedby]="mensaje('idUnidadDosis') ? 'detalle-idUnidadDosis-error' : null"
         >
           <option [ngValue]="null">Selecciona…</option>
@@ -87,170 +97,293 @@
       </div>
     </div>
 
-    <fieldset class="grupo" [attr.aria-describedby]="errorDias() ? 'detalle-dias-error' : null">
-      <legend class="mv-campo__etiqueta">Días</legend>
-      <label class="mv-campo mv-campo--casilla todos">
-        <input type="checkbox" [checked]="todosLosDias()" (change)="alternarTodos($event)" />
-        <span>Todos los días</span>
-      </label>
-      <div class="dias">
-        @for (dia of dias(); track dia.idOpcion) {
-          <label class="mv-campo mv-campo--casilla">
+    @if (modo() === 'SIMPLE') {
+      <fieldset class="grupo simple" [formGroup]="simple">
+        <legend class="mv-campo__etiqueta">Cuándo se toma</legend>
+        <div class="simple__campos">
+          <div class="mv-campo">
+            <label class="mv-campo__etiqueta" for="detalle-primera-toma">Primera toma</label>
             <input
-              type="checkbox"
-              [checked]="diasElegidos().has(dia.idOpcion)"
-              (change)="alternarDia(dia.idOpcion, $event)"
+              id="detalle-primera-toma"
+              class="mv-campo__control"
+              type="time"
+              formControlName="primeraToma"
+              [attr.aria-invalid]="mensajeSimple('primeraToma') ? true : null"
+              [attr.aria-describedby]="
+                mensajeSimple('primeraToma') ? 'detalle-primeraToma-error' : null
+              "
             />
-            <span>{{ dia.descripcion }}</span>
-          </label>
+            @if (mensajeSimple('primeraToma'); as m) {
+              <p id="detalle-primeraToma-error" class="mv-campo__error" role="alert">{{ m }}</p>
+            }
+          </div>
+          <div class="mv-campo">
+            <label class="mv-campo__etiqueta" for="detalle-cada">Cada</label>
+            <select
+              id="detalle-cada"
+              class="mv-campo__control"
+              formControlName="cada"
+              [attr.aria-invalid]="mensajeSimple('cada') ? true : null"
+              [attr.aria-describedby]="mensajeSimple('cada') ? 'detalle-cada-error' : null"
+            >
+              @for (horas of intervalos; track horas) {
+                <option [ngValue]="horas">{{ horas }} horas</option>
+              }
+            </select>
+            @if (mensajeSimple('cada'); as m) {
+              <p id="detalle-cada-error" class="mv-campo__error" role="alert">{{ m }}</p>
+            }
+          </div>
+          <div class="mv-campo">
+            <label class="mv-campo__etiqueta" for="detalle-durante">Durante</label>
+            <input
+              id="detalle-durante"
+              class="mv-campo__control"
+              type="number"
+              inputmode="numeric"
+              min="1"
+              max="365"
+              step="1"
+              formControlName="durante"
+              [attr.aria-invalid]="mensajeSimple('durante') ? true : null"
+              [attr.aria-describedby]="
+                mensajeSimple('durante')
+                  ? 'detalle-durante-ayuda detalle-durante-error'
+                  : 'detalle-durante-ayuda'
+              "
+            />
+            <p id="detalle-durante-ayuda" class="mv-campo__ayuda">Días (de 1 a 365)</p>
+            @if (mensajeSimple('durante'); as m) {
+              <p id="detalle-durante-error" class="mv-campo__error" role="alert">{{ m }}</p>
+            }
+          </div>
+          <div class="mv-campo">
+            <label class="mv-campo__etiqueta" for="detalle-desde">Desde</label>
+            <input
+              id="detalle-desde"
+              class="mv-campo__control"
+              type="date"
+              [formControl]="formulario.controls.fechaInicio"
+              [attr.aria-invalid]="mensajeDesde() ? true : null"
+              [attr.aria-describedby]="mensajeDesde() ? 'detalle-fechaInicio-error' : null"
+            />
+            @if (mensajeDesde(); as m) {
+              <p id="detalle-fechaInicio-error" class="mv-campo__error" role="alert">{{ m }}</p>
+            }
+          </div>
+        </div>
+        <p class="resumen" aria-live="polite">{{ resumen() }}</p>
+        @for (campo of ['horario', 'diasSemana']; track campo) {
+          @if (erroresServidor()[campo]; as m) {
+            <p class="mv-aviso mv-aviso--error" role="alert">{{ m }}</p>
+          }
+        }
+      </fieldset>
+      <button
+        type="button"
+        class="mv-boton mv-boton--texto cambio-modo"
+        (click)="cambiarModo('AVANZADO')"
+      >
+        Configurar con opciones avanzadas
+      </button>
+    } @else {
+      <div class="cambio-modo">
+        <button
+          type="button"
+          class="mv-boton mv-boton--texto"
+          [disabled]="!expresableEnSimple()"
+          [attr.aria-describedby]="expresableEnSimple() ? null : 'detalle-solo-avanzado'"
+          (click)="cambiarModo('SIMPLE')"
+        >
+          Volver a la configuración simple
+        </button>
+        @if (!expresableEnSimple()) {
+          <p id="detalle-solo-avanzado" class="mv-campo__ayuda">
+            Esta configuración solo se puede editar en modo avanzado
+          </p>
         }
       </div>
-      @if (errorDias(); as m) {
-        <p id="detalle-dias-error" class="mv-campo__error" role="alert">{{ m }}</p>
-      }
-    </fieldset>
 
-    <app-selector-horario formControlName="horario" [mostrarError]="intentoEnviar()" />
-    @if (erroresServidor()['horario']; as m) {
-      <p class="mv-aviso mv-aviso--error" role="alert">{{ m }}</p>
-    }
-
-    <div class="fila">
-      <div class="mv-campo">
-        <label class="mv-campo__etiqueta" for="detalle-desde">Desde</label>
-        <input
-          id="detalle-desde"
-          class="mv-campo__control"
-          type="date"
-          formControlName="fechaInicio"
-          [attr.aria-describedby]="mensaje('fechaInicio') ? 'detalle-fechaInicio-error' : null"
-        />
-        <ng-container *ngTemplateOutlet="campoError; context: { campo: 'fechaInicio' }" />
-      </div>
-      <div class="mv-campo">
-        <label class="mv-campo__etiqueta" for="detalle-hasta">Hasta</label>
-        <input
-          id="detalle-hasta"
-          class="mv-campo__control"
-          type="date"
-          formControlName="fechaFin"
-          [attr.aria-describedby]="mensaje('fechaFin') ? 'detalle-fechaFin-error' : null"
-        />
-        <ng-container *ngTemplateOutlet="campoError; context: { campo: 'fechaFin' }" />
-      </div>
-    </div>
-
-    <div class="fila">
-      <div class="mv-campo">
-        <label class="mv-campo__etiqueta" for="detalle-cantidad-inicial"
-          >Cantidad inicial{{ enUnidad() }}</label
-        >
-        <input
-          id="detalle-cantidad-inicial"
-          class="mv-campo__control"
-          type="number"
-          inputmode="decimal"
-          step="0.001"
-          min="0"
-          formControlName="cantidadInicial"
-          [attr.aria-describedby]="
-            mensaje('cantidadInicial') ? 'detalle-cantidadInicial-error' : null
-          "
-        />
-        <ng-container *ngTemplateOutlet="campoError; context: { campo: 'cantidadInicial' }" />
-      </div>
-      <div class="mv-campo">
-        <label class="mv-campo__etiqueta" for="detalle-cantidad-disponible"
-          >Cantidad disponible{{ enUnidad() }}</label
-        >
-        <input
-          id="detalle-cantidad-disponible"
-          class="mv-campo__control"
-          type="number"
-          inputmode="decimal"
-          step="0.001"
-          min="0"
-          formControlName="cantidadDisponible"
-          [attr.aria-describedby]="
-            mensaje('cantidadDisponible') ? 'detalle-cantidadDisponible-error' : null
-          "
-        />
-        <ng-container *ngTemplateOutlet="campoError; context: { campo: 'cantidadDisponible' }" />
-      </div>
-    </div>
-
-    <fieldset class="grupo">
-      <legend class="mv-campo__etiqueta">Fecha estimada de término</legend>
-      <label class="mv-campo mv-campo--casilla">
-        <input type="radio" value="AUTOMATICO" formControlName="modoCalculoTermino" />
-        <span>Calcular automáticamente</span>
-      </label>
-      <label class="mv-campo mv-campo--casilla">
-        <input type="radio" value="MANUAL" formControlName="modoCalculoTermino" />
-        <span>Indicar manualmente</span>
-      </label>
-      @if (modoTermino() === 'MANUAL') {
-        <div class="mv-campo">
-          <label class="mv-campo__etiqueta" for="detalle-fecha-termino">Fecha estimada de término</label>
+      <fieldset class="grupo" [attr.aria-describedby]="errorDias() ? 'detalle-dias-error' : null">
+        <legend class="mv-campo__etiqueta">Días</legend>
+        <label class="mv-campo mv-campo--casilla todos">
           <input
-            id="detalle-fecha-termino"
+            id="detalle-todos-dias"
+            type="checkbox"
+            [checked]="todosLosDias()"
+            [attr.aria-invalid]="errorDias() ? true : null"
+            [attr.aria-describedby]="errorDias() ? 'detalle-dias-error' : null"
+            (change)="alternarTodos($event)"
+          />
+          <span>Todos los días</span>
+        </label>
+        <div class="dias">
+          @for (dia of dias(); track dia.idOpcion) {
+            <label class="mv-campo mv-campo--casilla">
+              <input
+                type="checkbox"
+                [checked]="diasElegidos().has(dia.idOpcion)"
+                (change)="alternarDia(dia.idOpcion, $event)"
+              />
+              <span>{{ dia.descripcion }}</span>
+            </label>
+          }
+        </div>
+        @if (errorDias(); as m) {
+          <p id="detalle-dias-error" class="mv-campo__error" role="alert">{{ m }}</p>
+        }
+      </fieldset>
+
+      <app-selector-horario formControlName="horario" [mostrarError]="intentoEnviar()" />
+      @if (erroresServidor()['horario']; as m) {
+        <p class="mv-aviso mv-aviso--error" role="alert">{{ m }}</p>
+      }
+
+      <div class="fila">
+        <div class="mv-campo">
+          <label class="mv-campo__etiqueta" for="detalle-desde">Desde</label>
+          <input
+            id="detalle-desde"
             class="mv-campo__control"
             type="date"
-            formControlName="fechaEstimadaTermino"
+            formControlName="fechaInicio"
+            [attr.aria-invalid]="mensaje('fechaInicio') ? true : null"
+            [attr.aria-describedby]="mensaje('fechaInicio') ? 'detalle-fechaInicio-error' : null"
+          />
+          <ng-container *ngTemplateOutlet="campoError; context: { campo: 'fechaInicio' }" />
+        </div>
+        <div class="mv-campo">
+          <label class="mv-campo__etiqueta" for="detalle-hasta">Hasta</label>
+          <input
+            id="detalle-hasta"
+            class="mv-campo__control"
+            type="date"
+            formControlName="fechaFin"
+            [attr.aria-invalid]="mensaje('fechaFin') ? true : null"
+            [attr.aria-describedby]="mensaje('fechaFin') ? 'detalle-fechaFin-error' : null"
+          />
+          <ng-container *ngTemplateOutlet="campoError; context: { campo: 'fechaFin' }" />
+        </div>
+      </div>
+
+      <div class="fila">
+        <div class="mv-campo">
+          <label class="mv-campo__etiqueta" for="detalle-cantidad-inicial"
+            >Cantidad inicial{{ enUnidad() }}</label
+          >
+          <input
+            id="detalle-cantidad-inicial"
+            class="mv-campo__control"
+            type="number"
+            inputmode="decimal"
+            step="0.001"
+            min="0"
+            formControlName="cantidadInicial"
+            [attr.aria-invalid]="mensaje('cantidadInicial') ? true : null"
             [attr.aria-describedby]="
-              mensaje('fechaEstimadaTermino') ? 'detalle-fechaEstimadaTermino-error' : null
+              mensaje('cantidadInicial') ? 'detalle-cantidadInicial-error' : null
             "
           />
-          <ng-container
-            *ngTemplateOutlet="campoError; context: { campo: 'fechaEstimadaTermino' }"
-          />
+          <ng-container *ngTemplateOutlet="campoError; context: { campo: 'cantidadInicial' }" />
         </div>
-      }
-    </fieldset>
+        <div class="mv-campo">
+          <label class="mv-campo__etiqueta" for="detalle-cantidad-disponible"
+            >Cantidad disponible{{ enUnidad() }}</label
+          >
+          <input
+            id="detalle-cantidad-disponible"
+            class="mv-campo__control"
+            type="number"
+            inputmode="decimal"
+            step="0.001"
+            min="0"
+            formControlName="cantidadDisponible"
+            [attr.aria-invalid]="mensaje('cantidadDisponible') ? true : null"
+            [attr.aria-describedby]="
+              mensaje('cantidadDisponible') ? 'detalle-cantidadDisponible-error' : null
+            "
+          />
+          <ng-container *ngTemplateOutlet="campoError; context: { campo: 'cantidadDisponible' }" />
+        </div>
+      </div>
 
-    <div class="mv-campo">
-      <label class="mv-campo__etiqueta" for="detalle-responsable">Responsable</label>
-      @if (responsableAnteriorInvalido()) {
-        <p id="detalle-responsable-anterior" class="mv-aviso mv-aviso--error" role="status">
-          {{ mensajeResponsableAnterior }}
-        </p>
-      }
-      <select
-        id="detalle-responsable"
-        class="mv-campo__control"
-        formControlName="idResponsablePredeterminado"
-        [attr.aria-describedby]="
-          responsableAnteriorInvalido()
-            ? 'detalle-responsable-anterior'
-            : mensaje('idResponsablePredeterminado')
-              ? 'detalle-idResponsablePredeterminado-error'
-              : null
-        "
-      >
-        <option [ngValue]="null">Sin responsable</option>
-        @for (integrante of integrantes(); track integrante.idUsuario) {
-          <option [ngValue]="integrante.idUsuario">{{ integrante.nombre }}</option>
+      <fieldset class="grupo">
+        <legend class="mv-campo__etiqueta">Fecha estimada de término</legend>
+        <label class="mv-campo mv-campo--casilla">
+          <input type="radio" value="AUTOMATICO" formControlName="modoCalculoTermino" />
+          <span>Calcular automáticamente</span>
+        </label>
+        <label class="mv-campo mv-campo--casilla">
+          <input type="radio" value="MANUAL" formControlName="modoCalculoTermino" />
+          <span>Indicar manualmente</span>
+        </label>
+        @if (modoTermino() === 'MANUAL') {
+          <div class="mv-campo">
+            <label class="mv-campo__etiqueta" for="detalle-fecha-termino"
+              >Fecha estimada de término</label
+            >
+            <input
+              id="detalle-fecha-termino"
+              class="mv-campo__control"
+              type="date"
+              formControlName="fechaEstimadaTermino"
+              [attr.aria-invalid]="mensaje('fechaEstimadaTermino') ? true : null"
+              [attr.aria-describedby]="
+                mensaje('fechaEstimadaTermino') ? 'detalle-fechaEstimadaTermino-error' : null
+              "
+            />
+            <ng-container
+              *ngTemplateOutlet="campoError; context: { campo: 'fechaEstimadaTermino' }"
+            />
+          </div>
         }
-      </select>
-      <ng-container
-        *ngTemplateOutlet="campoError; context: { campo: 'idResponsablePredeterminado' }"
-      />
-    </div>
+      </fieldset>
 
-    <div class="mv-campo">
-      <label class="mv-campo__etiqueta" for="detalle-instrucciones">Instrucciones</label>
-      <textarea
-        id="detalle-instrucciones"
-        class="mv-campo__control area"
-        rows="3"
-        formControlName="instrucciones"
-        [attr.aria-describedby]="mensaje('instrucciones') ? 'detalle-instrucciones-error' : null"
-      ></textarea>
-      <ng-container *ngTemplateOutlet="campoError; context: { campo: 'instrucciones' }" />
-    </div>
+      <div class="mv-campo">
+        <label class="mv-campo__etiqueta" for="detalle-responsable">Responsable</label>
+        @if (responsableAnteriorInvalido()) {
+          <p id="detalle-responsable-anterior" class="mv-aviso mv-aviso--error" role="status">
+            {{ mensajeResponsableAnterior }}
+          </p>
+        }
+        <select
+          id="detalle-responsable"
+          class="mv-campo__control"
+          formControlName="idResponsablePredeterminado"
+          [attr.aria-describedby]="
+            responsableAnteriorInvalido()
+              ? 'detalle-responsable-anterior'
+              : mensaje('idResponsablePredeterminado')
+                ? 'detalle-idResponsablePredeterminado-error'
+                : null
+          "
+        >
+          <option [ngValue]="null">Sin responsable</option>
+          @for (integrante of integrantes(); track integrante.idUsuario) {
+            <option [ngValue]="integrante.idUsuario">{{ integrante.nombre }}</option>
+          }
+        </select>
+        <ng-container
+          *ngTemplateOutlet="campoError; context: { campo: 'idResponsablePredeterminado' }"
+        />
+      </div>
+
+      <div class="mv-campo">
+        <label class="mv-campo__etiqueta" for="detalle-instrucciones">Instrucciones</label>
+        <textarea
+          id="detalle-instrucciones"
+          class="mv-campo__control area"
+          rows="3"
+          formControlName="instrucciones"
+          [attr.aria-invalid]="mensaje('instrucciones') ? true : null"
+          [attr.aria-describedby]="mensaje('instrucciones') ? 'detalle-instrucciones-error' : null"
+        ></textarea>
+        <ng-container *ngTemplateOutlet="campoError; context: { campo: 'instrucciones' }" />
+      </div>
+    }
 
     @if (error(); as m) {
-      <p class="mv-aviso mv-aviso--error" role="alert">{{ m }}</p>
+      <p class="mv-aviso mv-aviso--error error-formulario" role="alert">{{ m }}</p>
     }
 
     <div class="acciones">

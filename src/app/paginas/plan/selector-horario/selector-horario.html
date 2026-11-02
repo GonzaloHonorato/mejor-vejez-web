@@ -23,6 +23,7 @@
             class="mv-campo__control"
             type="time"
             [formControl]="control"
+            [attr.aria-invalid]="errorVisible() ? true : null"
             [attr.aria-describedby]="errorVisible() ? prefijo + '-error' : null"
           />
           <button
@@ -49,6 +50,7 @@
           class="mv-campo__control"
           type="time"
           formControlName="inicio"
+          [attr.aria-invalid]="errorVisible() ? true : null"
           [attr.aria-describedby]="errorVisible() ? prefijo + '-error' : null"
         />
       </div>
@@ -59,6 +61,7 @@
           class="mv-campo__control"
           type="time"
           formControlName="fin"
+          [attr.aria-invalid]="errorVisible() ? true : null"
           [attr.aria-describedby]="errorVisible() ? prefijo + '-error' : null"
         />
       </div>
@@ -73,6 +76,7 @@
           max="24"
           step="1"
           formControlName="frecuencia"
+          [attr.aria-invalid]="errorVisible() ? true : null"
           [attr.aria-describedby]="errorVisible() ? prefijo + '-error' : null"
         />
       </div>

@@ -37,7 +37,7 @@
         }
 
         @if (errorGeneral(); as mensaje) {
-          <p class="mv-aviso mv-aviso--error" role="alert">{{ mensaje }}</p>
+          <p id="perfil-error-general" class="mv-aviso mv-aviso--error" role="alert">{{ mensaje }}</p>
         }
 
         <form class="formulario" [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
@@ -107,6 +107,7 @@
         </div>
 
         <form
+          id="perfil-formulario-clave"
           class="mv-tarjeta__cuerpo formulario"
           [formGroup]="formularioClave"
           (ngSubmit)="cambiarClave()"
@@ -124,6 +125,7 @@
               type="password"
               autocomplete="current-password"
               formControlName="actual"
+              [attr.aria-invalid]="formularioClave.controls.actual.invalid && formularioClave.controls.actual.touched ? true : null"
             />
           </div>
 
@@ -135,6 +137,7 @@
               type="password"
               autocomplete="new-password"
               formControlName="nueva"
+              [attr.aria-invalid]="formularioClave.controls.nueva.invalid && formularioClave.controls.nueva.touched ? true : null"
             />
           </div>
 
@@ -148,6 +151,7 @@
               type="password"
               autocomplete="new-password"
               formControlName="confirmacion"
+              [attr.aria-invalid]="formularioClave.controls.confirmacion.invalid && formularioClave.controls.confirmacion.touched ? true : null"
             />
           </div>
 

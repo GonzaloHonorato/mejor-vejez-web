@@ -298,7 +298,7 @@ describe('Plan', () => {
 
     // Horario reconstruido como INTERVALO (equiespaciado) y como HORAS_FIJAS (no equiespaciado).
     expect(elemento.textContent).toContain('Cada 8 h de 08:00 a 16:00');
-    expect(elemento.textContent).toContain('09:00 · 13:00 · 19:00');
+    expect(elemento.textContent).toContain('09:00, 13:00 y 19:00');
     // Días: 7/7 -> "Todos los días"; 3/7 -> abreviados.
     expect(elemento.textContent).toContain('Todos los días');
     expect(elemento.textContent).toContain('Lun, Mié, Vie');
@@ -306,6 +306,25 @@ describe('Plan', () => {
     expect(elemento.textContent).toContain('1 Comprimido');
     // Término estimado formateado.
     expect(elemento.textContent).toContain('Término estimado: 1 feb 2026 (automático)');
+  });
+
+  it('horarioQueCubreElDiaSeMuestraDesdeLaPrimeraToma', async () => {
+    const { elemento } = await configurar({
+      obtenerImpl: () =>
+        of({
+          plan: plan(),
+          detalles: [
+            detalle({ idDetallePlan: 100, horas: ['00:00', '08:00', '16:00'] }),
+            detalle({ idDetallePlan: 200, horas: ['00:00', '08:00', '16:00'], concentracion: null }),
+            detalle({ idDetallePlan: 300, horas: ['00:00', '12:00'], concentracion: null }),
+          ],
+        }),
+    });
+
+    expect(elemento.textContent).toContain('Cada 8 h: 08:00, 16:00 y 00:00');
+    expect(elemento.textContent).not.toContain('de 00:00 a 16:00');
+    // El mismo texto en el nombre accesible cuando el medicamento se repite.
+    expect(elemento.querySelector('[aria-label="Editar Paracetamol, Cada 12 h: 12:00 y 00:00"]')).not.toBeNull();
   });
 
   it('actualizarCantidadLlamaALaApiYRecarga', async () => {
@@ -812,5 +831,140 @@ describe('Plan', () => {
     expect(servicioPlanes.obtener).toHaveBeenLastCalledWith(1, 10);
     expect(elemento.querySelector('.mv-aviso--error')).toBeFalsy();
     expect(elemento.textContent).toContain('Paracetamol');
+  });
+});
+
+// jsdom no implementa `scrollIntoView`: se instala un espía por prueba.
+describe('Plan: desplazamiento y foco', () => {
+  let desplazar: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    FormularioDetalleFalso.instancias = [];
+    desplazar = vi.fn();
+    Element.prototype.scrollIntoView = desplazar as unknown as Element['scrollIntoView'];
+  });
+
+  afterEach(() => {
+    delete (Element.prototype as Partial<Element>).scrollIntoView;
+  });
+
+  /** El `block` con que se desplazó `elemento`, o `undefined` si no se desplazó. */
+  function bloqueDe(elemento: Element | null): ScrollLogicalPosition | undefined {
+    const i = desplazar.mock.contexts.indexOf(elemento);
+    return i < 0 ? undefined : (desplazar.mock.calls[i][0] as ScrollIntoViewOptions).block;
+  }
+
+  it('agregarMedicamentoTraeElFormularioALaVistaEnfocaSuPrimerCampoYAlCerrarVuelveAlBoton', async () => {
+    const { fixture, elemento } = await configurar({});
+
+    elemento.querySelector<HTMLButtonElement>('#plan-agregar-medicamento')!.click();
+    await fixture.whenStable();
+
+    const formulario = elemento.querySelector('app-formulario-detalle');
+    expect(bloqueDe(formulario)).toBe('start');
+    expect(document.activeElement).toBe(elemento.querySelector('#detalle-presentacion'));
+
+    (fixture.debugElement.query(By.directive(FormularioDetalleFalso)).componentInstance as FormularioDetalleFalso)
+      .cancelado.emit();
+    await fixture.whenStable();
+
+    const boton = elemento.querySelector('#plan-agregar-medicamento');
+    expect(document.activeElement).toBe(boton);
+    expect(bloqueDe(boton)).toBe('nearest');
+  });
+
+  it('editarDesdeLaGrillaTraeElFormularioALaVista', async () => {
+    const { fixture, elemento } = await configurar({});
+
+    botonConTexto(elemento.querySelector('[data-id-detalle="100"]')!, 'Editar')!.click();
+    await fixture.whenStable();
+
+    expect(bloqueDe(elemento.querySelector('app-formulario-detalle'))).toBe('start');
+    expect(document.activeElement).toBe(elemento.querySelector('#detalle-presentacion'));
+  });
+
+  it('editarCantidadTraeSuFilaALaVista', async () => {
+    const { fixture, elemento } = await configurar({});
+
+    await elegirEnMenu(fixture, elemento, MENU_PARACETAMOL, 'Registrar cantidad disponible');
+
+    expect(bloqueDe(elemento.querySelector('[data-id-cantidad="100"]'))).toBe('start');
+    expect(document.activeElement).toBe(elemento.querySelector('#detalle-cantidad-100'));
+  });
+
+  it('editarPlanTraeElFormularioALaVistaYAlCancelarVuelveAlBoton', async () => {
+    const { fixture, elemento } = await configurar({});
+
+    elemento.querySelector<HTMLButtonElement>('#plan-acciones .mv-boton-dividido__principal')!.click();
+    await fixture.whenStable();
+
+    expect(bloqueDe(elemento.querySelector('#plan-editar'))).toBe('start');
+    expect(document.activeElement?.id).toBe('plan-editar-nombre');
+
+    botonConTexto(elemento.querySelector('#plan-editar')!, 'Cancelar')!.click();
+    await fixture.whenStable();
+    expect(document.activeElement).toBe(
+      elemento.querySelector('#plan-acciones .mv-boton-dividido__principal'),
+    );
+  });
+
+  it('eliminarUnMedicamentoLlevaElFocoALaFilaSiguienteYSinFilasAlTitulo', async () => {
+    const detalleA = detalle({ idDetallePlan: 100, nombreMedicamento: 'Paracetamol' });
+    const detalleB = detalle({ idDetallePlan: 200, nombreMedicamento: 'Ibuprofeno', concentracion: null });
+    let detalles = [detalleA, detalleB];
+    const { fixture, elemento, servicioPlanes } = await configurar({
+      obtenerImpl: () => of({ plan: plan(), detalles }),
+    });
+    const confirmar = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    servicioPlanes.eliminarDetalle.mockImplementation(() => {
+      detalles = [detalleB];
+      return of(undefined);
+    });
+    await elegirEnMenu(fixture, elemento, MENU_PARACETAMOL, 'Eliminar');
+    expect(document.activeElement).toBe(
+      elemento.querySelector('[data-id-detalle="200"] .mv-boton-dividido__principal'),
+    );
+
+    servicioPlanes.eliminarDetalle.mockImplementation(() => {
+      detalles = [];
+      return of(undefined);
+    });
+    await elegirEnMenu(fixture, elemento, 'Más acciones para Ibuprofeno', 'Eliminar');
+    expect(document.activeElement?.id).toBe('plan-medicamentos-titulo');
+    confirmar.mockRestore();
+  });
+
+  it('desactivarUnMedicamentoMantieneElFocoEnSuFilaAunqueCambieDeLugar', async () => {
+    const detalleA = detalle({ idDetallePlan: 100, nombreMedicamento: 'Paracetamol' });
+    const detalleB = detalle({ idDetallePlan: 200, nombreMedicamento: 'Ibuprofeno', concentracion: null });
+    let detalles = [detalleA, detalleB];
+    const { fixture, elemento, servicioPlanes } = await configurar({
+      obtenerImpl: () => of({ plan: plan(), detalles }),
+    });
+    servicioPlanes.desactivarDetalle.mockImplementation(() => {
+      // La inactiva pasa al final de la lista.
+      detalles = [detalleB, { ...detalleA, idEstado: 2 }];
+      return of(detalleA);
+    });
+
+    await elegirEnMenu(fixture, elemento, MENU_PARACETAMOL, 'Desactivar');
+
+    const principal = elemento.querySelector('[data-id-detalle="100"] .mv-boton-dividido__principal');
+    expect(principal?.textContent?.trim()).toBe('Reactivar');
+    expect(document.activeElement).toBe(principal);
+  });
+
+  it('errorDeUnaAccionDeFilaTraeElAvisoALaVista', async () => {
+    const { fixture, elemento, servicioPlanes } = await configurar({});
+    servicioPlanes.desactivarDetalle.mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 409, error: { detail: 'Conflicto' } })),
+    );
+
+    await elegirEnMenu(fixture, elemento, MENU_PARACETAMOL, 'Desactivar');
+
+    const aviso = elemento.querySelector('#plan-error-detalle');
+    expect(aviso?.textContent).toContain('Conflicto');
+    expect(bloqueDe(aviso)).toBe('nearest');
   });
 });

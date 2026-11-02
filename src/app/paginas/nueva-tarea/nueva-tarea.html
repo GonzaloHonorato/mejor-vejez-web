@@ -41,6 +41,7 @@
             id="nueva-tarea-adulto"
             class="mv-campo__control"
             formControlName="idAdultoMayor"
+            [attr.aria-invalid]="mensaje('idAdultoMayor') ? true : null"
             [attr.aria-describedby]="mensaje('idAdultoMayor') ? 'nueva-tarea-adulto-error' : null"
           >
             <option [ngValue]="null">Selecciona…</option>
@@ -61,6 +62,7 @@
             type="text"
             maxlength="200"
             formControlName="titulo"
+            [attr.aria-invalid]="mensaje('titulo') ? true : null"
             [attr.aria-describedby]="mensaje('titulo') ? 'nueva-tarea-titulo-error' : null"
           />
           @if (mensaje('titulo'); as m) {
@@ -87,6 +89,7 @@
               class="mv-campo__control"
               type="date"
               formControlName="fecha"
+              [attr.aria-invalid]="mensaje('fecha') ? true : null"
               [attr.aria-describedby]="mensaje('fecha') ? 'nueva-tarea-fecha-error' : null"
             />
             @if (mensaje('fecha'); as m) {
@@ -100,6 +103,7 @@
               class="mv-campo__control"
               type="time"
               formControlName="hora"
+              [attr.aria-invalid]="mensaje('hora') ? true : null"
               [attr.aria-describedby]="mensaje('hora') ? 'nueva-tarea-hora-error' : null"
             />
             @if (mensaje('hora'); as m) {
@@ -292,6 +296,7 @@
                 type="text"
                 maxlength="180"
                 formControlName="nombreMedico"
+                [attr.aria-invalid]="mensajeCita('nombreMedico') ? true : null"
                 [attr.aria-describedby]="
                   mensajeCita('nombreMedico') ? 'nueva-tarea-cita-medico-error' : null
                 "
@@ -310,6 +315,7 @@
                 type="text"
                 maxlength="250"
                 formControlName="lugarAtencion"
+                [attr.aria-invalid]="mensajeCita('lugarAtencion') ? true : null"
                 [attr.aria-describedby]="
                   mensajeCita('lugarAtencion') ? 'nueva-tarea-cita-lugar-error' : null
                 "

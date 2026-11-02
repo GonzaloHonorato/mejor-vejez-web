@@ -624,3 +624,43 @@ describe('Tareas', () => {
     expect(boton.textContent?.trim()).toBe('Filtros');
   });
 });
+
+// jsdom no implementa `scrollIntoView`: se instala un espía por prueba.
+describe('Tareas: desplazamiento y foco', () => {
+  let desplazar: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    desplazar = vi.fn();
+    Element.prototype.scrollIntoView = desplazar as unknown as Element['scrollIntoView'];
+  });
+
+  afterEach(() => {
+    delete (Element.prototype as Partial<Element>).scrollIntoView;
+  });
+
+  /** El `block` con que se desplazó `elemento`, o `undefined` si no se desplazó. */
+  function bloqueDe(elemento: Element | null): ScrollLogicalPosition | undefined {
+    const i = desplazar.mock.contexts.indexOf(elemento);
+    return i < 0 ? undefined : (desplazar.mock.calls[i][0] as ScrollIntoViewOptions).block;
+  }
+
+  it('elTotalDeLaAgendaSeAnunciaAunqueQuedeFueraDeLaVista', async () => {
+    const { fixture, elemento, servicioTareas, router } = await configurar({});
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    servicioTareas.listar.mockReturnValue(of([]));
+    const cuenta = elemento.querySelector('.agenda .cuenta')!;
+
+    Array.from(elemento.querySelectorAll('button'))
+      .find((b) => b.textContent?.trim() === 'Siguiente')!
+      .click();
+    await fixture.whenStable();
+
+    // La misma región viva (no se recrea) anuncia el total nuevo…
+    expect(elemento.querySelector('.agenda .cuenta')).toBe(cuenta);
+    expect(cuenta.getAttribute('aria-live')).toBe('polite');
+    expect(cuenta.getAttribute('aria-atomic')).toBe('true');
+    expect(cuenta.textContent?.trim()).toBe('0 tareas');
+    // …y cambiar de día no desplaza la página.
+    expect(desplazar).not.toHaveBeenCalled();
+  });
+});

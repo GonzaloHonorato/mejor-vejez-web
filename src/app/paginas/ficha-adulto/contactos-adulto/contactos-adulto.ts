@@ -3,7 +3,6 @@ import {
   ElementRef,
   Injector,
   OnInit,
-  afterNextRender,
   computed,
   inject,
   input,
@@ -42,7 +41,16 @@ import {
   normalizarTelefono,
   validadorTelefonoChileno,
 } from '../../../nucleo/telefono';
-import { dentroDe, enfocarPrimerCampoInvalido } from '../../../nucleo/foco';
+import {
+  dentroDe,
+  devolverFoco,
+  enfocarPrimerCampoInvalido,
+  mostrarAviso,
+  mostrarSeccion,
+  porId,
+  porSelector,
+  primeroQueExista,
+} from '../../../nucleo/foco';
 
 type FormularioEdicionContacto = FormGroup<{
   nombreContacto: FormControl<string>;
@@ -261,14 +269,17 @@ export class ContactosAdulto implements OnInit {
     this.erroresEdicionDe(contacto.idContacto).set({});
     this.formulariosEdicion.set(contacto.idContacto, this.crearFormularioEdicion(contacto));
     this.idsEnEdicion.set(new Set([...this.idsEnEdicion(), contacto.idContacto]));
-    this.enfocar(`contacto-nombre-${contacto.idContacto}`);
+    // La fila de edición vive dentro de la grilla (con scroll propio desde
+    // tableta): `scrollIntoView` mueve la grilla y la página.
+    const campo = porId(`contacto-nombre-${contacto.idContacto}`);
+    mostrarSeccion(() => campo()?.closest('tr'), this.injector, campo);
   }
 
   protected cancelarEdicion(contacto: RespuestaContacto): void {
     const restantes = new Set(this.idsEnEdicion());
     restantes.delete(contacto.idContacto);
     this.idsEnEdicion.set(restantes);
-    this.enfocar(`contacto-editar-${contacto.idContacto}`);
+    this.enfocarFila(contacto.idContacto);
   }
 
   protected guardarEdicion(contacto: RespuestaContacto): void {
@@ -291,14 +302,14 @@ export class ContactosAdulto implements OnInit {
       .subscribe({
         next: () => {
           this.cancelarEdicion(contacto);
-          this.cargar();
+          this.cargar(() => this.enfocarFila(contacto.idContacto));
           this.cambio.emit();
         },
         error: (error: unknown) => {
           const campos = erroresDeCampos(error);
           this.erroresEdicionDe(contacto.idContacto).set(campos);
           if (Object.keys(campos).length === 0) {
-            this.error.set(mensajeDeError(error));
+            this.mostrarError(error);
           } else {
             this.enfocarPrimerInvalidoDeFila(contacto);
           }
@@ -312,10 +323,11 @@ export class ContactosAdulto implements OnInit {
       .designarPrincipal(this.idGrupo(), this.idAdulto(), contacto.idContacto)
       .subscribe({
         next: () => {
-          this.cargar();
+          // La fila cambia de lugar (los principales van primero): el foco la sigue.
+          this.cargar(() => this.enfocarFila(contacto.idContacto));
           this.cambio.emit();
         },
-        error: (error: unknown) => this.error.set(mensajeDeError(error)),
+        error: (error: unknown) => this.mostrarError(error),
       });
   }
 
@@ -347,12 +359,19 @@ export class ContactosAdulto implements OnInit {
   protected cancelarReemplazo(): void {
     const idContacto = this.pidiendoReemplazoPara();
     this.pidiendoReemplazoPara.set(null);
-    if (idContacto !== null) this.enfocar(`contacto-editar-${idContacto}`);
+    if (idContacto !== null) this.enfocarFila(idContacto);
   }
 
   /** Foco al <select> recién abierto: quien venía de "Desactivar" no debe perder el lugar en la página. */
   private enfocarSelectDeReemplazo(idContacto: number): void {
-    this.enfocar(`reemplazo-${idContacto}`);
+    const campo = porId(`reemplazo-${idContacto}`);
+    mostrarSeccion(() => campo()?.closest('.reemplazo'), this.injector, campo);
+  }
+
+  /** Muestra un error de acción en la cabecera de la tarjeta, que puede quedar fuera de la vista. */
+  private mostrarError(error: unknown): void {
+    this.error.set(mensajeDeError(error));
+    mostrarAviso(porId('contactos-error'), this.injector);
   }
 
   private enfocarPrimerInvalidoDelAlta(): void {
@@ -366,15 +385,19 @@ export class ContactosAdulto implements OnInit {
     );
   }
 
-  /** Al abrir o cerrar la edición de una fila, el foco va a su primer campo o vuelve a su "Editar". */
-  private enfocar(id: string): void {
-    afterNextRender(
-      () => {
-        const elemento = document.getElementById(id);
-        const principal = elemento?.querySelector<HTMLElement>('.mv-boton-dividido__principal');
-        (principal ?? elemento)?.focus();
-      },
-      { injector: this.injector },
+  /**
+   * Devuelve el foco al "Editar" de la fila del contacto; si la fila ya no
+   * está (se eliminó), al título de la tarjeta. Nunca queda en `body`.
+   */
+  private enfocarFila(idContacto: number | undefined): void {
+    devolverFoco(
+      primeroQueExista(
+        idContacto === undefined
+          ? () => null
+          : porSelector(`#contacto-editar-${idContacto} .mv-boton-dividido__principal`),
+        porId('contactos-titulo'),
+      ),
+      this.injector,
     );
   }
 
@@ -384,10 +407,10 @@ export class ContactosAdulto implements OnInit {
       .reactivarContacto(this.idGrupo(), this.idAdulto(), contacto.idContacto)
       .subscribe({
         next: () => {
-          this.cargar();
+          this.cargar(() => this.enfocarFila(contacto.idContacto));
           this.cambio.emit();
         },
-        error: (error: unknown) => this.error.set(mensajeDeError(error)),
+        error: (error: unknown) => this.mostrarError(error),
       });
   }
 
@@ -395,14 +418,18 @@ export class ContactosAdulto implements OnInit {
     if (!window.confirm('Solo si fue agregado por error.')) return;
 
     this.error.set(null);
+    // La fila desaparece: el foco pasa a la siguiente (o la anterior) o al título.
+    const filas = this.contactosOrdenados();
+    const indice = filas.findIndex((c) => c.idContacto === contacto.idContacto);
+    const vecina = filas[indice + 1] ?? filas[indice - 1];
     this.servicioAdultos
       .eliminarContacto(this.idGrupo(), this.idAdulto(), contacto.idContacto)
       .subscribe({
         next: () => {
-          this.cargar();
+          this.cargar(() => this.enfocarFila(vecina?.idContacto));
           this.cambio.emit();
         },
-        error: (error: unknown) => this.error.set(mensajeDeError(error)),
+        error: (error: unknown) => this.mostrarError(error),
       });
   }
 
@@ -442,7 +469,7 @@ export class ContactosAdulto implements OnInit {
           const campos = erroresDeCampos(error);
           this.erroresCamposNuevo.set(campos);
           if (Object.keys(campos).length === 0) {
-            this.error.set(mensajeDeError(error));
+            this.mostrarError(error);
           } else {
             this.enfocarPrimerInvalidoDelAlta();
           }
@@ -468,10 +495,10 @@ export class ContactosAdulto implements OnInit {
       .subscribe({
         next: () => {
           this.pidiendoReemplazoPara.set(null);
-          this.cargar();
+          this.cargar(() => this.enfocarFila(contacto.idContacto));
           this.cambio.emit();
         },
-        error: (error: unknown) => this.error.set(mensajeDeError(error)),
+        error: (error: unknown) => this.mostrarError(error),
       });
   }
 
@@ -490,13 +517,14 @@ export class ContactosAdulto implements OnInit {
     this.cargar();
   }
 
-  private cargar(): void {
+  private cargar(alTerminar?: () => void): void {
     this.cargando.set(true);
     this.errorCarga.set(null);
     this.servicioAdultos.contactos(this.idGrupo(), this.idAdulto()).subscribe({
       next: (contactos) => {
         this.contactos.set(contactos);
         this.cargando.set(false);
+        alTerminar?.();
       },
       error: (error: unknown) => {
         this.errorCarga.set(mensajeDeError(error));

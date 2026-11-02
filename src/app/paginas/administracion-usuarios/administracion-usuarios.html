@@ -1,7 +1,7 @@
 <header class="mv-encabezado">
   <div>
     <p class="mv-encabezado__rotulo">Administración</p>
-    <h1 class="mv-encabezado__titulo">Administración de usuarios</h1>
+    <h1 id="usuarios-titulo" class="mv-encabezado__titulo" tabindex="-1">Administración de usuarios</h1>
     <p class="mv-encabezado__bajada">Crea cuentas, edita sus datos y gestiona el acceso a Cuida+.</p>
   </div>
   <div class="mv-encabezado__accion">
@@ -22,7 +22,7 @@
 
 <div class="contenido">
   @if (error(); as mensaje) {
-    <p class="mv-aviso mv-aviso--error" role="alert">{{ mensaje }}</p>
+    <p id="usuarios-error" class="mv-aviso mv-aviso--error" role="alert">{{ mensaje }}</p>
   }
 
   <div id="usuarios-crear" class="registro">
@@ -136,6 +136,7 @@
 
   @if (usuarios().length > 0) {
     <div
+      id="usuarios-grilla"
       class="mv-grilla"
       [class.grilla-usuarios--editando]="editando()"
       role="region"
@@ -267,7 +268,7 @@
         <app-icono nombre="flecha-izquierda" aria-hidden="true" />
         Anterior
       </button>
-      <span>Página {{ pagina() + 1 }}</span>
+      <span aria-live="polite">Página {{ pagina() + 1 }}</span>
       <button type="button" class="mv-boton" [disabled]="!hayMasPaginas()" (click)="siguientePagina()">
         Siguiente
         <app-icono nombre="flecha-derecha" aria-hidden="true" />

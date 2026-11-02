@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { Component, Injector, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
@@ -14,6 +14,7 @@ import {
 import { fechaHoraLegible } from '../../nucleo/fecha-legible';
 import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
 import { mensajeDeError } from '../../nucleo/http/mensaje-de-error';
+import { enfocarPrimeraNueva, mostrarAviso, porId } from '../../nucleo/foco';
 
 const TAMANO_PAGINA = 20;
 const LARGO_EXTRACTO = 120;
@@ -78,6 +79,7 @@ function otraPestana(pestana: PestanaAlertas): PestanaAlertas {
 })
 export class Alertas implements OnInit {
   private readonly servicioAlertas = inject(ServicioAlertas);
+  private readonly injector = inject(Injector);
   private readonly servicioCatalogos = inject(ServicioCatalogos);
   private readonly servicioAdultos = inject(ServicioAdultos);
   private readonly fb = inject(NonNullableFormBuilder);
@@ -258,6 +260,7 @@ export class Alertas implements OnInit {
     // cambian mientras pide la página siguiente, esta respuesta se descarta.
     const generacion = this.generacionCarga;
     const siguientePagina = this.pagina() + 1;
+    const yaCargadas = this.elementos().length;
     this.cargandoMas.set(true);
     this.servicioAlertas
       .listar(grupo.idGrupo, {
@@ -274,11 +277,15 @@ export class Alertas implements OnInit {
           this.total.set(respuesta.total);
           this.pagina.set(respuesta.pagina);
           this.fijarTotal(this.pestana(), respuesta.total);
+          // El foco pasa a la primera alerta nueva: "Cargar más" puede desaparecer.
+          enfocarPrimeraNueva(porId('alertas-grilla'), 'tbody tr', yaCargadas, this.injector);
         },
         error: (error: unknown) => {
           this.cargandoMas.set(false);
           if (generacion !== this.generacionCarga) return;
           this.error.set(mensajeDeError(error));
+          // El aviso va sobre la grilla: quien pulsó "Cargar más" está abajo.
+          mostrarAviso(porId('alertas-error'), this.injector);
         },
       });
   }

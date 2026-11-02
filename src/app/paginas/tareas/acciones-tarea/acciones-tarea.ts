@@ -2,7 +2,6 @@ import {
   Component,
   ElementRef,
   Injector,
-  afterNextRender,
   computed,
   inject,
   input,
@@ -25,6 +24,14 @@ import { formatearHora } from '../../../nucleo/fechas';
 import { mensajeDeCampo, mensajeDeError } from '../../../nucleo/http/mensaje-de-error';
 import { RespuestaTarea } from '../../../nucleo/tareas/modelos-tareas';
 import { ServicioTareas } from '../../../nucleo/tareas/servicio-tareas';
+import {
+  devolverFoco,
+  enfocarPrimerCampoInvalido,
+  mostrarAviso,
+  mostrarSeccion,
+  primeroQueExista,
+  rescatarFoco,
+} from '../../../nucleo/foco';
 
 /** Límite de caracteres del motivo de cancelación. */
 const LARGO_MAXIMO_MOTIVO = 200;
@@ -154,8 +161,10 @@ export class AccionesTarea {
         Validators.maxLength(this.largoMaximoObservacion(accion)),
       ]);
       this.controlObservacion.reset('');
-      // El botón que se pulsó desaparece: el foco pasa al campo nuevo.
-      this.enfocarDespues('textarea');
+      // El botón que se pulsó desaparece: el campo nuevo se trae a la vista y
+      // recibe el foco.
+      const host = this.elemento.nativeElement;
+      mostrarSeccion(() => host.querySelector('.mv-campo'), this.injector);
       return;
     }
     this.enviar(accion, null);
@@ -168,6 +177,7 @@ export class AccionesTarea {
 
     if (this.controlObservacion.invalid) {
       this.controlObservacion.markAsTouched();
+      enfocarPrimerCampoInvalido(() => this.elemento.nativeElement, this.injector);
       return;
     }
 
@@ -183,14 +193,7 @@ export class AccionesTarea {
   protected volver(): void {
     this.accionPidiendoObservacion.set(null);
     this.controlObservacion.reset('');
-    this.enfocarDespues('.mv-boton-dividido__segmento');
-  }
-
-  /** Enfoca, tras el próximo render, el primer elemento propio que calce con `selector`. */
-  private enfocarDespues(selector: string): void {
-    afterNextRender(() => this.elemento.nativeElement.querySelector<HTMLElement>(selector)?.focus(), {
-      injector: this.injector,
-    });
+    devolverFoco(() => this.elemento.nativeElement.querySelector('.mv-boton-dividido__segmento'), this.injector);
   }
 
   private enviar(accion: CodigoEstadoTarea, observacion: string | null): void {
@@ -209,10 +212,22 @@ export class AccionesTarea {
           this.accionPidiendoObservacion.set(null);
           this.controlObservacion.reset('');
           this.actualizada.emit(tarea);
+          // Si el textarea o el botón enfocado desaparecieron (p. ej. la tarea
+          // quedó sin acciones), el foco va al botón propio que quede o al
+          // enlace de la fila de la agenda; nunca a `body`.
+          const host = this.elemento.nativeElement;
+          rescatarFoco(
+            primeroQueExista(
+              () => host.querySelector('.mv-boton-dividido__principal'),
+              () => host.closest('tr')?.querySelector('a[href]'),
+            ),
+            this.injector,
+          );
         },
         error: (error: unknown) => {
           this.enviando.set(false);
           this.error.set(mensajeDeError(error));
+          mostrarAviso(() => this.elemento.nativeElement.querySelector('.mv-aviso--error'), this.injector);
         },
       });
   }

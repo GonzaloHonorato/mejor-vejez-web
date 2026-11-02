@@ -889,3 +889,103 @@ describe('Integrantes', () => {
     expect(elemento.querySelectorAll('.integrante')).toHaveLength(1);
   });
 });
+
+// jsdom no implementa `scrollIntoView`: se instala un espía por prueba.
+describe('Integrantes: desplazamiento y foco', () => {
+  let desplazar: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    desplazar = vi.fn();
+    Element.prototype.scrollIntoView = desplazar as unknown as Element['scrollIntoView'];
+  });
+
+  afterEach(() => {
+    delete (Element.prototype as Partial<Element>).scrollIntoView;
+  });
+
+  /** El `block` con que se desplazó `elemento`, o `undefined` si no se desplazó. */
+  function bloqueDe(elemento: Element | null): ScrollLogicalPosition | undefined {
+    const i = desplazar.mock.contexts.indexOf(elemento);
+    return i < 0 ? undefined : (desplazar.mock.calls[i][0] as ScrollIntoViewOptions).block;
+  }
+
+  /** Abre el menú del botón dividido con ese nombre accesible y elige el ítem con ese texto. */
+  async function elegirEnMenu(
+    fixture: { whenStable(): Promise<unknown> },
+    elemento: HTMLElement,
+    etiquetaMenu: string,
+    item: string,
+  ): Promise<void> {
+    const segmento = elemento.querySelector<HTMLButtonElement>(`[aria-label="${etiquetaMenu}"]`)!;
+    segmento.click();
+    await fixture.whenStable();
+    const menu = document.getElementById(segmento.getAttribute('aria-controls')!)!;
+    Array.from(menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'))
+      .find((b) => b.textContent?.trim() === item)!
+      .click();
+    await fixture.whenStable();
+  }
+
+  it('agregarIntegranteTraeElFormularioALaVistaYAlCancelarVuelveAlBoton', async () => {
+    const { fixture, elemento } = await configurar({ miRol: 'COORDINADOR' });
+
+    await abrirAgregar(fixture);
+    expect(bloqueDe(elemento.querySelector('#integrantes-agregar'))).toBe('start');
+    expect(document.activeElement?.id).toBe('integrante-email');
+
+    botonConTexto(elemento.querySelector('#integrantes-agregar')!, 'Cancelar')!.click();
+    await fixture.whenStable();
+    const abrir = elemento.querySelector('#integrantes-abrir-agregar');
+    expect(document.activeElement).toBe(abrir);
+    expect(bloqueDe(abrir)).toBe('nearest');
+  });
+
+  it('crearIntegranteNuevoTraeElFormularioALaVista', async () => {
+    const { fixture, elemento } = await configurar({ miRol: 'COORDINADOR' });
+
+    botonConTexto(elemento, 'Crear integrante nuevo')!.click();
+    await fixture.whenStable();
+
+    expect(bloqueDe(elemento.querySelector('#integrantes-crear'))).toBe('start');
+    expect(document.activeElement?.id).toBe('integrante-crear-nombre');
+  });
+
+  it('editarRolTraeLaFilaALaVista', async () => {
+    const { fixture, elemento } = await configurar({
+      miRol: 'COORDINADOR',
+      integrantesIniciales: [integrante(2, 'Beto', 2, 'COLABORADOR')],
+    });
+    const fila = elemento.querySelector<HTMLElement>('.integrante')!;
+
+    const select = await editarRol(fixture, fila);
+
+    expect(bloqueDe(fila)).toBe('start');
+    expect(document.activeElement).toBe(select);
+  });
+
+  it('eliminarLlevaElFocoALaFilaSiguienteYSinFilasAlTitulo', async () => {
+    let integrantes = [integrante(2, 'Beto', 2, 'COLABORADOR'), integrante(3, 'Carla', 2, 'COLABORADOR')];
+    const { fixture, elemento, servicioGrupos } = await configurar({
+      miRol: 'COORDINADOR',
+      integrantes: () => of(integrantes),
+    });
+    const confirmar = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    servicioGrupos.eliminar.mockImplementation(() => {
+      integrantes = [integrantes[1]];
+      return of(undefined);
+    });
+    await elegirEnMenu(fixture, elemento, 'Más acciones para Beto', 'Eliminar');
+    expect(document.activeElement).toBe(
+      elemento.querySelector('#integrante-acciones-3 .mv-boton-dividido__principal'),
+    );
+
+    servicioGrupos.eliminar.mockImplementation(() => {
+      integrantes = [];
+      return of(undefined);
+    });
+    await elegirEnMenu(fixture, elemento, 'Más acciones para Carla', 'Eliminar');
+    expect(document.activeElement?.id).toBe('integrantes-lista-titulo');
+    confirmar.mockRestore();
+  });
+});

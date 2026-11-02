@@ -513,3 +513,38 @@ describe('SeccionSucesion', () => {
     expect(elemento.querySelector('#sucesion-candidato')).toBeTruthy();
   });
 });
+
+// jsdom no implementa `scrollIntoView`: se instala un espía por prueba.
+describe('SeccionSucesion: desplazamiento y foco', () => {
+  let desplazar: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    desplazar = vi.fn();
+    Element.prototype.scrollIntoView = desplazar as unknown as Element['scrollIntoView'];
+  });
+
+  afterEach(() => {
+    delete (Element.prototype as Partial<Element>).scrollIntoView;
+  });
+
+  /** El `block` con que se desplazó `elemento`, o `undefined` si no se desplazó. */
+  function bloqueDe(elemento: Element | null): ScrollLogicalPosition | undefined {
+    const i = desplazar.mock.contexts.indexOf(elemento);
+    return i < 0 ? undefined : (desplazar.mock.calls[i][0] as ScrollIntoViewOptions).block;
+  }
+
+  it('cancelarPropuestaTraeLaConfirmacionALaVistaYVolverDevuelveElFoco', async () => {
+    const { fixture, elemento } = await configurar({ activa: propuesta() });
+
+    botonConTexto(elemento, 'Cancelar propuesta')!.click();
+    await fixture.whenStable();
+    expect(bloqueDe(elemento.querySelector('#sucesion-confirmar'))).toBe('start');
+    expect(document.activeElement?.id).toBe('sucesion-motivo');
+
+    botonConTexto(elemento, 'Volver')!.click();
+    await fixture.whenStable();
+    const boton = elemento.querySelector('#sucesion-pedir-cancelar');
+    expect(document.activeElement).toBe(boton);
+    expect(bloqueDe(boton)).toBe('nearest');
+  });
+});

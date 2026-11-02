@@ -151,3 +151,76 @@ describe('RestablecerClave', () => {
     expect(boton.classList.contains('mv-boton--bloque')).toBe(true);
   });
 });
+
+// jsdom no implementa `scrollIntoView`: se instala un espía por prueba.
+describe('RestablecerClave: desplazamiento y foco', () => {
+  let desplazar: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    desplazar = vi.fn();
+    Element.prototype.scrollIntoView = desplazar as unknown as Element['scrollIntoView'];
+  });
+
+  afterEach(() => {
+    delete (Element.prototype as Partial<Element>).scrollIntoView;
+  });
+
+  /** El `block` con que se desplazó `elemento`, o `undefined` si no se desplazó. */
+  function bloqueDe(elemento: Element | null): ScrollLogicalPosition | undefined {
+    const i = desplazar.mock.contexts.indexOf(elemento);
+    return i < 0 ? undefined : (desplazar.mock.calls[i][0] as ScrollIntoViewOptions).block;
+  }
+
+  async function listo() {
+    configurar({ codigo: 'codigo-123' });
+    const creado = await crear();
+    document.body.appendChild(creado.elemento);
+    return creado;
+  }
+
+  it('enviarVacioMarcaYEnlazaAmbosCamposYEnfocaElPrimero', async () => {
+    const { fixture, elemento } = await listo();
+
+    await escribirYEnviar(elemento, '', '');
+    await fixture.whenStable();
+
+    const clave = elemento.querySelector('#restablecer-clave')!;
+    const confirmacion = elemento.querySelector('#restablecer-confirmacion')!;
+    expect(document.activeElement).toBe(clave);
+    expect(bloqueDe(clave)).toBe('center');
+    expect(clave.getAttribute('aria-invalid')).toBe('true');
+    expect(clave.getAttribute('aria-describedby')).toBe('restablecer-clave-error');
+    expect(elemento.querySelector('#restablecer-clave-error')?.textContent).toContain(
+      'Ingresa la contraseña nueva',
+    );
+    expect(confirmacion.getAttribute('aria-invalid')).toBe('true');
+    expect(confirmacion.getAttribute('aria-describedby')).toBe('restablecer-confirmacion-error');
+    expect(elemento.querySelector('#restablecer-confirmacion-error')).toBeTruthy();
+  });
+
+  it('claveCortaMarcaLaClaveConSuMensaje', async () => {
+    const { fixture, elemento } = await listo();
+
+    await escribirYEnviar(elemento, 'abc', 'abc');
+    await fixture.whenStable();
+
+    const clave = elemento.querySelector('#restablecer-clave')!;
+    expect(document.activeElement).toBe(clave);
+    expect(clave.getAttribute('aria-invalid')).toBe('true');
+    expect(elemento.querySelector('#restablecer-clave-error')?.textContent).toContain('al menos 8');
+    expect(elemento.querySelector('#restablecer-confirmacion')!.getAttribute('aria-invalid')).toBeNull();
+  });
+
+  it('clavesDistintasMarcanYEnfocanLaConfirmacion', async () => {
+    const { fixture, elemento } = await listo();
+
+    await escribirYEnviar(elemento, 'clave-nueva1', 'clave-nueva2');
+    await fixture.whenStable();
+
+    const confirmacion = elemento.querySelector('#restablecer-confirmacion')!;
+    expect(document.activeElement).toBe(confirmacion);
+    expect(confirmacion.getAttribute('aria-invalid')).toBe('true');
+    expect(confirmacion.getAttribute('aria-describedby')).toBe('restablecer-error');
+    expect(elemento.querySelector('#restablecer-error')?.textContent).toContain('no coinciden');
+  });
+});
