@@ -2,9 +2,11 @@ import { Component, OnInit, computed, effect, inject, signal } from '@angular/co
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
+import { RespuestaAdultoMayor } from '../../nucleo/adultos/modelos-adultos';
+import { ServicioAdultos } from '../../nucleo/adultos/servicio-adultos';
 import { ETIQUETA_TIPO_ALERTA } from '../../nucleo/alertas/alertas';
 import { RespuestaAlerta, TipoAlerta } from '../../nucleo/alertas/modelos-alertas';
-import { ServicioAlertas } from '../../nucleo/alertas/servicio-alertas';
+import { FiltroAlertas, ServicioAlertas } from '../../nucleo/alertas/servicio-alertas';
 import {
   RespuestaEstadoCatalogo,
   ServicioCatalogos,
@@ -27,6 +29,18 @@ type Totales = Record<PestanaAlertas, number | null | undefined>;
 
 const SIN_TOTALES: Totales = { ABIERTA: undefined, CERRADA: undefined };
 
+/** Filtro "Adulto mayor": se guarda con el grupo al que pertenece el adulto. */
+interface FiltroAdulto {
+  idGrupo: number;
+  idAdulto: number;
+}
+
+/** Filtros de la bandeja que también valen para el total de la otra pestaña. */
+interface FiltrosBandeja {
+  tipo: TipoAlerta | null;
+  idAdulto: number | null;
+}
+
 /** Tono del chip de cada tipo de alerta. */
 const TONO_TIPO: Record<TipoAlerta, string> = {
   ATRASO_TAREA: 'mv-chip--peligro',
@@ -41,13 +55,14 @@ function otraPestana(pestana: PestanaAlertas): PestanaAlertas {
 /**
  * Página "Alertas" (`/alertas`): bandeja de alertas de cuidado del grupo
  * activo, con pestañas "Abiertas"/"Cerradas" (por defecto Abiertas) y un
- * filtro por tipo. Sigue el mismo patrón de `paginas/tareas`/`paginas/adultos`:
- * un `effect()` con contador de generación recarga (o limpia) la lista cada
- * vez que el grupo activo, la pestaña o el filtro cambian, descartando
+ * filtro por tipo y otro por adulto mayor (los dos los aplica la API).
+ * Sigue el mismo patrón de `paginas/tareas`/`paginas/adultos`: un
+ * `effect()` con contador de generación recarga (o limpia) la lista cada
+ * vez que el grupo activo, la pestaña o un filtro cambian, descartando
  * respuestas tardías de una combinación ya obsoleta.
  *
  * Los indicadores y los contadores de las pestañas son el `total` de cada
- * estado con el filtro de tipo aplicado: el de la pestaña visible sale de su
+ * estado con los filtros aplicados: el de la pestaña visible sale de su
  * lista y el de la otra, de pedir su primera página con tamaño 1.
  *
  * El `idEstado` de cada pestaña sale del catálogo `ALERTA_CUIDADO`/`ESTADO`
@@ -64,6 +79,7 @@ function otraPestana(pestana: PestanaAlertas): PestanaAlertas {
 export class Alertas implements OnInit {
   private readonly servicioAlertas = inject(ServicioAlertas);
   private readonly servicioCatalogos = inject(ServicioCatalogos);
+  private readonly servicioAdultos = inject(ServicioAdultos);
   private readonly fb = inject(NonNullableFormBuilder);
 
   protected readonly grupoActivo = inject(ServicioGrupoActivo);
@@ -76,6 +92,16 @@ export class Alertas implements OnInit {
   protected readonly pestana = signal<PestanaAlertas>('ABIERTA');
   protected readonly tipoFiltro = signal<TipoAlerta | null>(null);
   protected readonly controlFiltroTipo = this.fb.control<TipoAlerta | ''>('');
+
+  /** Adultos del grupo activo (activos e inactivos): alimentan el filtro "Adulto mayor". */
+  protected readonly adultos = signal<RespuestaAdultoMayor[]>([]);
+  private readonly filtroAdulto = signal<FiltroAdulto | null>(null);
+  protected readonly controlFiltroAdulto = this.fb.control<number | null>(null);
+  /** El adulto filtrado, solo si es del grupo activo (al cambiar de grupo deja de valer). */
+  private readonly idAdultoFiltro = computed(() => {
+    const filtro = this.filtroAdulto();
+    return filtro && filtro.idGrupo === this.activo()?.idGrupo ? filtro.idAdulto : null;
+  });
 
   protected readonly elementos = signal<RespuestaAlerta[]>([]);
   protected readonly total = signal(0);
@@ -105,14 +131,33 @@ export class Alertas implements OnInit {
   private generacionCarga = 0;
   /** Lo mismo para el total de la otra pestaña. */
   private generacionConteo = 0;
-  /** Grupo y tipo de los totales actuales: si cambian, los totales ya no valen. */
+  /** Descarta respuestas de `ServicioAdultos.listar()` de un grupo anterior. */
+  private generacionAdultos = 0;
+  /** Grupo y filtros de los totales actuales: si cambian, los totales ya no valen. */
   private claveTotales = '';
 
   constructor() {
+    // Lista de adultos del filtro: solo cambia con el grupo.
+    effect(() => {
+      const grupo = this.activo();
+      const generacion = ++this.generacionAdultos;
+      this.adultos.set([]);
+      this.filtroAdulto.set(null);
+      this.controlFiltroAdulto.setValue(null);
+      if (!grupo) return;
+      // Si la lista no llega, el filtro queda solo con "Todos" y la bandeja sigue funcionando.
+      this.servicioAdultos.listar(grupo.idGrupo, true).subscribe({
+        next: (adultos) => {
+          if (generacion === this.generacionAdultos) this.adultos.set(adultos);
+        },
+        error: () => undefined,
+      });
+    });
+
     effect(() => {
       const grupo = this.activo();
       const pestana = this.pestana();
-      const tipo = this.tipoFiltro();
+      const filtros: FiltrosBandeja = { tipo: this.tipoFiltro(), idAdulto: this.idAdultoFiltro() };
       const idEstado = pestana === 'ABIERTA' ? this.idEstadoAbierta() : this.idEstadoCerrada();
 
       this.error.set(null);
@@ -121,7 +166,7 @@ export class Alertas implements OnInit {
       this.total.set(0);
       this.pagina.set(0);
       // Al cambiar solo de pestaña los totales siguen valiendo hasta que llegan los nuevos.
-      const clave = `${grupo?.idGrupo ?? ''}|${tipo ?? ''}`;
+      const clave = `${grupo?.idGrupo ?? ''}|${filtros.tipo ?? ''}|${filtros.idAdulto ?? ''}`;
       if (clave !== this.claveTotales) {
         this.claveTotales = clave;
         this.generacionConteo++;
@@ -142,7 +187,7 @@ export class Alertas implements OnInit {
         this.cargando.set(this.errorCatalogo() === null);
         return;
       }
-      this.cargarBandeja(grupo.idGrupo, pestana, tipo);
+      this.cargarBandeja(grupo.idGrupo, pestana, filtros);
     });
   }
 
@@ -158,6 +203,17 @@ export class Alertas implements OnInit {
   protected cambiarFiltroTipo(): void {
     const valor = this.controlFiltroTipo.value;
     this.tipoFiltro.set(valor === '' ? null : valor);
+  }
+
+  protected cambiarFiltroAdulto(): void {
+    const idAdulto = this.controlFiltroAdulto.value;
+    const grupo = this.activo();
+    this.filtroAdulto.set(idAdulto !== null && grupo ? { idGrupo: grupo.idGrupo, idAdulto } : null);
+  }
+
+  /** Hay algún filtro aplicado (cambia el texto del estado vacío). */
+  protected hayFiltros(): boolean {
+    return this.tipoFiltro() !== null || this.idAdultoFiltro() !== null;
   }
 
   protected mensajeVacio(): string {
@@ -206,7 +262,7 @@ export class Alertas implements OnInit {
     this.servicioAlertas
       .listar(grupo.idGrupo, {
         idEstado,
-        tipoAlerta: this.tipoFiltro() ?? undefined,
+        ...this.parametrosFiltro(this.filtrosActuales()),
         pagina: siguientePagina,
         tamano: TAMANO_PAGINA,
       })
@@ -235,7 +291,21 @@ export class Alertas implements OnInit {
     }
     const grupo = this.activo();
     if (!grupo) return;
-    this.cargarBandeja(grupo.idGrupo, this.pestana(), this.tipoFiltro());
+    this.cargarBandeja(grupo.idGrupo, this.pestana(), this.filtrosActuales());
+  }
+
+  private filtrosActuales(): FiltrosBandeja {
+    return { tipo: this.tipoFiltro(), idAdulto: this.idAdultoFiltro() };
+  }
+
+  /** `tipoAlerta` siempre (undefined si no hay); `idAdulto` solo si se eligió uno. */
+  private parametrosFiltro(
+    filtros: FiltrosBandeja,
+  ): Pick<FiltroAlertas, 'tipoAlerta' | 'idAdulto'> {
+    return {
+      tipoAlerta: filtros.tipo ?? undefined,
+      ...(filtros.idAdulto !== null ? { idAdulto: filtros.idAdulto } : {}),
+    };
   }
 
   private idEstadoActual(): number | null {
@@ -251,24 +321,24 @@ export class Alertas implements OnInit {
   }
 
   /** La lista de la pestaña visible y el total de la otra. */
-  private cargarBandeja(idGrupo: number, pestana: PestanaAlertas, tipo: TipoAlerta | null): void {
+  private cargarBandeja(idGrupo: number, pestana: PestanaAlertas, filtros: FiltrosBandeja): void {
     const idEstado = this.idEstadoDe(pestana);
     if (idEstado === null) return;
-    this.cargar(idGrupo, idEstado, pestana, tipo);
+    this.cargar(idGrupo, idEstado, pestana, filtros);
     const otra = otraPestana(pestana);
     const idEstadoOtra = this.idEstadoDe(otra);
-    if (idEstadoOtra !== null) this.cargarTotal(idGrupo, idEstadoOtra, otra, tipo);
+    if (idEstadoOtra !== null) this.cargarTotal(idGrupo, idEstadoOtra, otra, filtros);
   }
 
   private cargarTotal(
     idGrupo: number,
     idEstado: number,
     pestana: PestanaAlertas,
-    tipo: TipoAlerta | null,
+    filtros: FiltrosBandeja,
   ): void {
     const generacion = ++this.generacionConteo;
     this.servicioAlertas
-      .listar(idGrupo, { idEstado, tipoAlerta: tipo ?? undefined, pagina: 0, tamano: 1 })
+      .listar(idGrupo, { idEstado, ...this.parametrosFiltro(filtros), pagina: 0, tamano: 1 })
       .subscribe({
         next: (respuesta) => {
           if (generacion === this.generacionConteo) this.fijarTotal(pestana, respuesta.total);
@@ -297,7 +367,7 @@ export class Alertas implements OnInit {
     idGrupo: number,
     idEstado: number,
     pestana: PestanaAlertas,
-    tipo: TipoAlerta | null,
+    filtros: FiltrosBandeja,
   ): void {
     const generacion = ++this.generacionCarga;
     this.error.set(null);
@@ -305,7 +375,7 @@ export class Alertas implements OnInit {
     this.servicioAlertas
       .listar(idGrupo, {
         idEstado,
-        tipoAlerta: tipo ?? undefined,
+        ...this.parametrosFiltro(filtros),
         pagina: 0,
         tamano: TAMANO_PAGINA,
       })

@@ -229,38 +229,54 @@
       }
 
       @if (planes().length > 0) {
-        <ul class="mv-lista lista-planes">
-          @for (plan of planes(); track plan.idPlan) {
-            <li class="mv-fila">
-              <div class="mv-fila__principal">
-                <a
-                  class="mv-fila__titulo mv-fila__enlace"
-                  [routerLink]="['/planes', plan.idPlan]"
-                  [attr.aria-label]="plan.nombrePlan + ', ' + plan.nombreAdulto"
-                  >{{ plan.nombrePlan }}</a
-                >
-                <p class="mv-fila__meta adulto">{{ plan.nombreAdulto }}</p>
-              </div>
-              <p class="mv-fila__meta">
-                Desde {{ fechaConAnio(plan.vigenteDesde) }}
-                @if (plan.vigenteHasta) {
-                  hasta {{ fechaConAnio(plan.vigenteHasta) }}
-                }
-              </p>
-              <p class="mv-fila__meta">
-                {{ plan.medicamentosActivos }}
-                {{ plural(plan.medicamentosActivos, 'medicamento activo', 'medicamentos activos') }}
-              </p>
-              <span class="estado">
-                @if (estaInactivo(plan)) {
-                  <span class="mv-chip">Inactivo</span>
-                } @else {
-                  <span class="mv-chip mv-chip--exito">Activo</span>
-                }
-              </span>
-            </li>
-          }
-        </ul>
+        <div class="mv-grilla" role="region" aria-labelledby="planes-lista-titulo" tabindex="0">
+          <table class="mv-grilla__tabla" role="table">
+            <thead role="rowgroup">
+              <tr role="row">
+                <th scope="col" role="columnheader">Plan</th>
+                <th scope="col" role="columnheader">Adulto mayor</th>
+                <th scope="col" role="columnheader">Medicamentos activos</th>
+                <th scope="col" role="columnheader">Vigencia</th>
+                <th scope="col" role="columnheader" class="mv-grilla__celda--estado">Estado</th>
+              </tr>
+            </thead>
+            <tbody role="rowgroup">
+              @for (plan of planes(); track plan.idPlan) {
+                <tr role="row">
+                  <td role="cell">
+                    <a
+                      class="mv-grilla__titulo mv-fila__enlace"
+                      [routerLink]="['/planes', plan.idPlan]"
+                      [attr.aria-label]="plan.nombrePlan + ', ' + plan.nombreAdulto"
+                      >{{ plan.nombrePlan }}</a
+                    >
+                  </td>
+                  <td role="cell" data-etiqueta="Adulto mayor">
+                    <span>{{ plan.nombreAdulto }}</span>
+                  </td>
+                  <td role="cell" data-etiqueta="Medicamentos activos">
+                    <span>{{ plan.medicamentosActivos }}</span>
+                  </td>
+                  <td role="cell" data-etiqueta="Vigencia">
+                    <span>
+                      Desde {{ fechaConAnio(plan.vigenteDesde) }}
+                      @if (plan.vigenteHasta) {
+                        hasta {{ fechaConAnio(plan.vigenteHasta) }}
+                      }
+                    </span>
+                  </td>
+                  <td role="cell" class="mv-grilla__celda--estado" data-etiqueta="Estado">
+                    @if (estaInactivo(plan)) {
+                      <span class="mv-chip">Inactivo</span>
+                    } @else {
+                      <span class="mv-chip mv-chip--exito">Activo</span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
       }
     </section>
   }

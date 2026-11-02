@@ -39,4 +39,15 @@ describe('Icono', () => {
     expect(NOMBRES_ICONO).toContain('flecha-izquierda');
     expect(NOMBRES_ICONO).toContain('flecha-derecha');
   });
+
+  it('incluyeElChevronDelBotonDividido', async () => {
+    expect(NOMBRES_ICONO).toContain('chevron-abajo');
+
+    const fixture = TestBed.createComponent(Anfitrion);
+    fixture.componentInstance.nombre.set('chevron-abajo');
+    await fixture.whenStable();
+
+    const trazo = (fixture.nativeElement as HTMLElement).querySelector('svg path');
+    expect(trazo?.getAttribute('d')).toBe('M6 9l6 6 6-6');
+  });
 });

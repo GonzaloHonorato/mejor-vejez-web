@@ -1,7 +1,21 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, ElementRef, Injector, OnInit, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
-import { mensajeDeCampo, mensajeDeError } from '../../../nucleo/http/mensaje-de-error';
+import {
+  describirCon,
+  mensajeDeCampo,
+  mensajeDeError,
+} from '../../../nucleo/http/mensaje-de-error';
+import {
+  AYUDA_TELEFONO,
+  formatearControlTelefono,
+  formatearTelefono,
+  mensajeCampoTelefono,
+  mismoTelefono,
+  normalizarTelefono,
+  validadorTelefonoChilenoSalvo,
+} from '../../../nucleo/telefono';
+import { dentroDe, enfocarPrimerCampoInvalido } from '../../../nucleo/foco';
 import {
   RespuestaCanales,
   ServicioCanales,
@@ -13,7 +27,8 @@ import {
  * predeterminado de la cuenta si no hay fila propia) y WhatsApp (aún no envía
  * mensajes, pero se guarda igual su configuración). `guardar()` reemplaza el
  * conjunto completo con `PUT /api/yo/canales`; si el número de WhatsApp
- * queda vacío, no se envía ese canal.
+ * queda vacío, no se envía ese canal; si viene, debe ser un teléfono
+ * chileno (`nucleo/telefono`) y se envía normalizado.
  */
 @Component({
   selector: 'app-canales-notificacion',
@@ -23,6 +38,10 @@ import {
 })
 export class CanalesNotificacion implements OnInit {
   private readonly servicioCanales = inject(ServicioCanales);
+  private readonly injector = inject(Injector);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  /** Número de WhatsApp guardado: si llega sin cambios no se valida (puede ser antiguo). */
+  private readonly whatsappGuardado = signal<string | null>(null);
 
   protected readonly cargando = signal(true);
   /** `true` cuando la carga inicial falló: oculta el formulario para que un `guardar()` no reemplace (PUT) la configuración real con una vacía. */
@@ -31,11 +50,13 @@ export class CanalesNotificacion implements OnInit {
   protected readonly confirmacion = signal(false);
   protected readonly errorGeneral = signal<string | null>(null);
   protected readonly whatsappDisponible = signal(true);
+  protected readonly ayudaTelefono = AYUDA_TELEFONO;
+  protected readonly describirCon = describirCon;
 
   protected readonly formulario = inject(NonNullableFormBuilder).group({
     correoDestino: ['', [Validators.required, Validators.email]],
     correoHabilitado: [true],
-    whatsappDestino: [''],
+    whatsappDestino: ['', validadorTelefonoChilenoSalvo(() => this.whatsappGuardado())],
     whatsappHabilitado: [false],
   });
 
@@ -71,17 +92,31 @@ export class CanalesNotificacion implements OnInit {
    */
   protected mensajeCampoCorreo(): string | null {
     const control = this.formulario.controls.correoDestino;
-    const mensaje = mensajeDeCampo(control, {}, 'correoDestino', 'Ingresa tu correo de notificación.');
+    const mensaje = mensajeDeCampo(
+      control,
+      {},
+      'correoDestino',
+      'Ingresa tu correo de notificación.',
+    );
     if (mensaje) return mensaje;
     return control.touched && control.hasError('email')
       ? 'El correo de notificación no es válido.'
       : null;
   }
 
+  protected mensajeCampoWhatsapp(): string | null {
+    return mensajeCampoTelefono(this.formulario.controls.whatsappDestino, {}, 'whatsappDestino');
+  }
+
+  protected formatearWhatsapp(): void {
+    formatearControlTelefono(this.formulario.controls.whatsappDestino);
+  }
+
   protected guardar(): void {
     if (this.guardando()) return;
     if (this.formulario.invalid) {
       this.formulario.markAllAsTouched();
+      enfocarPrimerCampoInvalido(dentroDe(this.host, 'form'), this.injector);
       return;
     }
 
@@ -95,7 +130,13 @@ export class CanalesNotificacion implements OnInit {
     ];
     const destinoWhatsapp = whatsappDestino.trim();
     if (destinoWhatsapp !== '') {
-      canales.push({ canal: 'WHATSAPP', destino: destinoWhatsapp, habilitado: whatsappHabilitado });
+      canales.push({
+        canal: 'WHATSAPP',
+        destino: mismoTelefono(destinoWhatsapp, this.whatsappGuardado())
+          ? (this.whatsappGuardado() ?? destinoWhatsapp)
+          : (normalizarTelefono(destinoWhatsapp) ?? destinoWhatsapp),
+        habilitado: whatsappHabilitado,
+      });
     }
 
     this.guardando.set(true);
@@ -117,10 +158,11 @@ export class CanalesNotificacion implements OnInit {
     this.whatsappDisponible.set(respuesta.whatsappDisponible);
     const correo = respuesta.canales.find((canal) => canal.canal === 'CORREO');
     const whatsapp = respuesta.canales.find((canal) => canal.canal === 'WHATSAPP');
+    this.whatsappGuardado.set(whatsapp?.destino ?? null);
     this.formulario.patchValue({
       correoDestino: correo?.destino ?? '',
       correoHabilitado: correo?.habilitado ?? true,
-      whatsappDestino: whatsapp?.destino ?? '',
+      whatsappDestino: formatearTelefono(whatsapp?.destino),
       whatsappHabilitado: whatsapp?.habilitado ?? false,
     });
   }

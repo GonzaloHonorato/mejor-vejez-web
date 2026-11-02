@@ -31,10 +31,6 @@
   gap: var(--mv-espacio-4);
 }
 
-.contenido {
-  max-width: 56rem;
-}
-
 .sin-plan {
   display: grid;
   justify-items: start;
@@ -69,7 +65,6 @@
   }
 }
 
-.acciones,
 .botones {
   display: flex;
   flex-wrap: wrap;
@@ -96,53 +91,52 @@
   }
 }
 
-.medicamentos {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
+.medicamentos__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mv-espacio-2) var(--mv-espacio-4);
 
-.medicamento {
-  display: grid;
-  gap: var(--mv-espacio-3);
-  padding: var(--mv-espacio-4);
-  border: 1px solid var(--mv-color-borde);
-  border-radius: var(--mv-radio-lg);
-  overflow-wrap: anywhere;
-
-  &--inactivo {
-    background: var(--mv-color-neutro-fondo);
-  }
-
-  &__cabecera {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: var(--mv-espacio-3);
-  }
-
-  &__nombre {
-    margin: 0;
+  h2 {
+    margin: 0 auto 0 0;
     font-size: var(--mv-texto-grande);
   }
 
-  &__meta {
-    margin: 0;
-    color: var(--mv-color-secundario);
+  .mv-boton {
+    flex: 1 1 100%;
+
+    @include pq.desde-tableta {
+      flex: none;
+    }
   }
 }
 
-.cantidad__fila {
-  display: grid;
-  grid-template-columns: minmax(0, 10rem) auto;
-  gap: var(--mv-espacio-2);
+.cuenta {
+  color: var(--mv-color-secundario);
 }
 
-.agregar {
-  width: 100%;
+// Campo de cantidad bajo la fila: a todo el ancho y con el texto normal (la
+// primera celda de la tarjeta en celular va destacada).
+.fila-cantidad td {
+  font-size: var(--mv-texto-base);
+  font-weight: var(--mv-texto-peso-normal);
+}
 
+.cantidad__fila {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mv-espacio-2);
+
+  .mv-campo__control {
+    width: 10rem;
+  }
+}
+
+// En la tabla, las palabras no se cortan a la mitad ("Comprimi-do"): las
+// columnas toman el ancho de su palabra más larga y, si no caben, la grilla
+// se desplaza por dentro.
+.mv-grilla td {
   @include pq.desde-tableta {
-    width: auto;
-    justify-self: start;
+    overflow-wrap: break-word;
   }
 }

@@ -112,6 +112,18 @@ function escribir(campo: HTMLInputElement, valor: string): void {
   campo.dispatchEvent(new Event('input'));
 }
 
+/** Pulsa "Ver detalles" de la fila `indice` y devuelve el botón. */
+async function abrirDetalle(
+  fixture: { whenStable: () => Promise<unknown> },
+  elemento: HTMLElement,
+  indice = 0,
+): Promise<HTMLButtonElement> {
+  const boton = elemento.querySelectorAll<HTMLButtonElement>('.tarjeta-evento .ver-detalles')[indice];
+  boton.click();
+  await fixture.whenStable();
+  return boton;
+}
+
 describe('Auditoria', () => {
   it('cargaPrimeraPaginaDelGrupo', async () => {
     const { elemento, servicioAuditoria } = await configurar({ idGrupo: '5' });
@@ -190,15 +202,67 @@ describe('Auditoria', () => {
     );
   });
 
-  it('detallesSeMuestranEnDetails', async () => {
+  it('detallesSeMuestranEnUnaFilaDesplegable', async () => {
     const detalles = { motivo: 'cambio de estado', ids: [1, 2] };
-    const { elemento } = await configurar({
+    const { fixture, elemento } = await configurar({
       consultarGrupoImpl: () => of(pagina([evento(1, { detalles })])),
     });
 
-    const detallesEl = elemento.querySelector('details.detalles');
-    expect(detallesEl).toBeTruthy();
-    expect(detallesEl!.querySelector('pre')!.textContent).toBe(JSON.stringify(detalles, null, 2));
+    const boton = elemento.querySelector<HTMLButtonElement>('.tarjeta-evento .ver-detalles')!;
+    expect(boton.getAttribute('aria-expanded')).toBe('false');
+    expect(boton.getAttribute('aria-controls')).toBeNull();
+    expect(elemento.querySelector('.fila-detalle')).toBeFalsy();
+
+    await abrirDetalle(fixture, elemento);
+
+    expect(boton.getAttribute('aria-expanded')).toBe('true');
+    const fila = elemento.querySelector<HTMLElement>('tr.fila-detalle')!;
+    expect(boton.getAttribute('aria-controls')).toBe(fila.id);
+    expect(fila.getAttribute('role')).toBe('row');
+    expect(fila.previousElementSibling?.classList).toContain('tarjeta-evento');
+    const celda = fila.querySelector('td[role="cell"]')!;
+    expect(celda.getAttribute('colspan')).toBe('5');
+    expect(celda.querySelector('pre')!.textContent).toBe(JSON.stringify(detalles, null, 2));
+
+    boton.click();
+    await fixture.whenStable();
+    expect(boton.getAttribute('aria-expanded')).toBe('false');
+    expect(elemento.querySelector('.fila-detalle')).toBeFalsy();
+  });
+
+  it('actividadEsUnaGrillaConColumnasYRoles', async () => {
+    const { elemento } = await configurar({
+      consultarGrupoImpl: () => of(pagina([evento(1), evento(2)])),
+    });
+
+    const region = elemento.querySelector('.mv-grilla[role="region"]')!;
+    expect(region.getAttribute('aria-labelledby')).toBe('auditoria-actividad');
+    const tabla = region.querySelector('table.mv-grilla__tabla')!;
+    expect(tabla.getAttribute('role')).toBe('table');
+    const encabezados = Array.from(tabla.querySelectorAll('th[role="columnheader"]')).map((th) =>
+      th.textContent?.trim(),
+    );
+    expect(encabezados).toEqual([
+      'Fecha',
+      'Evento',
+      'Elemento afectado',
+      'Realizado por',
+      'Resultado',
+    ]);
+    expect(tabla.querySelectorAll('[role="rowgroup"]')).toHaveLength(2);
+    const filas = tabla.querySelectorAll('tbody tr[role="row"]');
+    expect(filas).toHaveLength(2);
+    const etiquetas = Array.from(filas[0].querySelectorAll('td[role="cell"]')).map((td) =>
+      td.getAttribute('data-etiqueta'),
+    );
+    expect(etiquetas).toEqual([null, 'Evento', 'Elemento afectado', 'Realizado por', 'Resultado']);
+    expect(elemento.querySelector('details')).toBeFalsy();
+    // Un solo nombre: el de la región con scroll (la tabla no repite el suyo).
+    const regionGrilla = elemento.querySelector('.mv-grilla[role="region"]')!;
+    expect(regionGrilla.getAttribute('aria-label') ?? regionGrilla.getAttribute('aria-labelledby')).toBeTruthy();
+    const tablaGrilla = regionGrilla.querySelector('table')!;
+    expect(['aria-label', 'aria-labelledby'].some((a) => tablaGrilla.hasAttribute(a))).toBe(false);
+    expect(tablaGrilla.querySelector('caption')).toBeNull();
   });
 
   it('modoGlobalMuestraFiltroIdGrupoYUsaConsultarGlobal', async () => {
@@ -334,7 +398,7 @@ describe('Auditoria', () => {
     expect(elemento.querySelector('[role="alert"]')?.textContent).toContain(mensaje);
   });
   it('eventoMuestraEtiquetaYCodigo', async () => {
-    const { elemento } = await configurar({
+    const { fixture, elemento } = await configurar({
       consultarGrupoImpl: () =>
         of(
           pagina([
@@ -350,15 +414,19 @@ describe('Auditoria', () => {
 
     const tarjetas = elemento.querySelectorAll('.tarjeta-evento');
     // La fila muestra la frase; el código crudo queda en el detalle desplegable.
+    expect(tarjetas[0].textContent).not.toContain('REGISTRAR_RELEVO');
+    await abrirDetalle(fixture, elemento, 0);
+    await abrirDetalle(fixture, elemento, 1);
+    const detalles = elemento.querySelectorAll('.fila-detalle');
     expect(tarjetas[0].querySelector('.tarjeta-evento__accion')?.textContent?.trim()).toBe(
       'Registró un relevo',
     );
-    expect(tarjetas[0].querySelector('.mv-fila__principal')?.textContent).not.toContain(
+    expect(tarjetas[0].querySelector('.tarjeta-evento__accion')?.textContent).not.toContain(
       'REGISTRAR_RELEVO',
     );
-    expect(
-      tarjetas[0].querySelector('details.detalles .tarjeta-evento__codigo')?.textContent?.trim(),
-    ).toBe('REGISTRAR_RELEVO');
+    expect(detalles[0].querySelector('.tarjeta-evento__codigo')?.textContent?.trim()).toBe(
+      'REGISTRAR_RELEVO',
+    );
     expect(tarjetas[0].querySelector('.tarjeta-evento__entidad')?.textContent?.trim()).toBe(
       'Relevo · 42',
     );
@@ -366,9 +434,9 @@ describe('Auditoria', () => {
     expect(tarjetas[1].querySelector('.tarjeta-evento__accion')?.textContent?.trim()).toBe(
       'Algo nuevo',
     );
-    expect(
-      tarjetas[1].querySelector('details.detalles .tarjeta-evento__codigo')?.textContent?.trim(),
-    ).toBe('ALGO_NUEVO');
+    expect(detalles[1].querySelector('.tarjeta-evento__codigo')?.textContent?.trim()).toBe(
+      'ALGO_NUEVO',
+    );
   });
 
   it('selectAccionEnviaCodigo', async () => {
@@ -535,7 +603,7 @@ describe('Auditoria', () => {
         ),
     });
 
-    const nombres = Array.from(elemento.querySelectorAll('details.detalles summary')).map((s) =>
+    const nombres = Array.from(elemento.querySelectorAll('.tarjeta-evento .ver-detalles')).map((s) =>
       s.getAttribute('aria-label'),
     );
     expect(nombres).toHaveLength(2);

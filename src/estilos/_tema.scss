@@ -58,6 +58,7 @@
 
   // Tipografía — familia y peso
   --mv-fuente-base: var(--mv-p-fuente-legible);
+  --mv-texto-peso-normal: var(--mv-p-peso-normal);
   --mv-texto-peso-negrita: var(--mv-p-peso-negrita);
 
   // Tipografía — tamaños, nombrados por rol (no por escala numérica), para
@@ -90,6 +91,7 @@
 
   // Elevación y movimiento
   --mv-sombra-suave: var(--mv-p-sombra-suave);
+  --mv-sombra-flotante: var(--mv-p-sombra-flotante); // menú del botón dividido
   --mv-duracion-esqueleto: var(--mv-p-duracion-pulso);
 
   // Layout

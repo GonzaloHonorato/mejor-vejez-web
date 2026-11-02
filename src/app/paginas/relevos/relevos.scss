@@ -87,36 +87,11 @@
   max-width: 28rem;
 }
 
-.lista-relevos {
-  --fila-columnas: minmax(0, 1fr) minmax(0, 1.3fr) 10rem 8rem;
-
-  .mv-fila {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: var(--mv-espacio-2) var(--mv-espacio-3);
-  }
-
-  .personas,
-  .mv-fila__meta {
-    grid-column: 1 / -1;
-  }
-
-  .estado {
-    grid-area: 1 / 2;
-  }
-
-  @include pq.desde-escritorio {
-    .mv-fila {
-      grid-template-columns: var(--fila-columnas);
-      align-items: center;
-      gap: var(--mv-espacio-4);
-    }
-
-    .personas,
-    .mv-fila__meta,
-    .estado {
-      grid-area: auto;
-    }
+// En celular la tarjeta entera abre el relevo (enlace estirado del título):
+// "Ver relevo" solo aparece en la grilla.
+.mv-grilla .acciones {
+  @media not all and (min-width: pq.$tableta) {
+    display: none;
   }
 }
 

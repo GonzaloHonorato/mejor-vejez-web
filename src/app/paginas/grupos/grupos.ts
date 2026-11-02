@@ -11,6 +11,8 @@ import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angula
 import { RouterLink } from '@angular/router';
 
 import { Icono } from '../../compartido/icono/icono';
+import { descripcionEstado } from '../../nucleo/catalogos/descripcion-estado';
+import { RespuestaEstadoCatalogo, ServicioCatalogos } from '../../nucleo/catalogos/servicio-catalogos';
 import { fechaConAnio } from '../../nucleo/fecha-legible';
 import { mensajeDeError } from '../../nucleo/http/mensaje-de-error';
 import { etiquetaRol } from '../../nucleo/grupos/etiqueta-rol';
@@ -32,6 +34,7 @@ import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
 export class Grupos implements OnInit {
   private readonly servicioGrupos = inject(ServicioGrupos);
   private readonly servicioYo = inject(ServicioYo);
+  private readonly servicioCatalogos = inject(ServicioCatalogos);
   protected readonly grupoActivo = inject(ServicioGrupoActivo);
   private readonly injector = inject(Injector);
 
@@ -39,6 +42,8 @@ export class Grupos implements OnInit {
   protected readonly etiquetaRol = etiquetaRol;
   protected readonly esAdministrador = signal(false);
   protected readonly verTodos = signal(false);
+  /** Catálogo de estados de GRUPO_FAMILIAR; vacío hasta que llega (la columna queda en blanco). */
+  private readonly estados = signal<RespuestaEstadoCatalogo[]>([]);
   protected readonly listaTodos = signal<RespuestaGrupo[]>([]);
   /** Lista a mostrar: mis grupos, o todos los grupos si el admin activó el interruptor. */
   protected readonly lista = computed<RespuestaGrupo[]>(() =>
@@ -63,6 +68,19 @@ export class Grupos implements OnInit {
       error: (error: unknown) =>
         this.error.set(mensajeDeError(error, 'No pudimos verificar tus permisos.')),
     });
+    this.servicioCatalogos.estados('GRUPO_FAMILIAR', 'ESTADO').subscribe({
+      next: (estados) => this.estados.set(estados),
+      // Defensivo: sin el catálogo la columna Estado queda vacía.
+      error: () => undefined,
+    });
+  }
+
+  protected descripcionEstado(grupo: RespuestaGrupo): string {
+    return descripcionEstado(this.estados(), grupo.idEstado);
+  }
+
+  protected estaActivo(grupo: RespuestaGrupo): boolean {
+    return this.estados().find((estado) => estado.idEstado === grupo.idEstado)?.codigo === 'ACTIVO';
   }
 
   protected reintentar(): void {

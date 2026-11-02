@@ -175,7 +175,7 @@ function relevoConTresTareas(datos: Partial<RespuestaRelevo> = {}): RespuestaRel
 }
 
 function filaDeTarea(elemento: HTMLElement, resumen: string): HTMLElement {
-  const fila = Array.from(elemento.querySelectorAll<HTMLElement>('.item-resumen')).find((li) =>
+  const fila = Array.from(elemento.querySelectorAll<HTMLElement>('.item-resumen, .fila-tarea')).find((li) =>
     li.textContent?.includes(resumen),
   );
   if (!fila) throw new Error(`Sin fila "${resumen}"`);
@@ -475,6 +475,38 @@ describe('Relevo', () => {
         'Ya estaba asignada a Beto Díaz',
       );
       expect(botonConTexto(fila, 'Reasignar')).toBeFalsy();
+    });
+
+    it('tareasParaReasignarSonUnaGrillaConNombresUnicos', async () => {
+      const { elemento } = await configurar({
+        obtenerImpl: () => of(relevoConTresTareas()),
+      });
+
+      const tabla = elemento.querySelector('app-reasignar-tareas table.mv-grilla__tabla')!;
+      expect(tabla.getAttribute('role')).toBe('table');
+      expect(tabla.closest('.mv-grilla')?.getAttribute('role')).toBe('region');
+      const encabezados = Array.from(tabla.querySelectorAll('th[role="columnheader"]')).map((th) =>
+        th.textContent?.trim(),
+      );
+      expect(encabezados).toEqual(['Tarea', 'Resultado', 'Acciones']);
+      const filas = tabla.querySelectorAll('tbody tr[role="row"]');
+      expect(filas).toHaveLength(3);
+      expect(filas[0].querySelectorAll('td[role="cell"]')).toHaveLength(3);
+      expect(filas[0].querySelector('a')?.getAttribute('href')).toBe('/tareas/10');
+      const nombres = Array.from(tabla.querySelectorAll('tbody button')).map((b) =>
+        b.getAttribute('aria-label'),
+      );
+      expect(nombres).toEqual([
+        'Reasignar a Beto Díaz, Tarea uno',
+        'Reasignar a Beto Díaz, Tarea dos',
+        'Reasignar a Beto Díaz, Tarea tres',
+      ]);
+      // Un solo nombre: el de la región con scroll (la tabla no repite el suyo).
+      const regionGrilla = elemento.querySelector('.mv-grilla[role="region"]')!;
+      expect(regionGrilla.getAttribute('aria-label') ?? regionGrilla.getAttribute('aria-labelledby')).toBeTruthy();
+      const tablaGrilla = regionGrilla.querySelector('table')!;
+      expect(['aria-label', 'aria-labelledby'].some((a) => tablaGrilla.hasAttribute(a))).toBe(false);
+      expect(tablaGrilla.querySelector('caption')).toBeNull();
     });
 
     it('reasignarTodasPideConfirmacion', async () => {

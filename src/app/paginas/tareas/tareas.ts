@@ -13,7 +13,7 @@ import { fechaLarga } from '../../nucleo/fecha-legible';
 import { formatearHora, hoyEnSantiago, sumarDias } from '../../nucleo/fechas';
 import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
 import { mensajeDeError } from '../../nucleo/http/mensaje-de-error';
-import { CodigoEstadoTarea, QuienConfirma } from '../../nucleo/tareas/estados-tarea';
+import { CodigoEstadoTarea, QuienConfirma, accionesDisponibles } from '../../nucleo/tareas/estados-tarea';
 import { RespuestaTarea, TipoTarea } from '../../nucleo/tareas/modelos-tareas';
 import { ServicioTareas } from '../../nucleo/tareas/servicio-tareas';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
@@ -259,7 +259,13 @@ export class Tareas implements OnInit {
   }
 
   protected responsable(tarea: RespuestaTarea): string {
-    return tarea.responsable ? `Responsable: ${tarea.responsable.nombre}` : 'Sin responsable asignado';
+    return tarea.responsable?.nombre ?? 'Sin asignar';
+  }
+
+  /** Si `quien` puede hacer algo con la tarea; si no, la celda de acciones queda vacía. */
+  protected tieneAcciones(tarea: RespuestaTarea): boolean {
+    const codigo = this.codigoEstado(tarea) as CodigoEstadoTarea | undefined;
+    return codigo !== undefined && accionesDisponibles(codigo, tarea, this.quien()).length > 0;
   }
 
   protected anterior(): void {

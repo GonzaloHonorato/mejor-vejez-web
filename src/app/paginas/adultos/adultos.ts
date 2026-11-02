@@ -1,5 +1,6 @@
 import {
   Component,
+  ElementRef,
   Injector,
   OnInit,
   afterNextRender,
@@ -12,23 +13,46 @@ import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angula
 import { Router, RouterLink } from '@angular/router';
 
 import { inicialesDe } from '../../compartido/marco-app/identidad-usuario';
+import {
+  mensajeCampoFechaNacimiento,
+  validadorFechaNoFutura,
+} from '../../nucleo/adultos/fecha-nacimiento';
 import { RespuestaAdultoMayor } from '../../nucleo/adultos/modelos-adultos';
 import { AVISO_OPERATIVO, puedeAdministrarGrupo } from '../../nucleo/adultos/permisos-adultos';
 import { ServicioAdultos } from '../../nucleo/adultos/servicio-adultos';
-import { ServicioCatalogos } from '../../nucleo/catalogos/servicio-catalogos';
+import {
+  RespuestaOpcionCatalogo,
+  ServicioCatalogos,
+} from '../../nucleo/catalogos/servicio-catalogos';
+import { dentroDe, enfocarPrimerCampoInvalido } from '../../nucleo/foco';
+import { hoyEnSantiago } from '../../nucleo/fechas';
 import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
 import { detalleAdulto } from './detalle-adulto';
 import {
+  describirCon,
   erroresDeCampos,
   mensajeDeCampo,
   mensajeDeError,
 } from '../../nucleo/http/mensaje-de-error';
+import {
+  AYUDA_TELEFONO,
+  enlaceTelefono,
+  formatearControlTelefono,
+  formatearTelefono,
+  mensajeCampoTelefono,
+  normalizarTelefono,
+  validadorTelefonoChileno,
+} from '../../nucleo/telefono';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
+
+type CampoContacto = 'nombre' | 'idParentesco' | 'telefono';
 
 /**
  * Página "Adultos mayores" (`/adultos`): lista de perfiles del grupo activo,
  * con su contacto principal, y el formulario de alta (plegado tras la acción
- * principal) para quien administra.
+ * principal) para quien administra. El alta exige fecha de nacimiento y un
+ * contacto principal (nombre, parentesco del catálogo y teléfono chileno),
+ * que el core crea junto con el adulto.
  * Siempre trabaja sobre `ServicioGrupoActivo.activo()`: un `effect` recarga
  * la lista (o la limpia) cada vez que el grupo activo o el filtro de
  * inactivos cambian.
@@ -46,10 +70,15 @@ export class Adultos implements OnInit {
   private readonly router = inject(Router);
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly injector = inject(Injector);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   protected readonly grupoActivo = inject(ServicioGrupoActivo);
   protected readonly activo = this.grupoActivo.activo;
   protected readonly avisoOperativo = AVISO_OPERATIVO;
+  protected readonly ayudaTelefono = AYUDA_TELEFONO;
+  protected readonly formatearTelefono = formatearTelefono;
+  protected readonly enlaceTelefono = enlaceTelefono;
+  protected readonly hoy = hoyEnSantiago();
 
   protected readonly adultos = signal<RespuestaAdultoMayor[]>([]);
   protected readonly cargando = signal(false);
@@ -60,6 +89,8 @@ export class Adultos implements OnInit {
   protected readonly formularioAbierto = signal(false);
   protected readonly errorGeneral = signal<string | null>(null);
   protected readonly erroresCampos = signal<Record<string, string>>({});
+  protected readonly parentescos = signal<RespuestaOpcionCatalogo[]>([]);
+  protected readonly errorParentescos = signal<string | null>(null);
 
   /** idEstado de "INACTIVO" para ADULTO_MAYOR; null hasta que llegue el catálogo. */
   private readonly idEstadoInactivo = signal<number | null>(null);
@@ -77,7 +108,12 @@ export class Adultos implements OnInit {
   protected readonly formulario = this.fb.group({
     nombreCompleto: ['', Validators.required],
     codigoInterno: [''],
-    fechaNacimiento: [''],
+    fechaNacimiento: ['', [Validators.required, validadorFechaNoFutura()]],
+    contactoPrincipal: this.fb.group({
+      nombre: ['', Validators.required],
+      idParentesco: this.fb.control<number | null>(null, Validators.required),
+      telefono: ['', [Validators.required, validadorTelefonoChileno]],
+    }),
   });
 
   /** Descarta respuestas de `listar()` obsoletas (grupo o filtro ya cambiaron de nuevo). */
@@ -116,6 +152,11 @@ export class Adultos implements OnInit {
       // Defensivo: sin el catálogo simplemente no se marca ningún adulto como inactivo.
       error: () => undefined,
     });
+    this.servicioCatalogos.opciones('PARENTESCO').subscribe({
+      next: (opciones) => this.parentescos.set(opciones),
+      error: (error: unknown) =>
+        this.errorParentescos.set(mensajeDeError(error, 'No pudimos cargar los parentescos.')),
+    });
   }
 
   protected iniciales(adulto: RespuestaAdultoMayor): string {
@@ -124,11 +165,12 @@ export class Adultos implements OnInit {
 
   protected readonly detalle = detalleAdulto;
 
-  /** Nombre accesible del enlace a la ficha; el código lo distingue de un homónimo. */
-  protected etiquetaFicha(adulto: RespuestaAdultoMayor): string {
+  /** Nombre accesible del nombre enlazado (el único enlace de la fila para lectores): único por el código. */
+  protected etiquetaAdulto(adulto: RespuestaAdultoMayor): string {
     const codigo = adulto.codigoInterno ? `, código ${adulto.codigoInterno}` : '';
-    return `Ver ficha de ${adulto.nombreCompleto}${codigo}`;
+    return `${adulto.nombreCompleto}${codigo}`;
   }
+
 
   protected estaInactivo(adulto: RespuestaAdultoMayor): boolean {
     const idEstadoInactivo = this.idEstadoInactivo();
@@ -177,25 +219,65 @@ export class Adultos implements OnInit {
     );
   }
 
+  protected mensajeCampoFecha(): string | null {
+    return mensajeCampoFechaNacimiento(
+      this.formulario.controls.fechaNacimiento,
+      this.erroresCampos(),
+      'fechaNacimiento',
+    );
+  }
+
+  /** Mensaje de un campo del contacto principal: la API los devuelve como `contactoPrincipal.<campo>`. */
+  protected mensajeCampoContacto(campo: CampoContacto): string | null {
+    const control = this.formulario.controls.contactoPrincipal.controls[campo];
+    const clave = `contactoPrincipal.${campo}`;
+    if (campo === 'telefono') {
+      return mensajeCampoTelefono(control, this.erroresCampos(), clave, 'Ingresa un teléfono');
+    }
+    const requerido = campo === 'nombre' ? 'Ingresa el nombre del contacto' : 'Elige el parentesco';
+    return mensajeDeCampo(control, this.erroresCampos(), clave, requerido);
+  }
+
+  /** `aria-describedby` de un campo con ids `<id>-ayuda` / `<id>-error`. */
+  protected describirCampo(
+    idCampo: string,
+    mensaje: string | null,
+    conAyuda = false,
+  ): string | null {
+    return describirCon(conAyuda && `${idCampo}-ayuda`, mensaje && `${idCampo}-error`);
+  }
+
+  protected formatearTelefonoContacto(): void {
+    formatearControlTelefono(this.formulario.controls.contactoPrincipal.controls.telefono);
+  }
+
   protected crear(): void {
     const grupo = this.activo();
     if (!grupo || this.creando()) return;
     if (this.formulario.invalid) {
       this.formulario.markAllAsTouched();
+      this.enfocarPrimerInvalido();
       return;
     }
 
     this.errorGeneral.set(null);
     this.erroresCampos.set({});
-    const { nombreCompleto, codigoInterno, fechaNacimiento } = this.formulario.getRawValue();
+    const { nombreCompleto, codigoInterno, fechaNacimiento, contactoPrincipal } =
+      this.formulario.getRawValue();
     this.creando.set(true);
     this.servicioAdultos
       .crear(grupo.idGrupo, {
         nombreCompleto: nombreCompleto.trim(),
         codigoInterno: codigoInterno.trim() === '' ? null : codigoInterno.trim(),
-        fechaNacimiento: fechaNacimiento.trim() === '' ? null : fechaNacimiento,
+        fechaNacimiento,
         notasEmergencia: null,
         observacionesGenerales: null,
+        contactoPrincipal: {
+          nombre: contactoPrincipal.nombre.trim(),
+          idParentesco: contactoPrincipal.idParentesco!,
+          telefono:
+            normalizarTelefono(contactoPrincipal.telefono) ?? contactoPrincipal.telefono.trim(),
+        },
       })
       .subscribe({
         next: (adulto) => {
@@ -208,9 +290,15 @@ export class Adultos implements OnInit {
           this.erroresCampos.set(campos);
           if (Object.keys(campos).length === 0) {
             this.errorGeneral.set(mensajeDeError(error));
+          } else {
+            this.enfocarPrimerInvalido();
           }
         },
       });
+  }
+
+  private enfocarPrimerInvalido(): void {
+    enfocarPrimerCampoInvalido(dentroDe(this.host, '#adultos-alta form'), this.injector);
   }
 
   private cargar(idGrupo: number, incluirInactivos: boolean): void {

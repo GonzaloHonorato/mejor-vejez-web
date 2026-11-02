@@ -1,7 +1,17 @@
-import { Component, computed, inject, input, output, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
-import { Icono } from '../../../compartido/icono/icono';
+import { AccionMenu, BotonDividido } from '../../../compartido/boton-dividido/boton-dividido';
 
 import {
   CodigoEstadoTarea,
@@ -30,7 +40,7 @@ const ACCIONES_PRINCIPALES: CodigoEstadoTarea[] = ['EN_CURSO', 'COMPLETADA'];
  * tarea. Las acciones permitidas se calculan con `accionesDisponibles`:
  * nunca ofrece una transición que `quien` no pueda ejecutar. Se ve una sola
  * acción principal (Iniciar si está pendiente, Completar si está en curso);
- * el resto queda en "Más acciones".
+ * el resto va al menú del botón combinado (Cancelar, en color de peligro).
  *
  * `NO_REALIZADA` y `CANCELADA` exigen una observación: el botón
  * no llama a la API de inmediato, abre un `<textarea>` en línea con
@@ -40,13 +50,15 @@ const ACCIONES_PRINCIPALES: CodigoEstadoTarea[] = ['EN_CURSO', 'COMPLETADA'];
  */
 @Component({
   selector: 'app-acciones-tarea',
-  imports: [ReactiveFormsModule, Icono],
+  imports: [ReactiveFormsModule, BotonDividido],
   templateUrl: './acciones-tarea.html',
   styleUrl: './acciones-tarea.scss',
 })
 export class AccionesTarea {
   private readonly servicioTareas = inject(ServicioTareas);
   private readonly fb = inject(NonNullableFormBuilder);
+  private readonly elemento = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
 
   readonly tarea = input.required<RespuestaTarea>();
   readonly idGrupo = input.required<number>();
@@ -90,20 +102,28 @@ export class AccionesTarea {
     this.acciones().filter((accion) => accion !== this.principal()),
   );
 
-  /** Nombre accesible del botón de una acción: título y hora de la tarea ("Iniciar: Losartán, 08:00"). */
-  protected ariaLabelAccion(accion: CodigoEstadoTarea): string {
-    return `${this.etiquetaAccion[accion]}: ${this.descripcionTarea()}`;
+  /** Ítems del menú del botón combinado; cancelar es destructiva. */
+  protected readonly menu = computed<AccionMenu[]>(() =>
+    this.secundarias().map((accion) => ({
+      id: accion,
+      etiqueta: this.etiquetaAccion[accion],
+      peligro: accion === 'CANCELADA',
+    })),
+  );
+
+  /** Nombre accesible del segmento que abre el menú, con el mismo título y hora. */
+  protected ariaLabelMenu(): string {
+    return `Más acciones para ${this.descripcionTarea()}`;
   }
 
-  /** Nombre accesible de "Más acciones", con el mismo título y hora. */
-  protected ariaLabelMas(): string {
-    return `Más acciones: ${this.descripcionTarea()}`;
-  }
-
-  /** Título y hora de la tarea: distingue dos tareas con el mismo título en la agenda. */
-  private descripcionTarea(): string {
+  /**
+   * Título, adulto mayor y hora de la tarea: distingue dos tareas con el mismo
+   * título en la agenda. Da el nombre del principal ("Iniciar: Losartán 50 mg,
+   * Rosa González, 08:00") y del segmento.
+   */
+  protected descripcionTarea(): string {
     const tarea = this.tarea();
-    return `${tarea.titulo}, ${formatearHora(tarea.fechaHorario)}`;
+    return `${tarea.titulo}, ${tarea.nombreAdulto}, ${formatearHora(tarea.fechaHorario)}`;
   }
 
   protected etiquetaObservacion(accion: CodigoEstadoTarea): string {
@@ -134,6 +154,8 @@ export class AccionesTarea {
         Validators.maxLength(this.largoMaximoObservacion(accion)),
       ]);
       this.controlObservacion.reset('');
+      // El botón que se pulsó desaparece: el foco pasa al campo nuevo.
+      this.enfocarDespues('textarea');
       return;
     }
     this.enviar(accion, null);
@@ -152,10 +174,23 @@ export class AccionesTarea {
     this.enviar(accion, this.controlObservacion.value.trim());
   }
 
+  /** Ítem elegido en el menú del botón combinado (su `id` es el código de estado). */
+  protected elegirDelMenu(id: string): void {
+    this.elegir(id as CodigoEstadoTarea);
+  }
+
   /** "Volver" del textarea de observación: descarta lo escrito y vuelve a los botones. */
   protected volver(): void {
     this.accionPidiendoObservacion.set(null);
     this.controlObservacion.reset('');
+    this.enfocarDespues('.mv-boton-dividido__segmento');
+  }
+
+  /** Enfoca, tras el próximo render, el primer elemento propio que calce con `selector`. */
+  private enfocarDespues(selector: string): void {
+    afterNextRender(() => this.elemento.nativeElement.querySelector<HTMLElement>(selector)?.focus(), {
+      injector: this.injector,
+    });
   }
 
   private enviar(accion: CodigoEstadoTarea, observacion: string | null): void {

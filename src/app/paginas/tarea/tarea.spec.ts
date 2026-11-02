@@ -411,6 +411,26 @@ describe('Tarea', () => {
     expect(elemento.querySelector('h1')?.textContent).toContain('Comprar Losartán');
   });
 
+  it('lasAccionesDelDetalleUsanElBotonCombinadoYNoSeMuestranEnUnaTareaFinal', async () => {
+    const pendiente = await configurar();
+
+    const pie = pendiente.elemento.querySelector('.mv-tarjeta__pie.acciones')!;
+    expect(pie.querySelector('.mv-boton-dividido__principal')?.textContent?.trim()).toBe('Iniciar');
+    expect(pie.querySelector('.mv-boton-dividido__segmento')?.getAttribute('aria-label')).toBe(
+      'Más acciones para Comprar Losartán, Rosa González, 08:00',
+    );
+    const items = Array.from(pie.querySelectorAll('[role="menuitem"]'));
+    expect(items.map((item) => item.textContent?.trim())).toEqual(['Completar', 'No realizada', 'Cancelar']);
+    expect(items[2].classList.contains('mv-menu__item--peligro')).toBe(true);
+    expect(pendiente.elemento.querySelector('details')).toBeNull();
+
+    TestBed.resetTestingModule();
+    const completada = await configurar({
+      obtenerImpl: () => of(detalle({ tarea: tarea({ idEstado: 12 }) })),
+    });
+    expect(completada.elemento.querySelector('app-boton-dividido')).toBeNull();
+  });
+
   it('cuatroCeroCuatroMuestraMensajeYEnlaceATareas', async () => {
     const { elemento } = await configurar({
       obtenerImpl: () =>

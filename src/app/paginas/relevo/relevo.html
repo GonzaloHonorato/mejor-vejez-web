@@ -118,7 +118,11 @@
           </div>
         } @else {
           <div class="columnas">
-            <section class="mv-tarjeta" aria-labelledby="relevo-tareas-titulo">
+            <section
+              class="mv-tarjeta"
+              [class.ancho-completo]="puedeReasignar()"
+              aria-labelledby="relevo-tareas-titulo"
+            >
               <div class="mv-tarjeta__cabecera">
                 <h3 id="relevo-tareas-titulo" class="mv-tarjeta__titulo">
                   Tareas pendientes ({{ datos.totalTareas }})
@@ -149,7 +153,11 @@
               </div>
             </section>
 
-            <section class="mv-tarjeta" aria-labelledby="relevo-alertas-titulo">
+            <section
+              class="mv-tarjeta"
+              [class.ancho-completo]="puedeReasignar()"
+              aria-labelledby="relevo-alertas-titulo"
+            >
               <div class="mv-tarjeta__cabecera">
                 <h3 id="relevo-alertas-titulo" class="mv-tarjeta__titulo">
                   Alertas abiertas ({{ datos.totalAlertas }})

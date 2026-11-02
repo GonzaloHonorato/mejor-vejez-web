@@ -7,7 +7,9 @@ import { RespuestaCanales, ServicioCanales } from '../../../nucleo/usuarios/serv
 
 function respuesta(opciones: Partial<RespuestaCanales> = {}): RespuestaCanales {
   return {
-    canales: [{ canal: 'CORREO', destino: 'ana@correo.cl', habilitado: true, predeterminado: true }],
+    canales: [
+      { canal: 'CORREO', destino: 'ana@correo.cl', habilitado: true, predeterminado: true },
+    ],
     whatsappDisponible: false,
     ...opciones,
   };
@@ -66,6 +68,75 @@ describe('CanalesNotificacion', () => {
       { canal: 'WHATSAPP', destino: '+56912345678', habilitado: true },
     ]);
     expect(elemento.querySelector('.confirmacion')?.textContent).toContain('Cambios guardados.');
+  });
+
+  it('whatsappNoChilenoMuestraLaReglaYNoGuarda', async () => {
+    const { fixture, elemento, servicioCanales } = await configurar();
+    const campo = elemento.querySelector<HTMLInputElement>('#canales-whatsapp')!;
+
+    escribir(campo, '+5491123456789');
+    elemento.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    const error = elemento.querySelector('#canales-whatsapp-error');
+    expect(error?.classList).toContain('mv-campo__error');
+    expect(error?.textContent).toContain('Ingresa un teléfono chileno: +56 y 9 dígitos.');
+    expect(campo.getAttribute('aria-describedby')).toBe(
+      'canales-whatsapp-ayuda canales-whatsapp-error',
+    );
+    expect(campo.getAttribute('inputmode')).toBe('tel');
+    expect(document.activeElement).toBe(campo);
+    expect(servicioCanales.actualizar).not.toHaveBeenCalled();
+  });
+
+  it('whatsappAntiguoSinCambiosSeEnviaTalCual', async () => {
+    const { fixture, elemento, servicioCanales } = await configurar(
+      respuesta({
+        canales: [
+          { canal: 'CORREO', destino: 'ana@correo.cl', habilitado: true, predeterminado: true },
+          {
+            canal: 'WHATSAPP',
+            destino: '+5491123456789',
+            habilitado: false,
+            predeterminado: false,
+          },
+        ],
+      }),
+    );
+    servicioCanales.actualizar.mockReturnValue(of(respuesta()));
+
+    escribir(elemento.querySelector('#canales-correo')!, 'otra@correo.cl');
+    elemento.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    expect(elemento.querySelector('#canales-whatsapp-error')).toBeFalsy();
+    expect(servicioCanales.actualizar).toHaveBeenCalledWith([
+      { canal: 'CORREO', destino: 'otra@correo.cl', habilitado: true },
+      { canal: 'WHATSAPP', destino: '+5491123456789', habilitado: false },
+    ]);
+  });
+
+  it('whatsappSeEnviaNormalizadoYSeMuestraFormateado', async () => {
+    const { fixture, elemento, servicioCanales } = await configurar(
+      respuesta({
+        canales: [
+          { canal: 'CORREO', destino: 'ana@correo.cl', habilitado: true, predeterminado: true },
+          { canal: 'WHATSAPP', destino: '+56912345678', habilitado: false, predeterminado: false },
+        ],
+      }),
+    );
+    servicioCanales.actualizar.mockReturnValue(of(respuesta()));
+    const campo = elemento.querySelector<HTMLInputElement>('#canales-whatsapp')!;
+    expect(campo.value).toBe('+56 9 1234 5678');
+
+    escribir(campo, '9 8765 4321');
+    elemento.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    expect(servicioCanales.actualizar).toHaveBeenCalledWith([
+      { canal: 'CORREO', destino: 'ana@correo.cl', habilitado: true },
+      { canal: 'WHATSAPP', destino: '+56987654321', habilitado: false },
+    ]);
   });
 
   it('whatsappVacioNoSeEnvia', async () => {
@@ -196,7 +267,10 @@ describe('CanalesNotificacion', () => {
     TestBed.configureTestingModule({
       imports: [CanalesNotificacion],
       providers: [
-        { provide: ServicioCanales, useValue: { obtener: () => sujeto.asObservable(), actualizar: vi.fn() } },
+        {
+          provide: ServicioCanales,
+          useValue: { obtener: () => sujeto.asObservable(), actualizar: vi.fn() },
+        },
       ],
     });
     const fixture = TestBed.createComponent(CanalesNotificacion);

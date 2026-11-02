@@ -18,6 +18,22 @@
   gap: var(--mv-espacio-4);
 }
 
+.contacto-principal {
+  display: grid;
+  gap: var(--mv-espacio-3);
+  margin: 0;
+  padding: var(--mv-espacio-4) 0 0;
+  border: 0;
+  border-top: 1px solid var(--mv-color-borde);
+  min-width: 0;
+
+  &__titulo {
+    padding: 0;
+    font-size: var(--mv-texto-grande);
+    font-weight: var(--mv-texto-peso-negrita);
+  }
+}
+
 .alta:empty {
   display: none;
 }
@@ -56,69 +72,38 @@
   color: var(--mv-color-secundario);
 }
 
-.lista-adultos {
-  --fila-columnas: auto minmax(0, 1.2fr) minmax(0, 1fr) 7rem;
-
-  .mv-fila {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    align-items: center;
-    column-gap: var(--mv-espacio-3);
-  }
-
-  .inactivo .mv-avatar {
-    background: var(--mv-color-neutro-fondo);
-    color: var(--mv-color-secundario);
-  }
-
-  @include pq.desde-escritorio {
-    .mv-fila {
-      grid-template-columns: var(--fila-columnas);
-    }
-  }
+.adulto {
+  display: flex;
+  align-items: center;
+  gap: var(--mv-espacio-3);
 }
 
-.contacto {
-  grid-column: 1 / -1;
-  padding-top: var(--mv-espacio-3);
-  border-top: 1px solid var(--mv-color-borde);
-
-  p {
-    margin: 0;
-  }
-
-  &__rotulo {
-    color: var(--mv-color-secundario);
-    font-size: var(--mv-texto-etiqueta);
-    font-weight: var(--mv-texto-peso-negrita);
-    text-transform: uppercase;
-  }
-
-  &__parentesco {
-    color: var(--mv-color-secundario);
-  }
-
-  &__telefono {
-    position: relative;
-    z-index: 1;
-    display: inline-flex;
-    align-items: center;
-    min-height: var(--mv-espacio-12);
-    color: var(--mv-color-primario);
-    font-weight: var(--mv-texto-peso-negrita);
-  }
-
-  @include pq.desde-escritorio {
-    grid-column: auto;
-    padding-top: 0;
-    border-top: 0;
-  }
+.inactivo .mv-avatar {
+  background: var(--mv-color-neutro-fondo);
+  color: var(--mv-color-secundario);
 }
 
-.estado {
-  grid-area: 1 / 3;
+.detalle {
+  font-weight: var(--mv-texto-peso-normal);
+}
 
-  @include pq.desde-escritorio {
-    grid-area: auto;
+.contacto__nombre {
+  display: block;
+}
+
+// Sobre el enlace estirado del nombre.
+.contacto__telefono {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--mv-espacio-12);
+  font-weight: var(--mv-texto-peso-negrita);
+}
+
+// En celular la tarjeta entera abre la ficha: "Ver ficha" solo en la grilla.
+.mv-grilla .acciones {
+  @media not all and (min-width: pq.$tableta) {
+    display: none;
   }
 }

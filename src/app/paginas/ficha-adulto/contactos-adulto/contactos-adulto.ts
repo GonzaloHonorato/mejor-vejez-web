@@ -1,5 +1,6 @@
 import {
   Component,
+  ElementRef,
   Injector,
   OnInit,
   afterNextRender,
@@ -10,6 +11,7 @@ import {
   signal,
 } from '@angular/core';
 import {
+  AbstractControl,
   FormControl,
   FormGroup,
   NonNullableFormBuilder,
@@ -17,24 +19,44 @@ import {
   Validators,
 } from '@angular/forms';
 
-import { Icono } from '../../../compartido/icono/icono';
+import { AccionMenu, BotonDividido } from '../../../compartido/boton-dividido/boton-dividido';
 import { RespuestaContacto } from '../../../nucleo/adultos/modelos-adultos';
 import { ServicioAdultos } from '../../../nucleo/adultos/servicio-adultos';
 import {
   RespuestaEstadoCatalogo,
+  RespuestaOpcionCatalogo,
   ServicioCatalogos,
 } from '../../../nucleo/catalogos/servicio-catalogos';
 import {
+  describirCon,
   erroresDeCampos,
   mensajeDeCampo,
   mensajeDeError,
 } from '../../../nucleo/http/mensaje-de-error';
+import {
+  AYUDA_TELEFONO,
+  enlaceTelefono,
+  formatearControlTelefono,
+  formatearTelefono,
+  mensajeCampoTelefono,
+  normalizarTelefono,
+  validadorTelefonoChileno,
+} from '../../../nucleo/telefono';
+import { dentroDe, enfocarPrimerCampoInvalido } from '../../../nucleo/foco';
 
 type FormularioEdicionContacto = FormGroup<{
   nombreContacto: FormControl<string>;
-  parentesco: FormControl<string>;
+  idParentesco: FormControl<number | null>;
   telefono: FormControl<string>;
 }>;
+
+type CampoContacto = 'nombreContacto' | 'idParentesco' | 'telefono';
+
+const MENSAJES_REQUERIDO: Record<CampoContacto, string> = {
+  nombreContacto: 'Ingresa el nombre del contacto',
+  idParentesco: 'Elige el parentesco',
+  telefono: 'Ingresa un teléfono',
+};
 
 /**
  * Lista de contactos de emergencia de un adulto mayor, con administración
@@ -42,6 +64,11 @@ type FormularioEdicionContacto = FormGroup<{
  * eliminar) cuando `puedeAdministrar() && adultoActivo()`. Se usa dentro de
  * `FichaAdulto`: `idGrupo`/`idAdulto` son obligatorios porque sin ellos no
  * hay contactos que pedir.
+ *
+ * El parentesco se elige del catálogo `PARENTESCO`; un contacto antiguo con
+ * texto libre se muestra tal cual y, al editarlo, hay que elegir uno de la
+ * lista. El teléfono sigue la regla chilena de `nucleo/telefono` y se
+ * muestra formateado.
  *
  * Desactivar al principal habiendo otros contactos activos exige elegir un
  * reemplazo: el botón "Desactivar" no
@@ -52,7 +79,7 @@ type FormularioEdicionContacto = FormGroup<{
  */
 @Component({
   selector: 'app-contactos-adulto',
-  imports: [ReactiveFormsModule, Icono],
+  imports: [ReactiveFormsModule, BotonDividido],
   templateUrl: './contactos-adulto.html',
   styleUrl: './contactos-adulto.scss',
 })
@@ -61,12 +88,18 @@ export class ContactosAdulto implements OnInit {
   private readonly servicioCatalogos = inject(ServicioCatalogos);
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly injector = inject(Injector);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   readonly idGrupo = input.required<number>();
   readonly idAdulto = input.required<number>();
   readonly puedeAdministrar = input<boolean>(false);
   readonly adultoActivo = input<boolean>(false);
   readonly cambio = output<void>();
+
+  protected readonly ayudaTelefono = AYUDA_TELEFONO;
+  protected readonly formatearTelefono = formatearTelefono;
+  protected readonly enlaceTelefono = enlaceTelefono;
+  protected readonly parentescos = signal<RespuestaOpcionCatalogo[]>([]);
 
   protected readonly contactos = signal<RespuestaContacto[]>([]);
   protected readonly cargando = signal(false);
@@ -104,8 +137,8 @@ export class ContactosAdulto implements OnInit {
 
   protected readonly formulario = this.fb.group({
     nombreContacto: ['', Validators.required],
-    parentesco: [''],
-    telefono: ['', Validators.required],
+    idParentesco: this.fb.control<number | null>(null, Validators.required),
+    telefono: ['', [Validators.required, validadorTelefonoChileno]],
     esPrincipal: [false],
   });
 
@@ -117,6 +150,11 @@ export class ContactosAdulto implements OnInit {
         this.idEstadoInactivo.set(inactivo?.idEstado ?? null);
       },
       error: () => undefined,
+    });
+    this.servicioCatalogos.opciones('PARENTESCO').subscribe({
+      next: (opciones) => this.parentescos.set(opciones),
+      error: (error: unknown) =>
+        this.error.set(mensajeDeError(error, 'No pudimos cargar los parentescos.')),
     });
   }
 
@@ -159,31 +197,63 @@ export class ContactosAdulto implements OnInit {
   }
 
   /** Error de la API, o si no un mensaje local cuando se tocó sin completar, en el formulario "Agregar contacto". */
-  protected mensajeCampoNuevo(
-    campo: 'nombreContacto' | 'telefono',
-    mensajeRequerido: string,
-  ): string | null {
-    return mensajeDeCampo(
-      this.formulario.controls[campo],
-      this.erroresCamposNuevo(),
-      campo,
-      mensajeRequerido,
-    );
+  protected mensajeCampoNuevo(campo: CampoContacto): string | null {
+    return this.mensajeCampo(this.formulario.controls[campo], this.erroresCamposNuevo(), campo);
   }
 
   /** Igual que {@link mensajeCampoNuevo}, pero para la fila en edición de `contacto`. */
-  protected mensajeCampoEdicion(
-    contacto: RespuestaContacto,
-    campo: 'nombreContacto' | 'telefono',
-    mensajeRequerido: string,
-  ): string | null {
-    const formulario = this.formularioEdicion(contacto);
-    return mensajeDeCampo(
-      formulario.controls[campo],
+  protected mensajeCampoEdicion(contacto: RespuestaContacto, campo: CampoContacto): string | null {
+    return this.mensajeCampo(
+      this.formularioEdicion(contacto).controls[campo],
       this.erroresEdicion(contacto.idContacto),
       campo,
-      mensajeRequerido,
     );
+  }
+
+  protected readonly describirCon = describirCon;
+
+  /** Contacto antiguo con parentesco en texto libre: al editarlo hay que elegir del catálogo. */
+  protected parentescoAntiguo(contacto: RespuestaContacto): string | null {
+    return contacto.idParentesco === null && contacto.parentesco ? contacto.parentesco : null;
+  }
+
+  protected formatearTelefonoNuevo(): void {
+    formatearControlTelefono(this.formulario.controls.telefono);
+  }
+
+  protected formatearTelefonoEdicion(contacto: RespuestaContacto): void {
+    formatearControlTelefono(this.formularioEdicion(contacto).controls.telefono);
+  }
+
+  private mensajeCampo(
+    control: AbstractControl,
+    errores: Record<string, string>,
+    campo: CampoContacto,
+  ): string | null {
+    return campo === 'telefono'
+      ? mensajeCampoTelefono(control, errores, campo, MENSAJES_REQUERIDO.telefono)
+      : mensajeDeCampo(control, errores, campo, MENSAJES_REQUERIDO[campo]);
+  }
+
+  /** Menú del botón "Editar" de una fila: mismas acciones que antes, Eliminar al final. */
+  protected accionesMenu(contacto: RespuestaContacto): AccionMenu[] {
+    const inactivo = this.estaInactivo(contacto);
+    return [
+      ...(!contacto.esPrincipal && !inactivo
+        ? [{ id: 'principal', etiqueta: 'Hacer principal' }]
+        : []),
+      inactivo
+        ? { id: 'reactivar', etiqueta: 'Reactivar' }
+        : { id: 'desactivar', etiqueta: 'Desactivar' },
+      { id: 'eliminar', etiqueta: 'Eliminar', peligro: true },
+    ];
+  }
+
+  protected ejecutar(contacto: RespuestaContacto, id: string): void {
+    if (id === 'principal') this.hacerPrincipal(contacto);
+    if (id === 'desactivar') this.desactivar(contacto);
+    if (id === 'reactivar') this.reactivar(contacto);
+    if (id === 'eliminar') this.eliminar(contacto);
   }
 
   protected editar(contacto: RespuestaContacto): void {
@@ -191,29 +261,32 @@ export class ContactosAdulto implements OnInit {
     this.erroresEdicionDe(contacto.idContacto).set({});
     this.formulariosEdicion.set(contacto.idContacto, this.crearFormularioEdicion(contacto));
     this.idsEnEdicion.set(new Set([...this.idsEnEdicion(), contacto.idContacto]));
+    this.enfocar(`contacto-nombre-${contacto.idContacto}`);
   }
 
   protected cancelarEdicion(contacto: RespuestaContacto): void {
     const restantes = new Set(this.idsEnEdicion());
     restantes.delete(contacto.idContacto);
     this.idsEnEdicion.set(restantes);
+    this.enfocar(`contacto-editar-${contacto.idContacto}`);
   }
 
   protected guardarEdicion(contacto: RespuestaContacto): void {
     const formulario = this.formularioEdicion(contacto);
     if (formulario.invalid) {
       formulario.markAllAsTouched();
+      this.enfocarPrimerInvalidoDeFila(contacto);
       return;
     }
 
     this.error.set(null);
     this.erroresEdicionDe(contacto.idContacto).set({});
-    const { nombreContacto, parentesco, telefono } = formulario.getRawValue();
+    const { nombreContacto, idParentesco, telefono } = formulario.getRawValue();
     this.servicioAdultos
       .actualizarContacto(this.idGrupo(), this.idAdulto(), contacto.idContacto, {
         nombreContacto: nombreContacto.trim(),
-        parentesco: parentesco.trim() === '' ? null : parentesco.trim(),
-        telefono: telefono.trim(),
+        idParentesco: idParentesco!,
+        telefono: normalizarTelefono(telefono) ?? telefono.trim(),
       })
       .subscribe({
         next: () => {
@@ -226,6 +299,8 @@ export class ContactosAdulto implements OnInit {
           this.erroresEdicionDe(contacto.idContacto).set(campos);
           if (Object.keys(campos).length === 0) {
             this.error.set(mensajeDeError(error));
+          } else {
+            this.enfocarPrimerInvalidoDeFila(contacto);
           }
         },
       });
@@ -270,14 +345,34 @@ export class ContactosAdulto implements OnInit {
   }
 
   protected cancelarReemplazo(): void {
+    const idContacto = this.pidiendoReemplazoPara();
     this.pidiendoReemplazoPara.set(null);
+    if (idContacto !== null) this.enfocar(`contacto-editar-${idContacto}`);
   }
 
   /** Foco al <select> recién abierto: quien venía de "Desactivar" no debe perder el lugar en la página. */
   private enfocarSelectDeReemplazo(idContacto: number): void {
+    this.enfocar(`reemplazo-${idContacto}`);
+  }
+
+  private enfocarPrimerInvalidoDelAlta(): void {
+    enfocarPrimerCampoInvalido(dentroDe(this.host, '.alta form'), this.injector);
+  }
+
+  private enfocarPrimerInvalidoDeFila(contacto: RespuestaContacto): void {
+    enfocarPrimerCampoInvalido(
+      () => document.getElementById(`contacto-nombre-${contacto.idContacto}`)?.closest('form'),
+      this.injector,
+    );
+  }
+
+  /** Al abrir o cerrar la edición de una fila, el foco va a su primer campo o vuelve a su "Editar". */
+  private enfocar(id: string): void {
     afterNextRender(
       () => {
-        document.getElementById(`reemplazo-${idContacto}`)?.focus();
+        const elemento = document.getElementById(id);
+        const principal = elemento?.querySelector<HTMLElement>('.mv-boton-dividido__principal');
+        (principal ?? elemento)?.focus();
       },
       { injector: this.injector },
     );
@@ -315,18 +410,19 @@ export class ContactosAdulto implements OnInit {
     if (this.agregando()) return;
     if (this.formulario.invalid) {
       this.formulario.markAllAsTouched();
+      this.enfocarPrimerInvalidoDelAlta();
       return;
     }
 
     this.error.set(null);
     this.erroresCamposNuevo.set({});
-    const { nombreContacto, parentesco, telefono, esPrincipal } = this.formulario.getRawValue();
+    const { nombreContacto, idParentesco, telefono, esPrincipal } = this.formulario.getRawValue();
     this.agregando.set(true);
     this.servicioAdultos
       .crearContacto(this.idGrupo(), this.idAdulto(), {
         nombreContacto: nombreContacto.trim(),
-        parentesco: parentesco.trim() === '' ? null : parentesco.trim(),
-        telefono: telefono.trim(),
+        idParentesco: idParentesco!,
+        telefono: normalizarTelefono(telefono) ?? telefono.trim(),
         esPrincipal: esPrincipal ? true : null,
       })
       .subscribe({
@@ -334,7 +430,7 @@ export class ContactosAdulto implements OnInit {
           this.agregando.set(false);
           this.formulario.reset({
             nombreContacto: '',
-            parentesco: '',
+            idParentesco: null,
             telefono: '',
             esPrincipal: false,
           });
@@ -347,6 +443,8 @@ export class ContactosAdulto implements OnInit {
           this.erroresCamposNuevo.set(campos);
           if (Object.keys(campos).length === 0) {
             this.error.set(mensajeDeError(error));
+          } else {
+            this.enfocarPrimerInvalidoDelAlta();
           }
         },
       });
@@ -380,8 +478,11 @@ export class ContactosAdulto implements OnInit {
   private crearFormularioEdicion(contacto: RespuestaContacto): FormularioEdicionContacto {
     return this.fb.group({
       nombreContacto: this.fb.control(contacto.nombreContacto, Validators.required),
-      parentesco: this.fb.control(contacto.parentesco ?? ''),
-      telefono: this.fb.control(contacto.telefono, Validators.required),
+      idParentesco: this.fb.control<number | null>(contacto.idParentesco, Validators.required),
+      telefono: this.fb.control(formatearTelefono(contacto.telefono), [
+        Validators.required,
+        validadorTelefonoChileno,
+      ]),
     });
   }
 

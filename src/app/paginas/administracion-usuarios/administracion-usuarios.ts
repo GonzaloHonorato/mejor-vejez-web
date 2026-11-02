@@ -12,15 +12,34 @@ import {
 import { FormControl, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
+import { AccionMenu, BotonDividido } from '../../compartido/boton-dividido/boton-dividido';
 import { ClaveTemporal } from '../../compartido/clave-temporal/clave-temporal';
 import { Icono } from '../../compartido/icono/icono';
 import { inicialesDe } from '../../compartido/marco-app/identidad-usuario';
 import { erroresDeCampos, mensajeDeError } from '../../nucleo/http/mensaje-de-error';
 import { RespuestaEstadoCatalogo, ServicioCatalogos } from '../../nucleo/catalogos/servicio-catalogos';
+import { dentroDe, enfocarPrimerCampoInvalido } from '../../nucleo/foco';
+import {
+  AYUDA_TELEFONO,
+  MENSAJE_TELEFONO_CHILENO,
+  formatearControlTelefono,
+  formatearTelefono,
+  mismoTelefono,
+  normalizarTelefono,
+  validadorTelefonoChileno,
+  validadorTelefonoChilenoSalvo,
+} from '../../nucleo/telefono';
 import { RespuestaUsuario } from '../../nucleo/usuarios/modelos-usuarios';
 import { ServicioUsuarios } from '../../nucleo/usuarios/servicio-usuarios';
 
 const TAMANO_PAGINA = 10;
+
+/** Cómo se nombra en el menú el paso a cada estado de la cuenta. */
+const ACCION_POR_ESTADO: Record<string, string> = {
+  ACTIVO: 'Activar',
+  INACTIVO: 'Desactivar',
+  BLOQUEADO: 'Bloquear',
+};
 
 /** Lo que muestra el diálogo de clave temporal: cuenta creada o acceso reenviado. */
 interface ClaveAMostrar {
@@ -31,16 +50,17 @@ interface ClaveAMostrar {
 
 /**
  * Página "Administración de usuarios" (`/administracion/usuarios`, solo
- * administradores, ver `guardAdministrador`): buscador, listado paginado y,
- * por usuario, edición de nombre/teléfono/administrador (acción principal de
- * la fila) y, en "Más acciones", cambio de estado y reenvío de accesos.
+ * administradores, ver `guardAdministrador`): buscador, grilla paginada y,
+ * por usuario, un botón combinado: "Editar" (nombre/teléfono/administrador,
+ * en una fila bajo la del usuario) y, en el menú, reenvío de accesos y
+ * cambio de estado.
  * Tiene además el enlace "Auditoría global" (`/administracion/auditoria`):
  * esta página ya está detrás de `guardAdministrador`, así que no hace falta
  * ninguna condición extra para mostrarlo.
  */
 @Component({
   selector: 'app-administracion-usuarios',
-  imports: [ReactiveFormsModule, RouterLink, ClaveTemporal, Icono],
+  imports: [ReactiveFormsModule, RouterLink, ClaveTemporal, Icono, BotonDividido],
   templateUrl: './administracion-usuarios.html',
   styleUrl: './administracion-usuarios.scss',
 })
@@ -49,28 +69,25 @@ export class AdministracionUsuarios implements OnInit {
   private readonly servicioCatalogos = inject(ServicioCatalogos);
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly injector = inject(Injector);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  protected readonly ayudaTelefono = AYUDA_TELEFONO;
 
   protected readonly iniciales = inicialesDe;
 
-  /**
-   * Un `FormControl` por fila para el select de estado: a diferencia de
-   * `[value]`/`[selected]`, `writeValue` de `SelectControlValueAccessor`
-   * reaplica el valor real al <select> en cada carga (incluida la
-   * reversión tras un 422), sin depender de la memoización de bindings
-   * de Angular.
-   */
-  private readonly controlesEstado = new Map<number, FormControl<number>>();
-
-  protected controlEstado(usuario: RespuestaUsuario): FormControl<number> {
-    let control = this.controlesEstado.get(usuario.idUsuario);
-    if (!control) {
-      control = this.fb.control(usuario.idEstado);
-      this.controlesEstado.set(usuario.idUsuario, control);
-    }
-    return control;
-  }
-
   protected readonly usuarios = signal<RespuestaUsuario[]>([]);
+
+  /** Nombres que se repiten en la página: esas filas suman el correo a sus nombres accesibles. */
+  private readonly nombresRepetidos = computed(() => {
+    const vistos = new Set<string>();
+    const repetidos = new Set<string>();
+    for (const { nombre } of this.usuarios()) (vistos.has(nombre) ? repetidos : vistos).add(nombre);
+    return repetidos;
+  });
+
+  /** Nombre de la fila para lectores: "Ana" o, si hay otra "Ana", "Ana, ana@correo.cl". */
+  protected nombreDistintivo(usuario: RespuestaUsuario): string {
+    return this.nombresRepetidos().has(usuario.nombre) ? `${usuario.nombre}, ${usuario.email}` : usuario.nombre;
+  }
   protected readonly estados = signal<RespuestaEstadoCatalogo[]>([]);
   protected readonly pagina = signal(0);
   protected readonly total = signal(0);
@@ -92,7 +109,7 @@ export class AdministracionUsuarios implements OnInit {
 
   protected readonly formulario = inject(NonNullableFormBuilder).group({
     nombre: ['', Validators.required],
-    telefono: [''],
+    telefono: ['', validadorTelefonoChilenoSalvo(() => this.editando()?.telefono)],
     esAdministrador: [false],
   });
 
@@ -117,7 +134,7 @@ export class AdministracionUsuarios implements OnInit {
   protected readonly formularioCrear = this.fb.group({
     nombre: ['', [Validators.required, Validators.maxLength(160)]],
     email: ['', [Validators.required, Validators.email]],
-    telefono: [''],
+    telefono: ['', validadorTelefonoChileno],
   });
 
   ngOnInit(): void {
@@ -146,6 +163,43 @@ export class AdministracionUsuarios implements OnInit {
     this.cargar();
   }
 
+  /**
+   * Menú del botón combinado: "Reenviar accesos" (solo ACTIVO) y el paso a
+   * cada otro estado del catálogo; bloquear va al final, como peligro.
+   */
+  protected accionesMenu(usuario: RespuestaUsuario): AccionMenu[] {
+    const acciones: AccionMenu[] = [];
+    if (this.puedeReenviarAcceso(usuario)) {
+      acciones.push({
+        id: 'reenviar',
+        etiqueta: 'Reenviar accesos',
+        deshabilitada: this.reenviando() === usuario.idUsuario,
+      });
+    }
+    const cambios = [...this.estados()]
+      .filter((estado) => estado.idEstado !== usuario.idEstado)
+      .sort((a, b) => a.orden - b.orden)
+      .map((estado) => ({
+        id: `estado-${estado.idEstado}`,
+        etiqueta: ACCION_POR_ESTADO[estado.codigo] ?? `Cambiar a ${estado.descripcion}`,
+        peligro: estado.codigo === 'BLOQUEADO',
+      }));
+    return [...acciones, ...cambios.filter((c) => !c.peligro), ...cambios.filter((c) => c.peligro)];
+  }
+
+  protected ejecutar(usuario: RespuestaUsuario, accion: string): void {
+    if (accion === 'reenviar') {
+      this.reenviarAcceso(usuario);
+    } else if (accion.startsWith('estado-')) {
+      this.cambiarEstado(usuario, Number(accion.slice('estado-'.length)));
+    }
+  }
+
+  /** Teléfono formateado (`+56 9 1234 5678`) o "Sin teléfono". */
+  protected telefono(usuario: RespuestaUsuario): string {
+    return formatearTelefono(usuario.telefono) || 'Sin teléfono';
+  }
+
   protected cambiarEstado(usuario: RespuestaUsuario, idEstado: number): void {
     this.error.set(null);
     this.servicioUsuarios.cambiarEstado(usuario.idUsuario, idEstado).subscribe({
@@ -163,7 +217,7 @@ export class AdministracionUsuarios implements OnInit {
     this.erroresCampos.set({});
     this.formulario.setValue({
       nombre: usuario.nombre,
-      telefono: usuario.telefono ?? '',
+      telefono: formatearTelefono(usuario.telefono),
       esAdministrador: usuario.esAdministrador,
     });
     this.enfocar('usuario-nombre');
@@ -172,7 +226,9 @@ export class AdministracionUsuarios implements OnInit {
   protected cancelarEdicion(): void {
     const usuario = this.editando();
     this.editando.set(null);
-    if (usuario) this.enfocar(`usuario-editar-${usuario.idUsuario}`);
+    if (usuario) {
+      this.enfocarElemento(`#usuario-acciones-${usuario.idUsuario} .mv-boton-dividido__principal`);
+    }
   }
 
   protected guardar(): void {
@@ -181,9 +237,11 @@ export class AdministracionUsuarios implements OnInit {
     if (this.formulario.invalid) {
       this.formulario.markAllAsTouched();
       this.errorEdicion.set(null);
-      this.erroresCampos.set(
-        this.formulario.controls.nombre.invalid ? { nombre: 'El nombre es obligatorio.' } : {},
-      );
+      this.erroresCampos.set({
+        ...(this.formulario.controls.nombre.invalid ? { nombre: 'El nombre es obligatorio.' } : {}),
+        ...this.errorLocalTelefono(this.formulario.controls.telefono),
+      });
+      this.enfocarPrimerInvalido('.editar-usuario form');
       return;
     }
 
@@ -194,7 +252,7 @@ export class AdministracionUsuarios implements OnInit {
     this.servicioUsuarios
       .actualizar(usuario.idUsuario, {
         nombre,
-        telefono: telefono.trim() === '' ? null : telefono,
+        telefono: this.telefonoAEnviar(telefono, usuario.telefono),
         esAdministrador,
       })
       .subscribe({
@@ -209,6 +267,8 @@ export class AdministracionUsuarios implements OnInit {
           this.erroresCampos.set(campos);
           if (Object.keys(campos).length === 0) {
             this.errorEdicion.set(mensajeDeError(error));
+          } else {
+            this.enfocarPrimerInvalido('.editar-usuario form');
           }
         },
       });
@@ -251,7 +311,11 @@ export class AdministracionUsuarios implements OnInit {
     if (this.formularioCrear.invalid) {
       this.formularioCrear.markAllAsTouched();
       this.errorCrear.set(null);
-      this.erroresCamposCrear.set(this.erroresLocalesNombreCrear());
+      this.erroresCamposCrear.set({
+        ...this.erroresLocalesNombreCrear(),
+        ...this.errorLocalTelefono(this.formularioCrear.controls.telefono),
+      });
+      this.enfocarPrimerInvalido('.crear-usuario form');
       return;
     }
 
@@ -260,7 +324,7 @@ export class AdministracionUsuarios implements OnInit {
     const { nombre, email, telefono } = this.formularioCrear.getRawValue();
     this.guardandoCrear.set(true);
     this.servicioUsuarios
-      .crear({ nombre, email, telefono: telefono.trim() === '' ? null : telefono })
+      .crear({ nombre, email, telefono: this.telefonoAEnviar(telefono, null) })
       .subscribe({
         next: (respuesta) => {
           this.guardandoCrear.set(false);
@@ -278,9 +342,31 @@ export class AdministracionUsuarios implements OnInit {
           this.erroresCamposCrear.set(campos);
           if (Object.keys(campos).length === 0) {
             this.errorCrear.set(mensajeDeError(error));
+          } else {
+            this.enfocarPrimerInvalido('.crear-usuario form');
           }
         },
       });
+  }
+
+  protected formatearTelefono(control: FormControl<string>): void {
+    formatearControlTelefono(control);
+  }
+
+  /** Error local del teléfono (misma regla y mensaje que el core), con la clave `telefono` de la API. */
+  private errorLocalTelefono(control: FormControl<string>): Record<string, string> {
+    return control.hasError('telefonoChileno') ? { telefono: MENSAJE_TELEFONO_CHILENO } : {};
+  }
+
+  /** `null` si viene vacío; el guardado tal cual si no cambió; si no, el nuevo normalizado. */
+  private telefonoAEnviar(telefono: string, guardado: string | null): string | null {
+    if (telefono.trim() === '') return null;
+    if (mismoTelefono(telefono, guardado)) return guardado;
+    return normalizarTelefono(telefono) ?? telefono.trim();
+  }
+
+  private enfocarPrimerInvalido(selectorFormulario: string): void {
+    enfocarPrimerCampoInvalido(dentroDe(this.host, selectorFormulario), this.injector);
   }
 
   /** Mensaje local para "nombre" cuando el formulario es inválido del lado del cliente (antes de llamar a la API). */
@@ -309,8 +395,8 @@ export class AdministracionUsuarios implements OnInit {
     if (this.reenviando() !== null) return;
     if (!window.confirm(`¿Reenviar los accesos a ${usuarioObjetivo.nombre}?`)) return;
 
-    // El botón de la fila no se destruye mientras dura el pedido: guardar la
-    // referencia directa (no hace falta volver a consultarla) basta.
+    // El segmento del botón combinado (el menú le devuelve el foco al
+    // elegir) no se destruye mientras dura el pedido: basta la referencia.
     const origen = document.activeElement as HTMLElement | null;
     this.restaurarFoco = () => origen?.focus();
     this.error.set(null);
@@ -347,6 +433,12 @@ export class AdministracionUsuarios implements OnInit {
     afterNextRender(() => document.getElementById(id)?.focus(), { injector: this.injector });
   }
 
+  private enfocarElemento(selector: string): void {
+    afterNextRender(() => document.querySelector<HTMLElement>(selector)?.focus(), {
+      injector: this.injector,
+    });
+  }
+
   private cargar(): void {
     this.cargando.set(true);
     this.errorCarga.set(null);
@@ -362,11 +454,6 @@ export class AdministracionUsuarios implements OnInit {
           this.cargando.set(false);
           this.usuarios.set(respuesta.elementos);
           this.total.set(respuesta.total);
-          // Sincroniza cada select con el valor real de la API: también revierte
-          // una selección optimista que haya quedado desfasada tras un error.
-          for (const usuario of respuesta.elementos) {
-            this.controlEstado(usuario).setValue(usuario.idEstado);
-          }
         },
         error: (error: unknown) => {
           this.cargando.set(false);

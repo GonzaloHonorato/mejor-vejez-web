@@ -65,53 +65,31 @@
   color: var(--mv-color-secundario);
 }
 
-.lista-eventos {
-  --fila-columnas: 9rem minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) 7rem;
+.ver-detalles {
+  padding-inline: 0;
+}
 
+// Fila de detalle bajo su evento: a todo el ancho, sin rótulo ni título.
+.mv-grilla .fila-detalle td {
+  font-size: var(--mv-texto-pequeno);
+  font-weight: var(--mv-texto-peso-normal);
+}
+
+.detalles {
   p {
     margin: 0;
   }
 
-  .mv-fila {
-    gap: var(--mv-espacio-2);
-  }
-
-  @include pq.desde-escritorio {
-    .detalles {
-      grid-column: 1 / -1;
-    }
-  }
-}
-
-.tarjeta-evento {
-  &__fecha {
-    color: var(--mv-color-secundario);
-    font-size: var(--mv-texto-pequeno);
-    font-weight: var(--mv-texto-peso-negrita);
-  }
-
-  &__actor {
-    color: var(--mv-color-texto);
-  }
-}
-
-.detalles {
-  > summary {
-    padding-inline: 0;
-  }
-
   &__codigo {
     color: var(--mv-color-secundario);
-    font-size: var(--mv-texto-pequeno);
     overflow-wrap: anywhere;
   }
 
   pre {
-    margin: 0;
+    margin: var(--mv-espacio-2) 0 0;
     padding: var(--mv-espacio-3);
     border-radius: var(--mv-radio-md);
     background: var(--mv-color-fondo);
-    font-size: var(--mv-texto-pequeno);
     white-space: pre-wrap;
     overflow-wrap: anywhere;
   }

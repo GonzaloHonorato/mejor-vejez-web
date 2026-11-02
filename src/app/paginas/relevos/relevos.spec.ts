@@ -245,7 +245,7 @@ describe('Relevos', () => {
         of(pagina([resumen(1, { idEstado: 161, codigoEstado: 'CANCELADA' })])),
     });
 
-    const chip = elemento.querySelector('.mv-fila .mv-chip')!;
+    const chip = elemento.querySelector('.mv-grilla tbody tr .mv-chip')!;
     expect(chip.textContent?.trim()).toBe('Cancelada');
     expect(chip.classList.contains('mv-chip--alerta')).toBe(true);
     expect(chip.classList.contains('mv-chip--exito')).toBe(false);
@@ -256,7 +256,7 @@ describe('Relevos', () => {
       listarImpl: () => of(pagina([resumen(1)])),
     });
 
-    const chip = elemento.querySelector('.mv-fila .mv-chip')!;
+    const chip = elemento.querySelector('.mv-grilla tbody tr .mv-chip')!;
     expect(chip.textContent?.trim()).toBe('Completada');
     expect(chip.classList.contains('mv-chip--alerta')).toBe(false);
     expect(chip.classList.contains('mv-chip--exito')).toBe(true);
@@ -366,7 +366,7 @@ describe('Relevos', () => {
     sujetoGrupo1.complete();
     await fixture.whenStable();
 
-    const nombres = Array.from(elemento.querySelectorAll('.mv-fila__titulo')).map((e) =>
+    const nombres = Array.from(elemento.querySelectorAll('.mv-grilla__titulo')).map((e) =>
       e.textContent?.trim(),
     );
     expect(nombres).toEqual(['Pedro Soto']);
@@ -478,7 +478,7 @@ describe('Relevos', () => {
       const { elemento } = await configurar({ activo: null });
 
       expect(elemento.querySelector('.mv-encabezado__accion')).toBeNull();
-      expect(elemento.querySelector('.mv-lista')).toBeNull();
+      expect(elemento.querySelector('.mv-grilla')).toBeNull();
       expect(elemento.textContent).toContain('Primero crea o elige un grupo.');
     });
 
@@ -521,8 +521,8 @@ describe('Relevos', () => {
         listarImpl: () => of(pagina([resumen(1, { fechaTraspaso: fecha })])),
       });
 
-      const fila = elemento.querySelector<HTMLElement>('.mv-fila')!;
-      const enlace = fila.querySelector<HTMLAnchorElement>('a.mv-fila__titulo')!;
+      const fila = elemento.querySelector<HTMLElement>('.mv-grilla tbody tr')!;
+      const enlace = fila.querySelector<HTMLAnchorElement>('a.mv-grilla__titulo')!;
       expect(enlace.textContent?.trim()).toBe('Rosa González');
       expect(enlace.getAttribute('href')).toBe('/relevos/1');
       expect(enlace.getAttribute('aria-label')).toBe(
@@ -532,8 +532,56 @@ describe('Relevos', () => {
         'Ana Rojas entrega a Beto Díaz',
       );
       expect(fila.textContent).toContain(fechaHoraLegible(fecha));
-      expect(fila.querySelectorAll('a')).toHaveLength(1);
+      const enlaces = fila.querySelectorAll('a');
+      expect(enlaces).toHaveLength(2);
+      const ver = fila.querySelector<HTMLAnchorElement>('.mv-grilla__celda--acciones a')!;
+      expect(ver.textContent?.trim()).toBe('Ver relevo');
+      expect(ver.getAttribute('href')).toBe('/relevos/1');
+      // Repite el destino del título (que ya cubre la fila): fuera del orden de foco y de los lectores.
+      expect(ver.getAttribute('tabindex')).toBe('-1');
+      expect(ver.getAttribute('aria-hidden')).toBe('true');
+      expect(ver.hasAttribute('aria-label')).toBe(false);
       expect(elemento.textContent).not.toContain('Ver detalle');
+    });
+
+    it('historialEsUnaGrillaConColumnasYRoles', async () => {
+      const { elemento } = await configurar({
+        listarImpl: () =>
+          of(pagina([resumen(1), resumen(2, { fechaTraspaso: '2026-11-01T20:30:00-03:00' })])),
+      });
+
+      const region = elemento.querySelector('.mv-grilla[role="region"]')!;
+      expect(region.getAttribute('aria-labelledby')).toBe('relevos-lista-titulo');
+      const tabla = region.querySelector('table.mv-grilla__tabla')!;
+      expect(tabla.getAttribute('role')).toBe('table');
+      const encabezados = Array.from(tabla.querySelectorAll('th[role="columnheader"]')).map((th) =>
+        th.textContent?.trim(),
+      );
+      expect(encabezados).toEqual([
+        'Adulto mayor',
+        'Entrega → recibe',
+        'Fecha y hora',
+        'Estado',
+        'Acciones',
+      ]);
+      expect(tabla.querySelectorAll('[role="rowgroup"]')).toHaveLength(2);
+      const filas = tabla.querySelectorAll('tbody tr[role="row"]');
+      expect(filas).toHaveLength(2);
+      const etiquetas = Array.from(filas[0].querySelectorAll('td[role="cell"]')).map((td) =>
+        td.getAttribute('data-etiqueta'),
+      );
+      expect(etiquetas).toEqual([null, 'Entrega → recibe', 'Fecha y hora', 'Estado', null]);
+      const nombres = Array.from(tabla.querySelectorAll('a:not([aria-hidden="true"])')).map((a) =>
+        a.getAttribute('aria-label'),
+      );
+      expect(nombres).toHaveLength(2);
+      expect(new Set(nombres).size).toBe(nombres.length);
+      // Un solo nombre: el de la región con scroll (la tabla no repite el suyo).
+      const regionGrilla = elemento.querySelector('.mv-grilla[role="region"]')!;
+      expect(regionGrilla.getAttribute('aria-label') ?? regionGrilla.getAttribute('aria-labelledby')).toBeTruthy();
+      const tablaGrilla = regionGrilla.querySelector('table')!;
+      expect(['aria-label', 'aria-labelledby'].some((a) => tablaGrilla.hasAttribute(a))).toBe(false);
+      expect(tablaGrilla.querySelector('caption')).toBeNull();
     });
 
     it('cargandoMuestraEsqueleto', async () => {
@@ -563,7 +611,7 @@ describe('Relevos', () => {
 
       expect(servicioRelevos.listar).toHaveBeenCalledTimes(2);
       expect(elemento.querySelector('.mv-aviso--error')).toBeNull();
-      expect(elemento.querySelectorAll('.mv-fila')).toHaveLength(1);
+      expect(elemento.querySelectorAll('.mv-grilla tbody tr')).toHaveLength(1);
     });
   });
 });

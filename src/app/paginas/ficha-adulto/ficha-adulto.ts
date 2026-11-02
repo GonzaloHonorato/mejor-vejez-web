@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import {
   Component,
+  ElementRef,
   Injector,
   OnInit,
   afterNextRender,
@@ -13,20 +14,32 @@ import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angula
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { ContactosAdulto } from './contactos-adulto/contactos-adulto';
+import {
+  AccionMenu,
+  AccionPrincipal,
+  BotonDividido,
+} from '../../compartido/boton-dividido/boton-dividido';
 import { inicialesDe } from '../../compartido/marco-app/identidad-usuario';
 import { Icono } from '../../compartido/icono/icono';
 import { edadEnAnios } from '../../nucleo/adultos/edad';
+import {
+  mensajeCampoFechaNacimiento,
+  validadorFechaNoFutura,
+} from '../../nucleo/adultos/fecha-nacimiento';
 import { RespuestaAdultoMayor } from '../../nucleo/adultos/modelos-adultos';
 import { AVISO_OPERATIVO, puedeAdministrarGrupo } from '../../nucleo/adultos/permisos-adultos';
 import { ServicioAdultos } from '../../nucleo/adultos/servicio-adultos';
 import { ServicioCatalogos } from '../../nucleo/catalogos/servicio-catalogos';
 import { fechaConAnio } from '../../nucleo/fecha-legible';
+import { dentroDe, enfocarPrimerCampoInvalido } from '../../nucleo/foco';
+import { hoyEnSantiago } from '../../nucleo/fechas';
 import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
 import {
   erroresDeCampos,
   mensajeDeCampo,
   mensajeDeError,
 } from '../../nucleo/http/mensaje-de-error';
+import { enlaceTelefono, formatearTelefono } from '../../nucleo/telefono';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
 import { detalleAdulto } from '../adultos/detalle-adulto';
 
@@ -42,7 +55,7 @@ import { detalleAdulto } from '../adultos/detalle-adulto';
  */
 @Component({
   selector: 'app-ficha-adulto',
-  imports: [ReactiveFormsModule, RouterLink, ContactosAdulto, Icono],
+  imports: [ReactiveFormsModule, RouterLink, ContactosAdulto, Icono, BotonDividido],
   templateUrl: './ficha-adulto.html',
   styleUrl: './ficha-adulto.scss',
 })
@@ -54,11 +67,15 @@ export class FichaAdulto implements OnInit {
   private readonly servicioCatalogos = inject(ServicioCatalogos);
   private readonly fb = inject(NonNullableFormBuilder);
   private readonly injector = inject(Injector);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   protected readonly grupoActivo = inject(ServicioGrupoActivo);
   protected readonly activo = this.grupoActivo.activo;
   protected readonly avisoOperativo = AVISO_OPERATIVO;
   protected readonly fechaConAnio = fechaConAnio;
+  protected readonly formatearTelefono = formatearTelefono;
+  protected readonly enlaceTelefono = enlaceTelefono;
+  protected readonly hoy = hoyEnSantiago();
   protected readonly detalle = detalleAdulto;
 
   private readonly idAdulto = Number(this.ruta.snapshot.paramMap.get('idAdulto'));
@@ -95,10 +112,22 @@ export class FichaAdulto implements OnInit {
     return idInactivo === null || adulto.idEstado !== idInactivo;
   });
 
+  /** Activo: "Editar perfil"; inactivo: "Reactivar perfil". */
+  protected readonly accionPrincipal = computed<AccionPrincipal>(() => ({
+    etiqueta: this.adultoActivo() ? 'Editar perfil' : 'Reactivar perfil',
+  }));
+
+  protected readonly accionesMenu = computed<AccionMenu[]>(() => [
+    ...(this.adultoActivo()
+      ? [{ id: 'desactivar', etiqueta: 'Desactivar perfil', deshabilitada: this.cambiandoEstado() }]
+      : []),
+    { id: 'eliminar', etiqueta: 'Eliminar', peligro: true },
+  ]);
+
   protected readonly formulario = this.fb.group({
     nombreCompleto: ['', Validators.required],
     codigoInterno: [''],
-    fechaNacimiento: [''],
+    fechaNacimiento: ['', [Validators.required, validadorFechaNoFutura()]],
     notasEmergencia: [''],
     observacionesGenerales: [''],
   });
@@ -171,6 +200,19 @@ export class FichaAdulto implements OnInit {
     this.cargar(this.idGrupoCargado);
   }
 
+  protected ejecutarPrincipal(): void {
+    if (this.adultoActivo()) {
+      this.editar();
+    } else {
+      this.reactivar();
+    }
+  }
+
+  protected ejecutar(id: string): void {
+    if (id === 'desactivar') this.desactivar();
+    if (id === 'eliminar') this.eliminar();
+  }
+
   protected editar(): void {
     const adulto = this.adulto();
     if (!adulto) return;
@@ -200,12 +242,21 @@ export class FichaAdulto implements OnInit {
     );
   }
 
+  protected mensajeCampoFecha(): string | null {
+    return mensajeCampoFechaNacimiento(
+      this.formulario.controls.fechaNacimiento,
+      this.erroresCampos(),
+      'fechaNacimiento',
+    );
+  }
+
   protected guardar(): void {
     const grupo = this.activo();
     const adulto = this.adulto();
     if (!grupo || !adulto || this.guardando()) return;
     if (this.formulario.invalid) {
       this.formulario.markAllAsTouched();
+      this.enfocarPrimerInvalido();
       return;
     }
 
@@ -223,7 +274,7 @@ export class FichaAdulto implements OnInit {
       .actualizar(grupo.idGrupo, adulto.idAdultoMayor, {
         nombreCompleto: nombreCompleto.trim(),
         codigoInterno: codigoInterno.trim() === '' ? null : codigoInterno.trim(),
-        fechaNacimiento: fechaNacimiento.trim() === '' ? null : fechaNacimiento,
+        fechaNacimiento,
         notasEmergencia: notasEmergencia.trim() === '' ? null : notasEmergencia.trim(),
         observacionesGenerales:
           observacionesGenerales.trim() === '' ? null : observacionesGenerales.trim(),
@@ -242,6 +293,8 @@ export class FichaAdulto implements OnInit {
           this.erroresCampos.set(campos);
           if (Object.keys(campos).length === 0) {
             this.errorGeneral.set(mensajeDeError(error));
+          } else {
+            this.enfocarPrimerInvalido();
           }
         },
       });
@@ -330,8 +383,20 @@ export class FichaAdulto implements OnInit {
     });
   }
 
+  private enfocarPrimerInvalido(): void {
+    enfocarPrimerCampoInvalido(dentroDe(this.host, '#ficha-formulario'), this.injector);
+  }
+
+  /** Enfoca el elemento `id`; si es el botón dividido, su acción principal. */
   private enfocar(id: string): void {
-    afterNextRender(() => document.getElementById(id)?.focus(), { injector: this.injector });
+    afterNextRender(
+      () => {
+        const elemento = document.getElementById(id);
+        const principal = elemento?.querySelector<HTMLElement>('.mv-boton-dividido__principal');
+        (principal ?? elemento)?.focus();
+      },
+      { injector: this.injector },
+    );
   }
 
   private rellenarFormulario(adulto: RespuestaAdultoMayor): void {

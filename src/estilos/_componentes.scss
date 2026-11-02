@@ -393,6 +393,13 @@
     font: inherit;
   }
 
+  // Ayuda breve bajo el control (p. ej. el formato esperado), enlazada con `aria-describedby`.
+  &__ayuda {
+    margin: 0;
+    color: var(--mv-color-secundario);
+    font-size: var(--mv-texto-pequeno);
+  }
+
   // Error del campo, bajo el control y enlazado con `aria-describedby`.
   &__error {
     margin: 0;
@@ -592,51 +599,361 @@
   }
 }
 
-// "Más acciones" (u otro contenido que se despliega): un `<details>` cuyo
-// `<summary>` es un botón de texto y cuyas opciones van debajo, en
-// `__panel`. Sin el marcador del navegador; abierto, el resumen queda
-// resaltado. `--flotante`: desde tableta el panel flota bajo el resumen,
-// alineado a la derecha, sobre el contenido.
-.mv-mas {
-  display: grid;
-  gap: var(--mv-espacio-2);
+// Grilla de datos: una `<table>` semántica. Celular primero: cada fila es
+// una tarjeta y cada celda muestra su rótulo (`data-etiqueta`) con
+// `::before`; la primera celda hace de título y las acciones van al pie.
+// Desde tableta es una tabla con encabezado fijo y scroll propio dentro de
+// una tarjeta (alto con `--grilla-alto`).
+.mv-grilla {
+  overflow-wrap: anywhere;
 
-  > summary {
-    justify-self: start;
-    list-style: none;
+  &__tabla {
+    display: block;
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
 
-    &::-webkit-details-marker {
-      display: none;
+    thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
     }
-  }
 
-  &[open] > summary {
-    background: var(--mv-color-primario-suave);
-  }
+    tbody {
+      display: flex;
+      flex-direction: column;
+      gap: var(--mv-espacio-3);
+    }
 
-  &__panel {
-    display: grid;
-    gap: var(--mv-espacio-2);
-  }
+    tbody tr {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: var(--mv-espacio-2);
+      padding: var(--mv-espacio-4);
+      border: 1px solid var(--mv-color-borde);
+      border-radius: var(--mv-radio-lg);
+      background: var(--mv-color-superficie);
+      box-shadow: var(--mv-sombra-suave);
+    }
 
-  &--flotante {
-    position: relative;
+    // Rótulo a la izquierda y el valor (una o varias líneas) a la derecha.
+    td {
+      display: grid;
+      grid-template-columns: minmax(0, 8rem) minmax(0, 1fr);
+      align-items: center;
+      justify-items: start;
+      column-gap: var(--mv-espacio-3);
 
-    @include pq.desde-tableta {
-      .mv-mas__panel {
-        position: absolute;
-        top: 100%;
-        right: 0;
-        z-index: 2;
-        min-width: 14rem;
-        margin-top: var(--mv-espacio-2);
-        padding: var(--mv-espacio-3);
-        border: 1px solid var(--mv-color-borde);
-        border-radius: var(--mv-radio-lg);
-        background: var(--mv-color-superficie);
-        box-shadow: var(--mv-sombra-suave);
+      > * {
+        grid-column: 2;
+      }
+
+      &[data-etiqueta]::before {
+        content: attr(data-etiqueta);
+        grid-column: 1;
+        grid-row: 1 / span 3;
+        color: var(--mv-color-secundario);
+        font-size: var(--mv-texto-pequeno);
+        font-weight: var(--mv-texto-peso-negrita);
+      }
+
+      &:first-child::before {
+        content: none;
       }
     }
+
+    // Sin rótulo y la primera celda (el título de la tarjeta): a todo el ancho.
+    td:where(:not([data-etiqueta]), :first-child) {
+      display: block;
+    }
+
+    td:where(:first-child) {
+      color: var(--mv-color-texto);
+      font-size: var(--mv-texto-grande);
+      font-weight: var(--mv-texto-peso-negrita);
+    }
+  }
+
+  // Celda de dos líneas: título (o enlace estirado) y dato secundario.
+  &__titulo {
+    display: block;
+    margin: 0;
+    font-weight: var(--mv-texto-peso-negrita);
+  }
+
+  // Peso normal explícito: en celular la primera celda (título de la tarjeta)
+  // va en negrita y el dato secundario no debe heredarla.
+  &__secundario {
+    display: block;
+    margin: 0;
+    color: var(--mv-color-secundario);
+    font-size: var(--mv-texto-pequeno);
+    font-weight: var(--mv-texto-peso-normal);
+  }
+
+  // Hora o fecha destacada.
+  &__tabla &__celda--dato {
+    font-weight: var(--mv-texto-peso-negrita);
+  }
+
+  // Acciones: al pie de la tarjeta y por encima del enlace estirado (van
+  // después en el HTML; sin `z-index`, así el menú no queda atrapado bajo
+  // las filas siguientes). El botón dividido ocupa todo el ancho.
+  &__tabla &__celda--acciones {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--mv-espacio-2);
+    padding-top: var(--mv-espacio-3);
+    border-top: 1px solid var(--mv-color-borde);
+
+    &:empty {
+      display: none;
+    }
+
+    .mv-boton-dividido {
+      width: 100%;
+    }
+  }
+
+  @include pq.desde-tableta {
+    max-height: var(--grilla-alto, 32rem);
+    overflow: auto;
+    border: 1px solid var(--mv-color-borde);
+    border-radius: var(--mv-radio-lg);
+    background: var(--mv-color-superficie);
+    box-shadow: var(--mv-sombra-suave);
+
+    &__tabla {
+      display: table;
+
+      thead {
+        position: static;
+        width: auto;
+        height: auto;
+        margin: 0;
+        overflow: visible;
+        clip: auto;
+        white-space: normal;
+      }
+
+      tbody {
+        display: table-row-group;
+      }
+
+      tbody tr {
+        display: table-row;
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+      }
+
+      th,
+      td {
+        display: table-cell;
+        padding: var(--mv-espacio-3);
+        text-align: left;
+        vertical-align: middle;
+      }
+
+      th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        border-bottom: 1px solid var(--mv-color-borde);
+        background: var(--mv-color-fondo);
+        color: var(--mv-color-secundario);
+        font-weight: var(--mv-texto-peso-negrita);
+        white-space: nowrap;
+      }
+
+      td {
+        height: 4.5rem;
+        border-bottom: 1px solid var(--mv-color-borde);
+
+        &::before,
+        &[data-etiqueta]::before {
+          content: none;
+        }
+      }
+
+      td:where(:first-child) {
+        color: inherit;
+        font-size: inherit;
+        font-weight: inherit;
+      }
+
+      tbody tr:last-child td {
+        border-bottom: 0;
+      }
+
+      tbody tr:hover td {
+        background: var(--mv-color-fondo);
+      }
+    }
+
+    &__tabla &__celda--dato {
+      color: var(--mv-color-texto);
+      font-weight: var(--mv-texto-peso-negrita);
+      white-space: nowrap;
+    }
+
+    // Estado: la columna toma el ancho del chip, sin cortarlo.
+    &__celda--estado {
+      width: 1%;
+      white-space: nowrap;
+    }
+
+    // Acciones: alineadas a la derecha y con el ancho de su contenido.
+    &__tabla &__celda--acciones {
+      display: table-cell;
+      width: 1%;
+      padding-top: var(--mv-espacio-3);
+      border-top: 0;
+      text-align: right;
+      white-space: nowrap;
+
+      .mv-boton-dividido {
+        width: auto;
+      }
+    }
+  }
+}
+
+// Enlace estirado (`mv-fila__enlace`) en la grilla: cubre la fila; en tabla
+// sin radio.
+@include pq.desde-tableta {
+  .mv-grilla .mv-fila__enlace::after {
+    border-radius: 0;
+  }
+}
+
+// Botón dividido (`<app-boton-dividido>`): acción principal unida a un
+// segmento con flecha que abre `mv-menu`. Tono según la principal: primario
+// por defecto, `--secundario` (contorno) o `--peligro`.
+.mv-boton-dividido {
+  --separador: var(--mv-color-primario-suave);
+  --segmento-abierto: var(--mv-color-primario-hover);
+
+  display: inline-flex;
+  align-items: stretch;
+  max-width: 100%;
+  vertical-align: middle;
+
+  .mv-boton-dividido__principal {
+    flex: 1 1 auto;
+    border-right: 0;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  .mv-boton-dividido__segmento {
+    flex: none;
+    width: 2.75rem;
+    padding: 0;
+    border-left: 1px solid var(--separador);
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+
+    &[aria-expanded='true'] {
+      border-color: var(--segmento-abierto);
+      border-left-color: var(--separador);
+      background: var(--segmento-abierto);
+    }
+
+    &:disabled {
+      border-left-color: var(--mv-color-borde);
+    }
+  }
+
+  &--secundario {
+    --separador: var(--mv-color-primario);
+
+    .mv-boton-dividido__segmento[aria-expanded='true'] {
+      border-color: var(--mv-color-primario);
+      background: var(--mv-color-primario-suave);
+    }
+  }
+
+  &--peligro {
+    --separador: var(--mv-color-error-fondo);
+
+    .mv-boton-dividido__segmento[aria-expanded='true'] {
+      border-color: var(--mv-color-error);
+      background: var(--mv-color-error-fondo);
+      color: var(--mv-color-error);
+    }
+  }
+}
+
+// Menú flotante del botón dividido: `position: fixed` (el componente calcula
+// `top` y `left`), sobre el contenido y fuera del recorte de la grilla.
+// Ítems de 48px; las acciones de peligro van al final, tras un divisor.
+.mv-menu {
+  position: fixed;
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  min-width: 12.5rem;
+  max-width: calc(100vw - var(--mv-espacio-4));
+  padding: var(--mv-espacio-1) 0;
+  border: 1px solid var(--mv-color-borde);
+  border-radius: var(--mv-radio-lg);
+  background: var(--mv-color-superficie);
+  box-shadow: var(--mv-sombra-flotante);
+  font-weight: var(--mv-texto-peso-normal);
+  text-align: left;
+  white-space: normal;
+
+  &[hidden] {
+    display: none;
+  }
+
+  &__item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: var(--mv-espacio-12);
+    padding: 0 var(--mv-espacio-4);
+    border: 0;
+    background: transparent;
+    color: var(--mv-color-texto);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover,
+    &:focus-visible {
+      background: var(--mv-color-fondo);
+    }
+
+    &:focus-visible {
+      outline-offset: -3px;
+      box-shadow: none;
+    }
+
+    &--peligro {
+      color: var(--mv-color-error);
+    }
+
+    &[aria-disabled='true'] {
+      color: var(--mv-color-secundario);
+      cursor: not-allowed;
+
+      &:hover {
+        background: transparent;
+      }
+    }
+  }
+
+  &__item:not(.mv-menu__item--peligro) + &__item--peligro {
+    border-top: 1px solid var(--mv-color-borde);
   }
 }
 

@@ -79,6 +79,10 @@
                 <dt>Estado</dt>
                 <dd>{{ planInactivo() ? 'Inactivo' : 'Activo' }}</dd>
               </div>
+              <div>
+                <dt>Medicamentos activos</dt>
+                <dd>{{ conteoMedicamentos().activos }} de {{ conteoMedicamentos().total }}</dd>
+              </div>
             </dl>
 
             @if (errorAccionPlan(); as mensaje) {
@@ -90,40 +94,17 @@
           </div>
 
           @if (puedeAdministrar()) {
-            <div class="mv-tarjeta__pie acciones">
-              @if (!planInactivo()) {
-                <button type="button" class="mv-boton" (click)="editarPlan()">Editar plan</button>
-              } @else {
-                <button
-                  type="button"
-                  class="mv-boton"
-                  [disabled]="cambiandoEstadoPlan()"
-                  (click)="reactivarPlan()"
-                >
-                  Reactivar plan
-                </button>
-              }
-              <details class="mv-mas">
-                <summary class="mv-boton mv-boton--texto">
-                  <app-icono nombre="mas" aria-hidden="true" />
-                  Más acciones
-                </summary>
-                <div class="acciones">
-                  @if (!planInactivo()) {
-                    <button
-                      type="button"
-                      class="mv-boton"
-                      [disabled]="cambiandoEstadoPlan()"
-                      (click)="desactivarPlan()"
-                    >
-                      Desactivar plan
-                    </button>
-                  }
-                  <button type="button" class="mv-boton mv-boton--peligro" (click)="eliminarPlan()">
-                    Eliminar
-                  </button>
-                </div>
-              </details>
+            <div class="mv-tarjeta__pie">
+              <app-boton-dividido
+                variante="secundario"
+                [principal]="accionPrincipalPlan()"
+                [acciones]="accionesPlan()"
+                [deshabilitado]="planInactivo() && cambiandoEstadoPlan()"
+                [etiquetaPrincipal]="accionPrincipalPlan().etiqueta + ' ' + datosPlan.nombrePlan"
+                [etiquetaMenu]="'Más acciones para el plan ' + datosPlan.nombrePlan"
+                (principal)="planInactivo() ? reactivarPlan() : editarPlan()"
+                (accion)="ejecutarAccionPlan($event)"
+              />
             </div>
           }
         </section>
@@ -198,141 +179,141 @@
         }
       </p>
 
-      <section class="mv-tarjeta" aria-labelledby="plan-medicamentos-titulo">
-        <div class="mv-tarjeta__cabecera">
-          <h2 id="plan-medicamentos-titulo" class="mv-tarjeta__titulo">Medicamentos</h2>
-          <span class="mv-chip">{{ detalles().length }}</span>
+      <section class="medicamentos" aria-labelledby="plan-medicamentos-titulo">
+        <div class="medicamentos__cabecera">
+          <h2 id="plan-medicamentos-titulo">Medicamentos</h2>
+          <span class="cuenta">{{ detalles().length }} {{ detalles().length === 1 ? 'medicamento' : 'medicamentos' }}</span>
+          @if (puedeEditarMedicamentos() && !editando()) {
+            <button type="button" class="mv-boton mv-boton--primario" (click)="agregarMedicamento()">
+              Agregar medicamento
+            </button>
+          }
         </div>
 
-        <div class="mv-tarjeta__cuerpo">
-          @if (errorAccionDetalle(); as mensaje) {
-            <p class="mv-aviso mv-aviso--error" role="alert">{{ mensaje }}</p>
-          }
+        @if (errorAccionDetalle(); as mensaje) {
+          <p class="mv-aviso mv-aviso--error" role="alert">{{ mensaje }}</p>
+        }
 
-          @if (detalles().length === 0) {
-            <div class="mv-vacio">
-              <p class="mv-vacio__titulo">Aún no hay medicamentos en este plan.</p>
-            </div>
-          }
-
-          <ul class="medicamentos">
-            @for (detalle of detalles(); track detalle.idDetallePlan) {
-              <li class="medicamento" [class.medicamento--inactivo]="detalleInactivo(detalle)">
-                <div class="medicamento__cabecera">
-                  <div>
-                    <h3 class="medicamento__nombre">{{ detalle.nombreMedicamento }}</h3>
-                    <p class="medicamento__meta">
-                      {{ presentacionDescripcion(detalle.idPresentacion) }}
-                      @if (detalle.concentracion) {
-                        · {{ detalle.concentracion }}
-                      }
-                    </p>
-                  </div>
-                  @if (detalleInactivo(detalle)) {
-                    <span class="mv-chip">Inactivo</span>
-                  } @else {
-                    <span class="mv-chip mv-chip--exito">Activo</span>
+        @if (detalles().length === 0) {
+          <div class="mv-vacio">
+            <p class="mv-vacio__titulo">Aún no hay medicamentos en este plan.</p>
+          </div>
+        } @else {
+          <div class="mv-grilla" role="region" aria-labelledby="plan-medicamentos-titulo" tabindex="0">
+            <table class="mv-grilla__tabla" role="table">
+              <thead role="rowgroup">
+                <tr role="row">
+                  <th scope="col" role="columnheader">Medicamento</th>
+                  <th scope="col" role="columnheader">Dosis</th>
+                  <th scope="col" role="columnheader">Días</th>
+                  <th scope="col" role="columnheader">Horario</th>
+                  <th scope="col" role="columnheader">Vigencia</th>
+                  <th scope="col" role="columnheader">Disponible</th>
+                  <th scope="col" role="columnheader" class="mv-grilla__celda--estado">Estado</th>
+                  @if (puedeEditarMedicamentos()) {
+                    <th scope="col" role="columnheader" class="mv-grilla__celda--acciones">Acciones</th>
                   }
-                </div>
-
-                <dl class="datos">
-                  <div>
-                    <dt>Dosis</dt>
-                    <dd>{{ dosisTexto(detalle) }}</dd>
-                  </div>
-                  <div>
-                    <dt>Días</dt>
-                    <dd>{{ textoDias(detalle) }}</dd>
-                  </div>
-                  <div>
-                    <dt>Horario</dt>
-                    <dd>{{ textoHorario(detalle.horas) }}</dd>
-                  </div>
-                  <div>
-                    <dt>Vigencia</dt>
-                    <dd>
-                      Desde {{ fechaConAnio(detalle.fechaInicio) }}
-                      @if (detalle.fechaFin) {
-                        hasta {{ fechaConAnio(detalle.fechaFin) }}
-                      }
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Cantidad disponible</dt>
-                    <dd>
-                      @if (detalle.cantidadDisponible !== null) {
-                        {{ detalle.cantidadDisponible }} {{ unidadDescripcion(detalle.idUnidadDosis) }}
+                </tr>
+              </thead>
+              <tbody role="rowgroup">
+                @for (fila of filasDetalle(); track fila.detalle.idDetallePlan) {
+                  @let d = fila.detalle;
+                  <tr role="row" class="medicamento" [attr.data-id-detalle]="d.idDetallePlan">
+                    <td role="cell">
+                      <span class="mv-grilla__titulo">{{ d.nombreMedicamento }}</span>
+                      <span class="mv-grilla__secundario">
+                        {{ presentacionDescripcion(d.idPresentacion) }}
+                        @if (d.concentracion) {
+                          · {{ d.concentracion }}
+                        }
+                      </span>
+                    </td>
+                    <td role="cell" data-etiqueta="Dosis"><span>{{ dosisTexto(d) }}</span></td>
+                    <td role="cell" data-etiqueta="Días"><span>{{ textoDias(d) }}</span></td>
+                    <td role="cell" data-etiqueta="Horario"><span>{{ textoHorario(d.horas) }}</span></td>
+                    <td role="cell" data-etiqueta="Vigencia">
+                      <span>
+                        Desde {{ fechaConAnio(d.fechaInicio) }}
+                        @if (d.fechaFin) {
+                          hasta {{ fechaConAnio(d.fechaFin) }}
+                        }
+                      </span>
+                    </td>
+                    <td role="cell" data-etiqueta="Disponible">
+                      <span>
+                        @if (d.cantidadDisponible !== null) {
+                          {{ d.cantidadDisponible }} {{ unidadDescripcion(d.idUnidadDosis) }}
+                        } @else {
+                          Sin registrar
+                        }
+                      </span>
+                      <span class="mv-grilla__secundario">{{ textoTermino(d) }}</span>
+                    </td>
+                    <td role="cell" class="mv-grilla__celda--estado" data-etiqueta="Estado">
+                      @if (fila.inactivo) {
+                        <span class="mv-chip">Inactivo</span>
                       } @else {
-                        Sin registrar
+                        <span class="mv-chip mv-chip--exito">Activo</span>
                       }
-                    </dd>
-                  </div>
-                </dl>
-                <p class="medicamento__meta">{{ textoTermino(detalle) }}</p>
-
-                @if (puedeEditarMedicamentos()) {
-                  <div class="acciones">
-                    @if (!detalleInactivo(detalle)) {
-                      <button
-                        type="button"
-                        class="mv-boton"
-                        [attr.aria-label]="'Editar ' + detalle.nombreMedicamento"
-                        (click)="editarDetalle(detalle)"
-                      >
-                        Editar
-                      </button>
-                    } @else {
-                      <button
-                        type="button"
-                        class="mv-boton"
-                        [attr.aria-label]="'Reactivar ' + detalle.nombreMedicamento"
-                        [disabled]="estaEnAccion(detalle.idDetallePlan)"
-                        (click)="reactivarDetalle(detalle)"
-                      >
-                        Reactivar
-                      </button>
+                    </td>
+                    @if (puedeEditarMedicamentos()) {
+                      <td role="cell" class="mv-grilla__celda--acciones">
+                        <app-boton-dividido
+                          variante="secundario"
+                          [principal]="fila.principal"
+                          [acciones]="fila.acciones"
+                          [deshabilitado]="fila.inactivo && estaEnAccion(d.idDetallePlan)"
+                          [etiquetaPrincipal]="fila.etiquetaPrincipal"
+                          [etiquetaMenu]="fila.etiquetaMenu"
+                          (principal)="fila.inactivo ? reactivarDetalle(d) : editarDetalle(d)"
+                          (accion)="ejecutarAccionDetalle(d, $event)"
+                        />
+                      </td>
                     }
-                    <details class="mv-mas">
-                      <summary
-                        class="mv-boton mv-boton--texto"
-                        [attr.aria-label]="'Más acciones: ' + detalle.nombreMedicamento"
-                      >
-                        <app-icono nombre="mas" aria-hidden="true" />
-                        Más acciones
-                      </summary>
-                      @if (!detalleInactivo(detalle)) {
+                  </tr>
+                  @if (fila.editandoCantidad) {
+                    <tr role="row" class="fila-cantidad">
+                      <td role="cell" [attr.colspan]="8">
                         <div class="mv-campo cantidad">
-                          <label class="mv-campo__etiqueta" [attr.for]="'detalle-cantidad-' + detalle.idDetallePlan">
-                            Cantidad disponible
+                          <label class="mv-campo__etiqueta" [attr.for]="'detalle-cantidad-' + d.idDetallePlan">
+                            Cantidad disponible de {{ fila.nombre }}
                           </label>
                           <div class="cantidad__fila">
                             <input
-                              [id]="'detalle-cantidad-' + detalle.idDetallePlan"
+                              [id]="'detalle-cantidad-' + d.idDetallePlan"
                               class="mv-campo__control"
                               type="number"
                               inputmode="decimal"
                               step="0.001"
                               min="0"
-                              [formControl]="controlCantidad(detalle)"
-                              [attr.aria-label]="'Cantidad disponible de ' + detalle.nombreMedicamento"
-                              [attr.aria-invalid]="mensajeCantidad(detalle) ? true : null"
+                              [formControl]="controlCantidad(d)"
+                              [attr.aria-label]="'Cantidad disponible de ' + fila.nombre"
+                              [attr.aria-invalid]="mensajeCantidad(d) ? true : null"
                               [attr.aria-describedby]="
-                                mensajeCantidad(detalle) ? 'detalle-cantidad-' + detalle.idDetallePlan + '-error' : null
+                                mensajeCantidad(d) ? 'detalle-cantidad-' + d.idDetallePlan + '-error' : null
                               "
                             />
                             <button
                               type="button"
-                              class="mv-boton"
-                              [attr.aria-label]="'Guardar cantidad de ' + detalle.nombreMedicamento"
-                              [disabled]="estaEnAccion(detalle.idDetallePlan)"
-                              (click)="guardarCantidad(detalle)"
+                              class="mv-boton mv-boton--primario"
+                              [attr.aria-label]="'Guardar cantidad de ' + fila.nombre"
+                              [disabled]="estaEnAccion(d.idDetallePlan)"
+                              (click)="guardarCantidad(d)"
                             >
                               Guardar
                             </button>
+                            <button
+                              type="button"
+                              class="mv-boton"
+                              [attr.aria-label]="'Cerrar cantidad de ' + fila.nombre"
+                              (click)="cerrarCantidad(d)"
+                            >
+                              Cerrar
+                            </button>
                           </div>
-                          @if (mensajeCantidad(detalle); as mensaje) {
+                          @if (mensajeCantidad(d); as mensaje) {
                             <p
-                              [id]="'detalle-cantidad-' + detalle.idDetallePlan + '-error'"
+                              [id]="'detalle-cantidad-' + d.idDetallePlan + '-error'"
                               class="mv-campo__error"
                               role="alert"
                             >
@@ -340,58 +321,38 @@
                             </p>
                           }
                         </div>
-                      }
-                      <div class="acciones">
-                        @if (!detalleInactivo(detalle)) {
-                          <button
-                            type="button"
-                            class="mv-boton"
-                            [attr.aria-label]="'Desactivar ' + detalle.nombreMedicamento"
-                            [disabled]="estaEnAccion(detalle.idDetallePlan)"
-                            (click)="desactivarDetalle(detalle)"
-                          >
-                            Desactivar
-                          </button>
-                        }
-                        <button
-                          type="button"
-                          class="mv-boton mv-boton--peligro"
-                          [attr.aria-label]="'Eliminar ' + detalle.nombreMedicamento"
-                          (click)="eliminarDetalle(detalle)"
-                        >
-                          Eliminar
-                        </button>
-                      </div>
-                    </details>
-                  </div>
+                      </td>
+                    </tr>
+                  }
                 }
-              </li>
-            }
-          </ul>
+              </tbody>
+            </table>
+          </div>
+        }
 
-          @if (puedeEditarMedicamentos() && !editando()) {
-            <button type="button" class="mv-boton mv-boton--primario agregar" (click)="agregarMedicamento()">
-              Agregar medicamento
-            </button>
+        @if (editando()) {
+          @for (d of [detalleEnEdicion()]; track d?.idDetallePlan ?? 'nuevo') {
+            <app-formulario-detalle
+              [idGrupo]="datosPlan.idGrupo"
+              [plan]="datosPlan"
+              [detalle]="d"
+              [presentaciones]="presentaciones()"
+              [unidades]="unidades()"
+              [dias]="dias()"
+              [integrantes]="integrantesActivos()"
+              (guardado)="alGuardarDetalle()"
+              (cancelado)="cerrarFormulario()"
+            />
           }
-
-          @if (editando()) {
-            @for (d of [detalleEnEdicion()]; track d?.idDetallePlan ?? 'nuevo') {
-              <app-formulario-detalle
-                [idGrupo]="datosPlan.idGrupo"
-                [plan]="datosPlan"
-                [detalle]="d"
-                [presentaciones]="presentaciones()"
-                [unidades]="unidades()"
-                [dias]="dias()"
-                [integrantes]="integrantesActivos()"
-                (guardado)="alGuardarDetalle()"
-                (cancelado)="cerrarFormulario()"
-              />
-            }
-          }
-        </div>
+        }
       </section>
+
+      <div class="mv-aviso mv-aviso--info">
+        <p>
+          Registra la información según las indicaciones del profesional de salud. Cuida+ organiza
+          horarios y tareas; no diagnostica ni recomienda medicamentos ni dosis.
+        </p>
+      </div>
     }
   }
 </div>

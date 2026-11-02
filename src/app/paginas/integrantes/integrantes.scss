@@ -74,40 +74,14 @@
   }
 }
 
-.lista-integrantes {
-  --fila-columnas: var(--mv-espacio-10) minmax(0, 1fr) 9rem 7rem 13rem;
-
-  .mv-fila {
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-
-    @include pq.desde-escritorio {
-      display: grid;
-      align-items: start;
-    }
-  }
-
-  .mv-fila__principal {
-    flex: 1 1 calc(100% - var(--mv-espacio-10) - var(--mv-espacio-3));
-  }
-
-  .mas {
-    flex-basis: 100%;
-  }
-
-  @include pq.desde-escritorio {
-    .mv-fila > * {
-      align-self: center;
-    }
-
-    .mas {
-      align-self: start;
-    }
-  }
+// Celda Integrante: avatar y nombre con correo.
+.persona {
+  display: flex;
+  align-items: center;
+  gap: var(--mv-espacio-3);
+  min-width: 0;
 }
 
-.rol,
-.estado {
-  display: flex;
+.rol .mv-campo__control {
+  min-width: 11rem;
 }

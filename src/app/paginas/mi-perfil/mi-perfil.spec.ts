@@ -28,7 +28,10 @@ async function configurarConFalloDeCarga() {
   fixture.detectChanges();
   http
     .expectOne((req) => req.method === 'GET' && req.url.endsWith('/api/yo'))
-    .flush({ title: 'Error', detail: 'No pudimos cargar tu perfil' }, { status: 500, statusText: 'Error' });
+    .flush(
+      { title: 'Error', detail: 'No pudimos cargar tu perfil' },
+      { status: 500, statusText: 'Error' },
+    );
   flushCanales(http);
   await fixture.whenStable();
   return { fixture, http, elemento: fixture.nativeElement as HTMLElement };
@@ -115,7 +118,7 @@ describe('MiPerfil', () => {
     const nombre = elemento.querySelector<HTMLInputElement>('#perfil-nombre')!;
     const telefono = elemento.querySelector<HTMLInputElement>('#perfil-telefono')!;
     expect(nombre.value).toBe('Ana Rojas');
-    expect(telefono.value).toBe('+56911112222');
+    expect(telefono.value).toBe('+56 9 1111 2222');
 
     escribir(nombre, 'Ana María Rojas');
     escribir(telefono, '');
@@ -127,6 +130,71 @@ describe('MiPerfil', () => {
     await fixture.whenStable();
 
     expect(elemento.querySelector('[role="status"]')?.textContent).toContain('Cambios guardados.');
+  });
+
+  it('telefonoNoChilenoMuestraLaReglaYNoGuarda', async () => {
+    const { fixture, http, elemento } = await configurar();
+    const telefono = elemento.querySelector<HTMLInputElement>('#perfil-telefono')!;
+
+    escribir(telefono, '+1 555 123 4567');
+    elemento.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    const error = elemento.querySelector('#perfil-telefono-error');
+    expect(error?.classList).toContain('mv-campo__error');
+    expect(error?.textContent).toContain('Ingresa un teléfono chileno: +56 y 9 dígitos.');
+    expect(telefono.getAttribute('aria-invalid')).toBe('true');
+    expect(telefono.getAttribute('inputmode')).toBe('tel');
+    expect(telefono.getAttribute('aria-describedby')).toBe(
+      'perfil-telefono-ayuda perfil-telefono-error',
+    );
+    expect(elemento.querySelector('#perfil-telefono-ayuda')?.textContent).toContain(
+      'Ej.: +56 9 1234 5678',
+    );
+    expect(document.activeElement).toBe(telefono);
+    http.expectNone((req) => req.method === 'PATCH');
+  });
+
+  it('telefonoAntiguoSinCambiosNoImpideGuardarElNombre', async () => {
+    TestBed.configureTestingModule({
+      imports: [MiPerfil],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+    });
+    const fixture = TestBed.createComponent(MiPerfil);
+    const http = TestBed.inject(HttpTestingController);
+    fixture.detectChanges();
+    http
+      .expectOne((req) => req.method === 'GET' && req.url.endsWith('/api/yo'))
+      .flush({ ...YO, telefono: '+1 555 123 4567' });
+    flushCanales(http);
+    await fixture.whenStable();
+    const elemento = fixture.nativeElement as HTMLElement;
+
+    escribir(elemento.querySelector<HTMLInputElement>('#perfil-nombre')!, 'Ana María');
+    elemento.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'));
+
+    const peticion = http.expectOne((req) => req.method === 'PATCH' && req.url.endsWith('/api/yo'));
+    expect(peticion.request.body).toEqual({ nombre: 'Ana María', telefono: '+1 555 123 4567' });
+    peticion.flush({ ...YO, nombre: 'Ana María', telefono: '+1 555 123 4567' });
+    await fixture.whenStable();
+  });
+
+  it('telefonoValidoSeEnviaNormalizadoYQuedaFormateado', async () => {
+    const { fixture, http, elemento } = await configurar();
+    const telefono = elemento.querySelector<HTMLInputElement>('#perfil-telefono')!;
+
+    escribir(telefono, '9 8765-4321');
+    telefono.dispatchEvent(new Event('blur'));
+    await fixture.whenStable();
+    expect(telefono.value).toBe('+56 9 8765 4321');
+
+    elemento.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'));
+    const peticion = http.expectOne((req) => req.method === 'PATCH' && req.url.endsWith('/api/yo'));
+    expect(peticion.request.body).toEqual({ nombre: 'Ana Rojas', telefono: '+56987654321' });
+    peticion.flush({ ...YO, telefono: '+56987654321' });
+    await fixture.whenStable();
+
+    expect(telefono.value).toBe('+56 9 8765 4321');
   });
 
   it('formularioInvalidoAlEnviarMarcaCamposTocadosYMuestraError', async () => {
@@ -195,7 +263,8 @@ describe('MiPerfil', () => {
     await fixture.whenStable();
 
     expect(cambiarClave).toHaveBeenCalledWith('clave-mala', 'clave-nueva1');
-    const alerta = elemento.querySelector('#clave-titulo')
+    const alerta = elemento
+      .querySelector('#clave-titulo')
       ?.closest('section')
       ?.querySelector('[role="alert"]');
     expect(alerta?.textContent).toContain('La contraseña actual no es correcta.');
@@ -208,7 +277,25 @@ describe('MiPerfil', () => {
     const titulos = Array.from(elemento.querySelectorAll('.mv-tarjeta h2')).map((h) =>
       h.textContent?.trim(),
     );
-    expect(titulos).toEqual(['Datos de mi cuenta', 'Canales de notificación', 'Cambiar contraseña']);
+    expect(titulos).toEqual([
+      'Datos de mi cuenta',
+      'Cambiar contraseña',
+      'Canales de notificación',
+    ]);
+  });
+
+  it('enEscritorioDatosYContrasenaVanEnUnaColumnaYCanalesEnLaOtra', async () => {
+    const { elemento } = await configurarConAuth({ tieneAccesoConClave: () => true });
+
+    const columnas = Array.from(elemento.querySelectorAll('.contenido > *'));
+    expect(columnas.map((c) => c.tagName.toLowerCase())).toEqual([
+      'div',
+      'app-canales-notificacion',
+    ]);
+    const izquierda = Array.from(columnas[0].querySelectorAll(':scope > .mv-tarjeta h2')).map((h) =>
+      h.textContent?.trim(),
+    );
+    expect(izquierda).toEqual(['Datos de mi cuenta', 'Cambiar contraseña']);
   });
 
   it('muestraElCorreoYLasInicialesDelUsuario', async () => {

@@ -76,3 +76,13 @@ export function mensajeDeCampo(
   }
   return control.touched && control.hasError('required') ? mensajeRequerido : null;
 }
+
+/**
+ * Valor de `aria-describedby` a partir de los ids que apliquen (la ayuda
+ * del campo, su error): omite los vacíos y devuelve `null` si no queda
+ * ninguno, para que Angular no deje el atributo.
+ */
+export function describirCon(...ids: (string | null | undefined | false)[]): string | null {
+  const presentes = ids.filter((id): id is string => typeof id === 'string' && id !== '');
+  return presentes.length > 0 ? presentes.join(' ') : null;
+}

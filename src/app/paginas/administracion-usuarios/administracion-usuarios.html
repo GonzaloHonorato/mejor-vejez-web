@@ -75,10 +75,17 @@
               id="usuario-crear-telefono"
               class="mv-campo__control"
               type="tel"
+              inputmode="tel"
               formControlName="telefono"
+              (blur)="formatearTelefono(formularioCrear.controls.telefono)"
               [attr.aria-invalid]="erroresCamposCrear()['telefono'] ? true : null"
-              [attr.aria-describedby]="erroresCamposCrear()['telefono'] ? 'usuario-crear-telefono-error' : null"
+              [attr.aria-describedby]="
+                erroresCamposCrear()['telefono']
+                  ? 'usuario-crear-telefono-ayuda usuario-crear-telefono-error'
+                  : 'usuario-crear-telefono-ayuda'
+              "
             />
+            <p id="usuario-crear-telefono-ayuda" class="mv-campo__ayuda">{{ ayudaTelefono }}</p>
             @if (erroresCamposCrear()['telefono']; as mensaje) {
               <p id="usuario-crear-telefono-error" class="mv-campo__error" role="alert">
                 {{ mensaje }}
@@ -128,129 +135,130 @@
   }
 
   @if (usuarios().length > 0) {
-    <ul class="mv-lista lista-usuarios">
-      @for (usuario of usuarios(); track usuario.idUsuario) {
-        <li class="mv-fila usuario">
-          <div class="usuario__persona">
-            <span class="mv-avatar" aria-hidden="true">{{ iniciales(usuario.nombre) }}</span>
-            <div class="mv-fila__principal">
-              <p class="mv-fila__titulo usuario__nombre">{{ usuario.nombre }}</p>
-              <p class="mv-fila__meta usuario__correo">{{ usuario.email }}</p>
-            </div>
-          </div>
-
-          <div class="usuario__chips">
-            <span class="mv-chip {{ tonoEstado(usuario) }}">{{ descripcionEstado(usuario) }}</span>
-            <span class="mv-chip" [class.mv-chip--info]="usuario.esAdministrador">
-              {{ usuario.esAdministrador ? 'Administrador' : 'Integrante' }}
-            </span>
-          </div>
-
-          <div class="mv-fila__acciones usuario__acciones">
-            <button
-              [id]="'usuario-editar-' + usuario.idUsuario"
-              type="button"
-              class="mv-boton mv-boton--primario usuario__editar"
-              [attr.aria-label]="'Editar a ' + usuario.nombre"
-              (click)="editar(usuario)"
-            >
-              Editar
-            </button>
-            <details class="mv-mas">
-              <summary class="mv-boton mv-boton--texto" [attr.aria-label]="'Más acciones: ' + usuario.nombre">
-                <app-icono nombre="mas" aria-hidden="true" />
-                Más acciones
-              </summary>
-              <div class="mv-mas__panel">
-                <div class="mv-campo">
-                  <label class="mv-campo__etiqueta" [attr.for]="'usuario-estado-' + usuario.idUsuario">
-                    Estado de la cuenta<span class="oculto"> de {{ usuario.nombre }}</span>
-                  </label>
-                  <select
-                    [id]="'usuario-estado-' + usuario.idUsuario"
-                    class="mv-campo__control"
-                    [formControl]="controlEstado(usuario)"
-                    (change)="cambiarEstado(usuario, controlEstado(usuario).value)"
-                  >
-                    @for (estado of estados(); track estado.idEstado) {
-                      <option [ngValue]="estado.idEstado">{{ estado.descripcion }}</option>
-                    }
-                  </select>
+    <div
+      class="mv-grilla"
+      [class.grilla-usuarios--editando]="editando()"
+      role="region"
+      aria-label="Usuarios"
+      tabindex="0"
+    >
+      <table class="mv-grilla__tabla" role="table">
+        <thead role="rowgroup">
+          <tr role="row">
+            <th scope="col" role="columnheader">Usuario</th>
+            <th scope="col" role="columnheader">Teléfono</th>
+            <th scope="col" role="columnheader" class="mv-grilla__celda--estado">Estado</th>
+            <th scope="col" role="columnheader" class="mv-grilla__celda--estado">Administrador</th>
+            <th scope="col" role="columnheader" class="mv-grilla__celda--acciones">Acciones</th>
+          </tr>
+        </thead>
+        <tbody role="rowgroup">
+          @for (usuario of usuarios(); track usuario.idUsuario) {
+            <tr role="row" class="usuario">
+              <td role="cell">
+                <div class="usuario__persona">
+                  <span class="mv-avatar" aria-hidden="true">{{ iniciales(usuario.nombre) }}</span>
+                  <div>
+                    <span class="mv-grilla__titulo usuario__nombre">{{ usuario.nombre }}</span>
+                    <span class="mv-grilla__secundario usuario__correo">{{ usuario.email }}</span>
+                  </div>
                 </div>
-                @if (puedeReenviarAcceso(usuario)) {
-                  <button
-                    type="button"
-                    class="mv-boton"
-                    [disabled]="reenviando() === usuario.idUsuario"
-                    (click)="reenviarAcceso(usuario)"
-                  >
-                    Reenviar accesos
-                  </button>
+              </td>
+              <td role="cell" class="usuario__telefono" data-etiqueta="Teléfono">{{ telefono(usuario) }}</td>
+              <td role="cell" class="mv-grilla__celda--estado usuario__estado" data-etiqueta="Estado">
+                @if (descripcionEstado(usuario); as estado) {
+                  <span class="mv-chip {{ tonoEstado(usuario) }}">{{ estado }}</span>
                 }
-              </div>
-            </details>
-          </div>
+              </td>
+              <td role="cell" class="mv-grilla__celda--estado usuario__rol" data-etiqueta="Administrador">
+                <span class="mv-chip" [class.mv-chip--info]="usuario.esAdministrador">
+                  {{ usuario.esAdministrador ? 'Administrador' : 'Integrante' }}
+                </span>
+              </td>
+              <td role="cell" class="mv-grilla__celda--acciones" [id]="'usuario-acciones-' + usuario.idUsuario">
+                <app-boton-dividido
+                  variante="secundario"
+                  [principal]="{ etiqueta: 'Editar' }"
+                  [acciones]="accionesMenu(usuario)"
+                  [etiquetaPrincipal]="'Editar a ' + nombreDistintivo(usuario)"
+                  [etiquetaMenu]="'Más acciones para ' + nombreDistintivo(usuario)"
+                  (principal)="editar(usuario)"
+                  (accion)="ejecutar(usuario, $event)"
+                />
+              </td>
+            </tr>
+            @if (editando()?.idUsuario === usuario.idUsuario) {
+              <tr role="row" class="fila-edicion">
+                <td role="cell" colspan="5">
+                  <section class="mv-tarjeta editar-usuario" aria-labelledby="usuarios-editar-titulo">
+                    <div class="mv-tarjeta__cabecera">
+                      <h2 id="usuarios-editar-titulo" class="mv-tarjeta__titulo">Editar: {{ usuario.nombre }}</h2>
+                    </div>
 
-          @if (editando()?.idUsuario === usuario.idUsuario) {
-            <section class="mv-tarjeta editar-usuario" aria-labelledby="usuarios-editar-titulo">
-              <div class="mv-tarjeta__cabecera">
-                <h2 id="usuarios-editar-titulo" class="mv-tarjeta__titulo">Editar: {{ usuario.nombre }}</h2>
-              </div>
+                    <form class="mv-tarjeta__cuerpo formulario" [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
+                      @if (errorEdicion(); as mensaje) {
+                        <p class="mv-aviso mv-aviso--error ancho" role="alert">{{ mensaje }}</p>
+                      }
 
-              <form class="mv-tarjeta__cuerpo formulario" [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
-                @if (errorEdicion(); as mensaje) {
-                  <p class="mv-aviso mv-aviso--error ancho" role="alert">{{ mensaje }}</p>
-                }
+                      <div class="mv-campo">
+                        <label class="mv-campo__etiqueta" for="usuario-nombre">Nombre</label>
+                        <input
+                          id="usuario-nombre"
+                          class="mv-campo__control"
+                          type="text"
+                          formControlName="nombre"
+                          [attr.aria-invalid]="erroresCampos()['nombre'] ? true : null"
+                          [attr.aria-describedby]="erroresCampos()['nombre'] ? 'usuario-nombre-error' : null"
+                        />
+                        @if (erroresCampos()['nombre']; as mensaje) {
+                          <p id="usuario-nombre-error" class="mv-campo__error" role="alert">{{ mensaje }}</p>
+                        }
+                      </div>
 
-                <div class="mv-campo">
-                  <label class="mv-campo__etiqueta" for="usuario-nombre">Nombre</label>
-                  <input
-                    id="usuario-nombre"
-                    class="mv-campo__control"
-                    type="text"
-                    formControlName="nombre"
-                    [attr.aria-invalid]="erroresCampos()['nombre'] ? true : null"
-                    [attr.aria-describedby]="erroresCampos()['nombre'] ? 'usuario-nombre-error' : null"
-                  />
-                  @if (erroresCampos()['nombre']; as mensaje) {
-                    <p id="usuario-nombre-error" class="mv-campo__error" role="alert">{{ mensaje }}</p>
-                  }
-                </div>
+                      <div class="mv-campo">
+                        <label class="mv-campo__etiqueta" for="usuario-telefono">Teléfono</label>
+                        <input
+                          id="usuario-telefono"
+                          class="mv-campo__control"
+                          type="tel"
+                          inputmode="tel"
+                          formControlName="telefono"
+                          (blur)="formatearTelefono(formulario.controls.telefono)"
+                          [attr.aria-invalid]="erroresCampos()['telefono'] ? true : null"
+                          [attr.aria-describedby]="
+                            erroresCampos()['telefono']
+                              ? 'usuario-telefono-ayuda usuario-telefono-error'
+                              : 'usuario-telefono-ayuda'
+                          "
+                        />
+                        <p id="usuario-telefono-ayuda" class="mv-campo__ayuda">{{ ayudaTelefono }}</p>
+                        @if (erroresCampos()['telefono']; as mensaje) {
+                          <p id="usuario-telefono-error" class="mv-campo__error" role="alert">
+                            {{ mensaje }}
+                          </p>
+                        }
+                      </div>
 
-                <div class="mv-campo">
-                  <label class="mv-campo__etiqueta" for="usuario-telefono">Teléfono</label>
-                  <input
-                    id="usuario-telefono"
-                    class="mv-campo__control"
-                    type="tel"
-                    formControlName="telefono"
-                    [attr.aria-invalid]="erroresCampos()['telefono'] ? true : null"
-                    [attr.aria-describedby]="erroresCampos()['telefono'] ? 'usuario-telefono-error' : null"
-                  />
-                  @if (erroresCampos()['telefono']; as mensaje) {
-                    <p id="usuario-telefono-error" class="mv-campo__error" role="alert">
-                      {{ mensaje }}
-                    </p>
-                  }
-                </div>
+                      <label class="mv-campo mv-campo--casilla ancho">
+                        <input id="usuario-administrador" type="checkbox" formControlName="esAdministrador" />
+                        <span class="mv-campo__etiqueta">Administrador</span>
+                      </label>
 
-                <label class="mv-campo mv-campo--casilla ancho">
-                  <input id="usuario-administrador" type="checkbox" formControlName="esAdministrador" />
-                  <span class="mv-campo__etiqueta">Administrador</span>
-                </label>
-
-                <div class="botones">
-                  <button type="button" class="mv-boton" (click)="cancelarEdicion()">Cancelar</button>
-                  <button type="submit" class="mv-boton mv-boton--primario" [disabled]="guardando()">
-                    {{ guardando() ? 'Guardando…' : 'Guardar cambios' }}
-                  </button>
-                </div>
-              </form>
-            </section>
+                      <div class="botones">
+                        <button type="button" class="mv-boton" (click)="cancelarEdicion()">Cancelar</button>
+                        <button type="submit" class="mv-boton mv-boton--primario" [disabled]="guardando()">
+                          {{ guardando() ? 'Guardando…' : 'Guardar cambios' }}
+                        </button>
+                      </div>
+                    </form>
+                  </section>
+                </td>
+              </tr>
+            }
           }
-        </li>
-      }
-    </ul>
+        </tbody>
+      </table>
+    </div>
   }
 
   @if (usuarios().length > 0 || pagina() > 0) {

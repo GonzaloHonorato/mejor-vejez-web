@@ -30,44 +30,58 @@
   <p class="resultado" role="status">{{ resumen }}</p>
 }
 
-<ul class="lista-resumen">
-  @for (tarea of tareas(); track tarea.idDetalle) {
-    <li class="item-resumen">
-      <a class="enlace" [routerLink]="['/tareas', tarea.idReferencia]">{{ tarea.resumen }}</a>
-
-      @switch (estado(tarea.idReferencia)?.tipo) {
-        @case ('ok') {
-          <p class="resultado" role="status">Reasignada a {{ entrante().nombre }}</p>
-        }
-        @case ('yaAsignada') {
-          <p class="resultado" role="status">Ya estaba asignada a {{ entrante().nombre }}</p>
-        }
-        @case ('error') {
-          @if (estado(tarea.idReferencia); as fila) {
-            @if (fila.tipo === 'error') {
-              <p class="mv-aviso mv-aviso--error" role="alert">{{ fila.mensaje }}</p>
+<div class="mv-grilla" role="region" aria-label="Tareas pendientes del relevo" tabindex="0">
+  <table class="mv-grilla__tabla" role="table">
+    <thead role="rowgroup">
+      <tr role="row">
+        <th scope="col" role="columnheader">Tarea</th>
+        <th scope="col" role="columnheader">Resultado</th>
+        <th scope="col" role="columnheader" class="mv-grilla__celda--acciones">Acciones</th>
+      </tr>
+    </thead>
+    <tbody role="rowgroup">
+      @for (tarea of tareas(); track tarea.idDetalle) {
+        <tr role="row" class="fila-tarea">
+          <td role="cell">
+            <a class="mv-grilla__titulo" [routerLink]="['/tareas', tarea.idReferencia]">{{
+              tarea.resumen
+            }}</a>
+          </td>
+          <td role="cell" class="resultado-celda" data-etiqueta="Resultado">
+            @switch (estado(tarea.idReferencia)?.tipo) {
+              @case ('ok') {
+                <p class="resultado" role="status">Reasignada a {{ entrante().nombre }}</p>
+              }
+              @case ('yaAsignada') {
+                <p class="resultado" role="status">Ya estaba asignada a {{ entrante().nombre }}</p>
+              }
+              @case ('error') {
+                @if (estado(tarea.idReferencia); as fila) {
+                  @if (fila.tipo === 'error') {
+                    <p class="mv-aviso mv-aviso--error" role="alert">{{ fila.mensaje }}</p>
+                  }
+                }
+              }
             }
-          }
-        }
+          </td>
+          <td role="cell" class="mv-grilla__celda--acciones">
+            @if (muestraBoton(tarea.idReferencia)) {
+              <button
+                type="button"
+                class="mv-boton"
+                [attr.aria-label]="etiquetaReasignar(tarea)"
+                [disabled]="botonDeshabilitado(tarea.idReferencia)"
+                (click)="reasignar(tarea.idReferencia)"
+              >
+                {{ textoReasignar(tarea.idReferencia) }}
+              </button>
+            }
+          </td>
+        </tr>
       }
-
-      @if (muestraBoton(tarea.idReferencia)) {
-        <button
-          type="button"
-          class="mv-boton"
-          [disabled]="botonDeshabilitado(tarea.idReferencia)"
-          (click)="reasignar(tarea.idReferencia)"
-        >
-          {{
-            estado(tarea.idReferencia)?.tipo === 'enviando'
-              ? 'Reasignando…'
-              : 'Reasignar a ' + entrante().nombre
-          }}
-        </button>
-      }
-    </li>
-  }
-</ul>
+    </tbody>
+  </table>
+</div>
 
 <p class="ayuda">
   Cada reasignación cambia el responsable de la tarea y queda registrada en la auditoría.

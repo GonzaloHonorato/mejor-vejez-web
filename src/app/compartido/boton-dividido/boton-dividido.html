@@ -1,0 +1,51 @@
+<button
+  type="button"
+  class="mv-boton mv-boton-dividido__principal"
+  [class.mv-boton--primario]="variante() === 'primario' && !principal().peligro"
+  [class.mv-boton--peligro]="principal().peligro"
+  [attr.aria-label]="etiquetaPrincipal() || null"
+  [disabled]="deshabilitado()"
+  (click)="elegirPrincipal()"
+>
+  {{ principal().etiqueta }}
+</button>
+<button
+  #segmento
+  type="button"
+  class="mv-boton mv-boton-dividido__segmento"
+  [class.mv-boton--primario]="variante() === 'primario' && !principal().peligro"
+  [class.mv-boton--peligro]="principal().peligro"
+  [id]="idSegmento"
+  aria-haspopup="menu"
+  [attr.aria-expanded]="abierto()"
+  [attr.aria-controls]="idMenu"
+  [attr.aria-label]="etiquetaMenu()"
+  [disabled]="deshabilitado()"
+  (click)="alternar()"
+  (keydown)="teclaEnSegmento($event)"
+>
+  <app-icono nombre="chevron-abajo" aria-hidden="true" />
+</button>
+<div
+  #menu
+  class="mv-menu"
+  role="menu"
+  [id]="idMenu"
+  [attr.aria-labelledby]="idSegmento"
+  [hidden]="!abierto()"
+  (keydown)="teclaEnMenu($event)"
+>
+  @for (accion of acciones(); track accion.id) {
+    <button
+      type="button"
+      role="menuitem"
+      tabindex="-1"
+      class="mv-menu__item"
+      [class.mv-menu__item--peligro]="accion.peligro"
+      [attr.aria-disabled]="accion.deshabilitada ? 'true' : null"
+      (click)="elegir(accion)"
+    >
+      {{ accion.etiqueta }}
+    </button>
+  }
+</div>

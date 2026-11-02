@@ -70,6 +70,18 @@ async function configurar(opciones: Opciones = {}) {
   };
 }
 
+function principal(elemento: HTMLElement): HTMLButtonElement | null {
+  return elemento.querySelector<HTMLButtonElement>('.mv-boton-dividido__principal');
+}
+
+function segmento(elemento: HTMLElement): HTMLButtonElement | null {
+  return elemento.querySelector<HTMLButtonElement>('.mv-boton-dividido__segmento');
+}
+
+function itemsMenu(elemento: HTMLElement): HTMLButtonElement[] {
+  return Array.from(elemento.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'));
+}
+
 function botonConTexto(elemento: HTMLElement, texto: string): HTMLButtonElement | undefined {
   return Array.from(elemento.querySelectorAll('button')).find((boton) =>
     boton.textContent?.trim() === texto,
@@ -86,7 +98,8 @@ describe('AccionesTarea', () => {
     fixture.componentInstance.actualizada.subscribe((valor) => emitidas.push(valor));
 
     const boton = botonConTexto(elemento, 'Completar')!;
-    expect(boton.getAttribute('aria-label')).toBe('Completar: Comprar Losartán, 08:00');
+    expect(boton.getAttribute('role')).toBe('menuitem');
+    expect(principal(elemento)?.getAttribute('aria-label')).toBe('Iniciar: Comprar Losartán, Rosa González, 08:00');
     boton.click();
     await fixture.whenStable();
 
@@ -161,6 +174,7 @@ describe('AccionesTarea', () => {
 
     expect(elemento.querySelector('textarea')).toBeNull();
     expect(botonConTexto(elemento, 'No realizada')).toBeDefined();
+    expect(document.activeElement).toBe(segmento(elemento));
   });
 
   it('cancelarMuestraMotivoEnVezDeObservacionConMaximoDe200', async () => {
@@ -183,38 +197,50 @@ describe('AccionesTarea', () => {
     expect(elemento.querySelectorAll('button').length).toBe(0);
   });
 
-  it('pendienteMuestraIniciarComoUnicaAccionPrincipalYElRestoEnMasAcciones', async () => {
+  it('pendienteMuestraIniciarComoAccionPrincipalYElRestoEnElMenuDelBotonCombinado', async () => {
     const { elemento } = await configurar();
 
-    const principales = elemento.querySelectorAll('button.mv-boton--primario');
-    expect(principales).toHaveLength(1);
-    expect(principales[0].textContent?.trim()).toBe('Iniciar');
-    expect(principales[0].getAttribute('aria-label')).toBe('Iniciar: Comprar Losartán, 08:00');
-
-    const mas = elemento.querySelector('details')!;
-    expect(mas.open).toBe(false);
-    expect(mas.querySelector('summary')?.getAttribute('aria-label')).toBe(
-      'Más acciones: Comprar Losartán, 08:00',
+    expect(elemento.querySelectorAll('app-boton-dividido')).toHaveLength(1);
+    expect(principal(elemento)?.textContent?.trim()).toBe('Iniciar');
+    expect(principal(elemento)?.getAttribute('aria-label')).toBe('Iniciar: Comprar Losartán, Rosa González, 08:00');
+    expect(segmento(elemento)?.getAttribute('aria-label')).toBe(
+      'Más acciones para Comprar Losartán, Rosa González, 08:00',
     );
-    expect(Array.from(mas.querySelectorAll('button')).map((b) => b.getAttribute('aria-label'))).toEqual([
-      'Completar: Comprar Losartán, 08:00',
-      'No realizada: Comprar Losartán, 08:00',
-      'Cancelar: Comprar Losartán, 08:00',
-    ]);
-    const secundarias = Array.from(mas.querySelectorAll('button')).map((b) => b.textContent?.trim());
-    expect(secundarias).toEqual(['Completar', 'No realizada', 'Cancelar']);
+    expect(segmento(elemento)?.getAttribute('aria-expanded')).toBe('false');
+    expect(elemento.querySelector('details')).toBeNull();
+    // El contexto ya va en los nombres del principal y del segmento: sin grupo que lo repita.
+    expect(elemento.querySelector('[role="group"]')).toBeNull();
+
+    const items = itemsMenu(elemento);
+    expect(items.map((item) => item.textContent?.trim())).toEqual(['Completar', 'No realizada', 'Cancelar']);
+    expect(items.map((item) => item.classList.contains('mv-menu__item--peligro'))).toEqual([false, false, true]);
   });
 
-  it('enCursoMuestraCompletarComoPrincipalYNoRealizadaComoSecundaria', async () => {
+  it('laAccionPrincipalLlamaCambiarEstadoConElSiguienteEstado', async () => {
+    const { fixture, elemento, servicioTareas } = await configurar();
+
+    principal(elemento)!.click();
+    await fixture.whenStable();
+
+    expect(servicioTareas.cambiarEstado).toHaveBeenCalledWith(1, 1, { idEstado: 11, observacion: null });
+  });
+
+  it('elegirNoRealizadaDelMenuLlevaElFocoAlCampoDeObservacion', async () => {
+    const { fixture, elemento } = await configurar();
+
+    segmento(elemento)!.click();
+    await fixture.whenStable();
+    botonConTexto(elemento, 'No realizada')!.click();
+    await fixture.whenStable();
+
+    expect(document.activeElement).toBe(elemento.querySelector('textarea'));
+  });
+
+  it('enCursoMuestraCompletarComoPrincipalYNoRealizadaEnElMenu', async () => {
     const { elemento } = await configurar({ tarea: tarea({ idEstado: 11 }) });
 
-    const principales = elemento.querySelectorAll('button.mv-boton--primario');
-    expect(principales).toHaveLength(1);
-    expect(principales[0].textContent?.trim()).toBe('Completar');
-    const secundarias = Array.from(elemento.querySelectorAll('details button')).map((b) =>
-      b.textContent?.trim(),
-    );
-    expect(secundarias).toEqual(['No realizada']);
+    expect(principal(elemento)?.textContent?.trim()).toBe('Completar');
+    expect(itemsMenu(elemento).map((item) => item.textContent?.trim())).toEqual(['No realizada']);
   });
 
   it('colaboradorNoAsignadoNoVeNingunaAccion', async () => {
@@ -224,7 +250,7 @@ describe('AccionesTarea', () => {
     });
 
     expect(elemento.querySelectorAll('button').length).toBe(0);
-    expect(elemento.querySelector('details')).toBeNull();
+    expect(elemento.querySelector('app-boton-dividido')).toBeNull();
   });
 
   it('colaboradorSinAsignacionPuedeConfirmarPeroNoCancelar', async () => {
@@ -232,7 +258,7 @@ describe('AccionesTarea', () => {
       quien: { idUsuario: 200, miRol: 'COLABORADOR', esAdministrador: false },
     });
 
-    const textos = Array.from(elemento.querySelectorAll('button')).map((b) => b.textContent?.trim());
-    expect(textos).toEqual(['Iniciar', 'Completar', 'No realizada']);
+    expect(principal(elemento)?.textContent?.trim()).toBe('Iniciar');
+    expect(itemsMenu(elemento).map((item) => item.textContent?.trim())).toEqual(['Completar', 'No realizada']);
   });
 });

@@ -25,49 +25,21 @@
       }
     </div>
   </div>
-  @if (adulto() && puedeAdministrar() && !editando()) {
-    <div class="mv-encabezado__accion">
-      @if (adultoActivo()) {
-        <button
-          id="ficha-editar"
-          type="button"
-          class="mv-boton mv-boton--primario"
-          (click)="editar()"
-        >
-          Editar perfil
-        </button>
-      } @else {
-        <button
-          type="button"
-          class="mv-boton mv-boton--primario"
-          [disabled]="cambiandoEstado()"
-          (click)="reactivar()"
-        >
-          Reactivar perfil
-        </button>
-      }
-      <details class="mv-mas mv-mas--flotante">
-        <summary class="mv-boton mv-boton--texto">
-          <app-icono nombre="mas" aria-hidden="true" />
-          Más acciones
-        </summary>
-        <div class="mv-mas__panel">
-          @if (adultoActivo()) {
-            <button
-              type="button"
-              class="mv-boton"
-              [disabled]="cambiandoEstado()"
-              (click)="desactivar()"
-            >
-              Desactivar perfil
-            </button>
-          }
-          <button type="button" class="mv-boton mv-boton--peligro" (click)="eliminar()">
-            Eliminar
-          </button>
-        </div>
-      </details>
-    </div>
+  @if (adulto(); as datosAdulto) {
+    @if (puedeAdministrar() && !editando()) {
+      <div class="mv-encabezado__accion">
+        <app-boton-dividido
+          [attr.id]="adultoActivo() ? 'ficha-editar' : null"
+          [principal]="accionPrincipal()"
+          [acciones]="accionesMenu()"
+          [etiquetaPrincipal]="accionPrincipal().etiqueta + ' de ' + datosAdulto.nombreCompleto"
+          [etiquetaMenu]="'Más acciones para ' + datosAdulto.nombreCompleto"
+          [deshabilitado]="cambiandoEstado()"
+          (principal)="ejecutarPrincipal()"
+          (accion)="ejecutar($event)"
+        />
+      </div>
+    }
   }
 </header>
 
@@ -178,8 +150,8 @@
                       · {{ contacto.parentesco }}
                     }
                     <br />
-                    <a class="telefono" [href]="'tel:' + contacto.telefono">{{
-                      contacto.telefono
+                    <a class="telefono" [href]="enlaceTelefono(contacto.telefono)">{{
+                      formatearTelefono(contacto.telefono)
                     }}</a>
                   } @else {
                     Sin contacto principal
@@ -223,6 +195,7 @@
             <h2 id="ficha-editar-titulo" class="mv-tarjeta__titulo">Editar perfil</h2>
           </div>
           <form
+            id="ficha-formulario"
             class="mv-tarjeta__cuerpo formulario"
             [formGroup]="formulario"
             (ngSubmit)="guardar()"
@@ -277,12 +250,13 @@
                 class="mv-campo__control"
                 type="date"
                 formControlName="fechaNacimiento"
-                [attr.aria-invalid]="erroresCampos()['fechaNacimiento'] ? true : null"
+                [max]="hoy"
+                [attr.aria-invalid]="mensajeCampoFecha() ? true : null"
                 [attr.aria-describedby]="
-                  erroresCampos()['fechaNacimiento'] ? 'ficha-fecha-nacimiento-error' : null
+                  mensajeCampoFecha() ? 'ficha-fecha-nacimiento-error' : null
                 "
               />
-              @if (erroresCampos()['fechaNacimiento']; as mensaje) {
+              @if (mensajeCampoFecha(); as mensaje) {
                 <p id="ficha-fecha-nacimiento-error" class="mv-campo__error" role="alert">
                   {{ mensaje }}
                 </p>

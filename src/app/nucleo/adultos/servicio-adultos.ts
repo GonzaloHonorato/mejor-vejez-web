@@ -5,19 +5,31 @@ import { Observable } from 'rxjs';
 import { configuracionEjecucion } from '../configuracion/configuracion-ejecucion';
 import { RespuestaAdultoMayor, RespuestaContacto } from './modelos-adultos';
 
-/** Datos para `POST`/`PUT` de `/api/grupos/{idGrupo}/adultos`. */
+/** Datos del perfil para `PUT /api/grupos/{idGrupo}/adultos/{idAdulto}` (la fecha es obligatoria). */
 export interface SolicitudGuardarAdultoMayor {
   codigoInterno: string | null;
   nombreCompleto: string;
-  fechaNacimiento: string | null;
+  fechaNacimiento: string;
   notasEmergencia: string | null;
   observacionesGenerales: string | null;
+}
+
+/** Contacto principal que se crea junto con el adulto mayor. */
+export interface SolicitudContactoPrincipal {
+  nombre: string;
+  idParentesco: number;
+  telefono: string;
+}
+
+/** Datos para `POST /api/grupos/{idGrupo}/adultos`: perfil más contacto principal obligatorio. */
+export interface SolicitudCrearAdultoMayor extends SolicitudGuardarAdultoMayor {
+  contactoPrincipal: SolicitudContactoPrincipal;
 }
 
 /** Datos para `POST /api/grupos/{idGrupo}/adultos/{idAdulto}/contactos`. */
 export interface SolicitudCrearContacto {
   nombreContacto: string;
-  parentesco: string | null;
+  idParentesco: number;
   telefono: string;
   esPrincipal: boolean | null;
 }
@@ -25,7 +37,7 @@ export interface SolicitudCrearContacto {
 /** Datos para `PUT /api/grupos/{idGrupo}/adultos/{idAdulto}/contactos/{idContacto}`. */
 export interface SolicitudActualizarContacto {
   nombreContacto: string;
-  parentesco: string | null;
+  idParentesco: number;
   telefono: string;
 }
 
@@ -45,7 +57,7 @@ export class ServicioAdultos {
     return this.http.get<RespuestaAdultoMayor>(`${this.urlBase}/${idGrupo}/adultos/${idAdulto}`);
   }
 
-  crear(idGrupo: number, solicitud: SolicitudGuardarAdultoMayor): Observable<RespuestaAdultoMayor> {
+  crear(idGrupo: number, solicitud: SolicitudCrearAdultoMayor): Observable<RespuestaAdultoMayor> {
     return this.http.post<RespuestaAdultoMayor>(`${this.urlBase}/${idGrupo}/adultos`, solicitud);
   }
 

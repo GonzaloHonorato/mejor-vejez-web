@@ -1,4 +1,5 @@
-// Reasignar tareas desde el relevo. Sólo var(--mv-...); botones y avisos son `mv-`.
+// Reasignar tareas desde el relevo. Sólo var(--mv-...); grilla, botones y avisos son `mv-`.
+@use 'estilos/puntos-quiebre' as pq;
 
 :host {
   display: grid;
@@ -6,32 +7,23 @@
   gap: var(--mv-espacio-3);
 }
 
-.lista-resumen {
-  display: grid;
-  gap: var(--mv-espacio-2);
+.mv-grilla {
+  --grilla-alto: 24rem;
   width: 100%;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+
+  // En celular, sin resultado todavía la celda no ocupa lugar en la tarjeta.
+  .resultado-celda:empty {
+    @media not all and (min-width: pq.$tableta) {
+      display: none;
+    }
+  }
 }
 
-.item-resumen {
-  display: grid;
-  justify-items: start;
-  gap: var(--mv-espacio-2);
-  padding: var(--mv-espacio-3);
-  border: 1px solid var(--mv-color-borde);
-  border-radius: var(--mv-radio-md);
-  background: var(--mv-color-fondo);
-  overflow-wrap: anywhere;
-}
-
-.enlace {
-  display: inline-flex;
+// Enlace a la tarea con área táctil de 48px.
+.mv-grilla__titulo {
+  display: flex;
   align-items: center;
   min-height: var(--mv-espacio-12);
-  color: var(--mv-color-primario);
-  font-weight: var(--mv-texto-peso-negrita);
 }
 
 .confirmar {

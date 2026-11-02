@@ -21,7 +21,7 @@
   } @else {
     @let total = totales();
     @if (!errorVisible()) {
-      <ul class="mv-indicadores indicadores-dos" aria-label="Resumen de alertas">
+      <ul class="mv-indicadores" aria-label="Resumen de alertas">
         <li class="mv-indicador mv-indicador--peligro">
           @if (total.ABIERTA === undefined) {
             <span class="mv-esqueleto valor-cargando" aria-hidden="true"></span>
@@ -81,19 +81,35 @@
         </button>
       </nav>
 
-      <div class="mv-campo filtro-tipo">
-        <label class="mv-campo__etiqueta" for="alertas-filtro-tipo">Tipo de alerta</label>
-        <select
-          id="alertas-filtro-tipo"
-          class="mv-campo__control"
-          [formControl]="controlFiltroTipo"
-          (change)="cambiarFiltroTipo()"
-        >
-          <option value="">Todos los tipos</option>
-          @for (tipo of tiposAlerta; track tipo) {
-            <option [value]="tipo">{{ etiquetaTipo[tipo] }}</option>
-          }
-        </select>
+      <div class="filtros" role="group" aria-label="Filtros">
+        <div class="mv-campo filtro-tipo">
+          <label class="mv-campo__etiqueta" for="alertas-filtro-tipo">Tipo de alerta</label>
+          <select
+            id="alertas-filtro-tipo"
+            class="mv-campo__control"
+            [formControl]="controlFiltroTipo"
+            (change)="cambiarFiltroTipo()"
+          >
+            <option value="">Todos los tipos</option>
+            @for (tipo of tiposAlerta; track tipo) {
+              <option [value]="tipo">{{ etiquetaTipo[tipo] }}</option>
+            }
+          </select>
+        </div>
+        <div class="mv-campo filtro-adulto">
+          <label class="mv-campo__etiqueta" for="alertas-filtro-adulto">Adulto mayor</label>
+          <select
+            id="alertas-filtro-adulto"
+            class="mv-campo__control"
+            [formControl]="controlFiltroAdulto"
+            (change)="cambiarFiltroAdulto()"
+          >
+            <option [ngValue]="null">Todos</option>
+            @for (adulto of adultos(); track adulto.idAdultoMayor) {
+              <option [ngValue]="adulto.idAdultoMayor">{{ adulto.nombreCompleto }}</option>
+            }
+          </select>
+        </div>
       </div>
 
       @if (errorVisible(); as mensaje) {
@@ -117,8 +133,8 @@
           <p class="mv-vacio__titulo">{{ mensajeVacio() }}</p>
           <p class="mv-vacio__texto">
             {{
-              tipoFiltro()
-                ? 'Prueba con otro tipo de alerta.'
+              hayFiltros()
+                ? 'Prueba con otros filtros.'
                 : 'Las alertas de este grupo aparecerán aquí.'
             }}
           </p>
@@ -126,39 +142,89 @@
       }
 
       @if (elementos().length > 0) {
-        <ul class="mv-lista lista-alertas">
-          @for (alerta of elementos(); track alerta.idAlerta) {
-            @let detectada = fechaHoraLegible(alerta.fechaDeteccion);
-            <li class="mv-fila">
-              <span
-                ><span class="mv-chip {{ tonoTipo[alerta.tipoAlerta] }}">{{
-                  etiquetaTipo[alerta.tipoAlerta]
-                }}</span></span
-              >
-              <div class="mv-fila__principal">
-                <a
-                  class="mv-fila__titulo mv-fila__enlace"
-                  [routerLink]="['/alertas', alerta.idAlerta]"
-                  [attr.aria-label]="
-                    titulo(alerta) + ', ' + alerta.nombreAdulto + ', detectada ' + detectada
-                  "
-                  >{{ titulo(alerta) }}</a
-                >
-                <p class="mv-fila__meta mensaje">{{ alerta.mensajeAlerta }}</p>
-                <p class="mv-fila__meta adulto">{{ alerta.nombreAdulto }}</p>
-                <p class="mv-fila__meta">Detectada: {{ detectada }}</p>
-                @if (pestana() === 'CERRADA') {
-                  <p class="mv-fila__meta">{{ revision(alerta) }}</p>
-                  @if (alerta.observacionCierre?.trim()) {
-                    <p class="mv-fila__meta observacion">
-                      {{ extracto(alerta.observacionCierre!) }}
-                    </p>
-                  }
-                }
-              </div>
-            </li>
-          }
-        </ul>
+        @let cerradas = pestana() === 'CERRADA';
+        @let rotuloEstado = cerradas ? 'Estado / revisión' : 'Estado';
+        <div
+          class="mv-grilla grilla-alertas"
+          role="region"
+          aria-label="Bandeja de alertas"
+          tabindex="0"
+        >
+          <table class="mv-grilla__tabla" role="table">
+            <thead role="rowgroup">
+              <tr role="row">
+                <th scope="col" role="columnheader" class="tipo">Tipo</th>
+                <th scope="col" role="columnheader">Alerta</th>
+                <th scope="col" role="columnheader">Adulto mayor</th>
+                <th scope="col" role="columnheader">Detectada</th>
+                <th scope="col" role="columnheader" [class.mv-grilla__celda--estado]="!cerradas">
+                  {{ rotuloEstado }}
+                </th>
+                <th scope="col" role="columnheader" class="detalle">Detalle</th>
+              </tr>
+            </thead>
+            <tbody role="rowgroup">
+              @for (alerta of elementos(); track alerta.idAlerta) {
+                @let detectada = fechaHoraLegible(alerta.fechaDeteccion);
+                <tr role="row" class="fila-alerta">
+                  <td role="cell" class="tipo">
+                    <span class="mv-chip {{ tonoTipo[alerta.tipoAlerta] }}">{{
+                      etiquetaTipo[alerta.tipoAlerta]
+                    }}</span>
+                  </td>
+                  <td role="cell" data-etiqueta="Alerta" class="celda-alerta">
+                    <div>
+                      <a
+                        class="mv-grilla__titulo mv-fila__enlace"
+                        [routerLink]="['/alertas', alerta.idAlerta]"
+                        [attr.aria-label]="
+                          titulo(alerta) + ', ' + alerta.nombreAdulto + ', detectada ' + detectada
+                        "
+                        >{{ titulo(alerta) }}</a
+                      >
+                      <span class="mv-grilla__secundario mensaje">{{ alerta.mensajeAlerta }}</span>
+                    </div>
+                  </td>
+                  <td role="cell" data-etiqueta="Adulto mayor">
+                    {{ alerta.nombreAdulto }}
+                  </td>
+                  <td role="cell" data-etiqueta="Detectada">
+                    {{ detectada }}
+                  </td>
+                  <td
+                    role="cell"
+                    [attr.data-etiqueta]="rotuloEstado"
+                    [class.mv-grilla__celda--estado]="!cerradas"
+                    [class.celda-revision]="cerradas"
+                  >
+                    <div>
+                      @if (cerradas) {
+                        <span class="mv-chip mv-chip--exito">Cerrada</span>
+                        <span class="mv-grilla__secundario revision">{{ revision(alerta) }}</span>
+                        @if (alerta.observacionCierre?.trim()) {
+                          <span class="mv-grilla__secundario observacion">{{
+                            extracto(alerta.observacionCierre!)
+                          }}</span>
+                        }
+                      } @else {
+                        <span class="mv-chip mv-chip--peligro">Abierta</span>
+                      }
+                    </div>
+                  </td>
+                  <td role="cell" class="detalle">
+                    <a
+                      class="ver-detalle"
+                      [routerLink]="['/alertas', alerta.idAlerta]"
+                      tabindex="-1"
+                      aria-hidden="true"
+                      >Ver detalle</a
+                    >
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
       }
 
       @if (!cargando() && hayMas()) {

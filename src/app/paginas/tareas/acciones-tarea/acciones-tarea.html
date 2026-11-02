@@ -31,37 +31,14 @@
       </div>
     </div>
   } @else if (principal(); as accionPrincipal) {
-    <div class="botones">
-      <button
-        type="button"
-        class="mv-boton mv-boton--primario"
-        [disabled]="enviando()"
-        [attr.aria-label]="ariaLabelAccion(accionPrincipal)"
-        (click)="elegir(accionPrincipal)"
-      >
-        {{ etiquetaAccion[accionPrincipal] }}
-      </button>
-      @if (secundarias().length > 0) {
-        <details class="mv-mas">
-          <summary class="mv-boton mv-boton--texto" [attr.aria-label]="ariaLabelMas()">
-            <app-icono nombre="mas" aria-hidden="true" />
-            Más acciones
-          </summary>
-          <div class="botones">
-            @for (accion of secundarias(); track accion) {
-              <button
-                type="button"
-                class="mv-boton"
-                [disabled]="enviando()"
-                [attr.aria-label]="ariaLabelAccion(accion)"
-                (click)="elegir(accion)"
-              >
-                {{ etiquetaAccion[accion] }}
-              </button>
-            }
-          </div>
-        </details>
-      }
-    </div>
+    <app-boton-dividido
+      [principal]="{ etiqueta: etiquetaAccion[accionPrincipal] }"
+      [acciones]="menu()"
+      [etiquetaPrincipal]="etiquetaAccion[accionPrincipal] + ': ' + descripcionTarea()"
+      [etiquetaMenu]="ariaLabelMenu()"
+      [deshabilitado]="enviando()"
+      (principal)="elegir(accionPrincipal)"
+      (accion)="elegirDelMenu($event)"
+    />
   }
 </div>

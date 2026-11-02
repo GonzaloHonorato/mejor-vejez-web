@@ -23,10 +23,6 @@
   gap: var(--mv-espacio-3);
 }
 
-.indicadores-dos {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
 .punto {
   justify-self: end;
   width: var(--mv-espacio-2);
@@ -40,17 +36,18 @@
   height: var(--mv-espacio-8);
 }
 
-.filtro-tipo {
-  max-width: 28rem;
+.filtros {
+  display: grid;
+  gap: var(--mv-espacio-4);
+
+  @include pq.desde-tableta {
+    grid-template-columns: repeat(2, minmax(0, 20rem));
+  }
 }
 
 .bandeja__titulo {
   margin: 0;
   font-size: var(--mv-texto-grande);
-}
-
-.lista-alertas {
-  --fila-columnas: 14rem minmax(0, 1fr);
 }
 
 .mensaje {
@@ -61,12 +58,42 @@
   overflow: hidden;
 }
 
-.adulto {
-  color: var(--mv-color-texto);
-  font-weight: var(--mv-texto-peso-negrita);
+.revision {
+  margin-top: var(--mv-espacio-1);
 }
 
 .observacion {
   padding-left: var(--mv-espacio-3);
   border-left: 3px solid var(--mv-color-borde);
+}
+
+// El enlace "Ver detalle" repite el del título (que cubre la fila): en la
+// tarjeta de celular sobra, en la tabla es la columna "Detalle".
+.mv-grilla__tabla .detalle {
+  display: none;
+}
+
+@include pq.desde-tableta {
+  .mensaje {
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+  }
+
+  .mv-grilla__tabla .detalle {
+    display: table-cell;
+    width: 1%;
+    white-space: nowrap;
+  }
+
+  .tipo {
+    white-space: nowrap;
+  }
+
+  .celda-alerta {
+    min-width: 12rem;
+  }
+
+  .celda-revision {
+    min-width: 14rem;
+  }
 }

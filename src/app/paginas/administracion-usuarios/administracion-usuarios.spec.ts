@@ -104,24 +104,26 @@ describe('AdministracionUsuarios', () => {
     const { fixture, elemento, servicioUsuarios } = await configurar([usuario(1, 'Ana', false, 1)]);
     servicioUsuarios.cambiarEstado.mockReturnValue(of(usuario(1, 'Ana', false, 2)));
 
-    const select = elemento.querySelector<HTMLSelectElement>('#usuario-estado-1')!;
-    const opciones = Array.from(select.querySelectorAll('option'));
-    select.value = opciones.find((o) => o.textContent?.trim() === 'Inactivo')!.value;
-    select.dispatchEvent(new Event('change'));
+    botonConTexto(elemento.querySelector('#usuario-acciones-1')!, 'Desactivar')!.click();
     await fixture.whenStable();
 
     expect(servicioUsuarios.cambiarEstado).toHaveBeenCalledWith(1, 2);
     expect(servicioUsuarios.listar).toHaveBeenCalledTimes(2);
   });
 
-  it('selectDeEstadoMuestraElEstadoReal', async () => {
-    const { elemento } = await configurar([usuario(1, 'Ana', false, 2)]);
+  it('menuOfreceElPasoACadaOtroEstadoConBloquearComoPeligro', async () => {
+    const estados = [...ESTADOS, { idEstado: 3, codigo: 'BLOQUEADO', descripcion: 'Bloqueado', orden: 3 }];
+    const { elemento } = await configurar([usuario(1, 'Ana', false, 2)], {
+      estados: vi.fn(() => of(estados)),
+    });
 
-    const select = elemento.querySelector<HTMLSelectElement>('#usuario-estado-1')!;
-    expect(select.selectedOptions[0]?.textContent?.trim()).toBe('Inactivo');
+    const items = Array.from(elemento.querySelectorAll<HTMLElement>('#usuario-acciones-1 [role="menuitem"]'));
+    expect(items.map((item) => item.textContent?.trim())).toEqual(['Activar', 'Bloquear']);
+    expect(items[1].classList).toContain('mv-menu__item--peligro');
+    expect(items[0].classList).not.toContain('mv-menu__item--peligro');
   });
 
-  it('cambiarEstadoConFallaRevierteElSelectAlValorReal', async () => {
+  it('cambiarEstadoConFallaMuestraElErrorYElEstadoReal', async () => {
     const { fixture, elemento, servicioUsuarios } = await configurar([usuario(1, 'Ana', false, 1)]);
     servicioUsuarios.cambiarEstado.mockReturnValue(
       throwError(
@@ -133,13 +135,11 @@ describe('AdministracionUsuarios', () => {
       ),
     );
 
-    const select = elemento.querySelector<HTMLSelectElement>('#usuario-estado-1')!;
-    const opciones = Array.from(select.querySelectorAll('option'));
-    select.value = opciones.find((o) => o.textContent?.trim() === 'Inactivo')!.value;
-    select.dispatchEvent(new Event('change'));
+    botonConTexto(elemento.querySelector('#usuario-acciones-1')!, 'Desactivar')!.click();
     await fixture.whenStable();
 
-    expect(select.selectedOptions[0]?.textContent?.trim()).toBe('Activo');
+    expect(servicioUsuarios.listar).toHaveBeenCalledTimes(2);
+    expect(elemento.querySelector('.usuario__estado .mv-chip')?.textContent?.trim()).toBe('Activo');
     expect(elemento.querySelector('[role="alert"]')?.textContent).toContain(
       'No se puede cambiar el estado',
     );
@@ -157,7 +157,7 @@ describe('AdministracionUsuarios', () => {
       ),
     );
 
-    elemento.querySelector<HTMLButtonElement>('.usuario__editar')!.click();
+    elemento.querySelector<HTMLButtonElement>('.usuario .mv-boton-dividido__principal')!.click();
     await fixture.whenStable();
 
     const checkbox = elemento.querySelector<HTMLInputElement>('#usuario-administrador')!;
@@ -174,7 +174,7 @@ describe('AdministracionUsuarios', () => {
   it('formularioInvalidoAlGuardarMarcaCamposTocadosYMuestraError', async () => {
     const { fixture, elemento, servicioUsuarios } = await configurar([usuario(1, 'Ana', true, 1)]);
 
-    elemento.querySelector<HTMLButtonElement>('.usuario__editar')!.click();
+    elemento.querySelector<HTMLButtonElement>('.usuario .mv-boton-dividido__principal')!.click();
     await fixture.whenStable();
 
     escribir(elemento.querySelector<HTMLInputElement>('#usuario-nombre')!, '');
@@ -186,6 +186,73 @@ describe('AdministracionUsuarios', () => {
     expect(error?.textContent).toContain('obligatorio');
     expect(elemento.querySelector('#usuario-nombre')?.getAttribute('aria-invalid')).toBe('true');
     expect(servicioUsuarios.actualizar).not.toHaveBeenCalled();
+  });
+
+  it('editarConTelefonoNoChilenoMuestraLaReglaEnfocaElCampoYNoGuarda', async () => {
+    const { fixture, elemento, servicioUsuarios } = await configurar([usuario(1, 'Ana', true, 1)]);
+    elemento.querySelector<HTMLButtonElement>('.usuario .mv-boton-dividido__principal')!.click();
+    await fixture.whenStable();
+
+    const telefono = elemento.querySelector<HTMLInputElement>('#usuario-telefono')!;
+    escribir(telefono, '+1 555 123 4567');
+    elemento.querySelector<HTMLFormElement>('.editar-usuario form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    const error = elemento.querySelector('#usuario-telefono-error');
+    expect(error?.classList).toContain('mv-campo__error');
+    expect(error?.textContent).toContain('Ingresa un teléfono chileno: +56 y 9 dígitos.');
+    expect(telefono.getAttribute('aria-describedby')).toBe('usuario-telefono-ayuda usuario-telefono-error');
+    expect(document.activeElement).toBe(telefono);
+    expect(servicioUsuarios.actualizar).not.toHaveBeenCalled();
+  });
+
+  it('editarConTelefonoAntiguoSinCambiosLoEnviaTalCual', async () => {
+    const antiguo = { ...usuario(1, 'Ana', true, 1), telefono: '22 345' };
+    const { fixture, elemento, servicioUsuarios } = await configurar([antiguo]);
+    servicioUsuarios.actualizar.mockReturnValue(of(antiguo));
+    elemento.querySelector<HTMLButtonElement>('.usuario .mv-boton-dividido__principal')!.click();
+    await fixture.whenStable();
+
+    escribir(elemento.querySelector<HTMLInputElement>('#usuario-nombre')!, 'Ana María');
+    elemento.querySelector<HTMLFormElement>('.editar-usuario form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    expect(servicioUsuarios.actualizar).toHaveBeenCalledWith(1, {
+      nombre: 'Ana María',
+      telefono: '22 345',
+      esAdministrador: true,
+    });
+  });
+
+  it('crearConTelefonoValidoLoEnviaNormalizadoYConInvalidoEnfocaElCampo', async () => {
+    const { fixture, elemento, servicioUsuarios } = await configurar([]);
+    servicioUsuarios.crear.mockReturnValue(
+      of({ usuario: usuario(2, 'Beto'), claveTemporal: 'Ab3xZ9qLm2Pq', correoEnviado: true }),
+    );
+    botonConTexto(elemento, 'Crear usuario')!.click();
+    await fixture.whenStable();
+    escribir(elemento.querySelector<HTMLInputElement>('#usuario-crear-nombre')!, 'Beto');
+    escribir(elemento.querySelector<HTMLInputElement>('#usuario-crear-email')!, 'beto@correo.cl');
+    const telefono = elemento.querySelector<HTMLInputElement>('#usuario-crear-telefono')!;
+    expect(telefono.getAttribute('inputmode')).toBe('tel');
+
+    escribir(telefono, '12345');
+    elemento.querySelector<HTMLFormElement>('.crear-usuario form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+    expect(elemento.querySelector('#usuario-crear-telefono-error')?.textContent).toContain(
+      'Ingresa un teléfono chileno: +56 y 9 dígitos.',
+    );
+    expect(document.activeElement).toBe(telefono);
+    expect(servicioUsuarios.crear).not.toHaveBeenCalled();
+
+    escribir(telefono, '9 1234-5678');
+    elemento.querySelector<HTMLFormElement>('.crear-usuario form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+    expect(servicioUsuarios.crear).toHaveBeenCalledWith({
+      nombre: 'Beto',
+      email: 'beto@correo.cl',
+      telefono: '+56912345678',
+    });
   });
 
   it('muestraErrorSiFallaLaCarga', async () => {
@@ -324,19 +391,20 @@ describe('AdministracionUsuarios', () => {
     expect(document.activeElement).toBe(botonConTexto(elemento, 'Crear usuario'));
   });
 
-  it('alCerrarDialogoDevuelveElFocoAlBotonReenviarAccesos', async () => {
+  it('alCerrarDialogoDevuelveElFocoAlMenuDeReenviarAccesos', async () => {
     const { fixture, elemento, servicioUsuarios } = await configurar([usuario(1, 'Ana')]);
     servicioUsuarios.reenviarAcceso.mockReturnValue(of({ claveTemporal: 'Qw7mN4rTy8Hp', correoEnviado: true }));
     vi.spyOn(window, 'confirm').mockReturnValue(true);
-    const botonReenviar = botonConTexto(elemento, 'Reenviar accesos')!;
-    botonReenviar.focus();
+    const segmento = elemento.querySelector<HTMLButtonElement>('#usuario-acciones-1 [aria-haspopup="menu"]')!;
+    segmento.click();
+    await fixture.whenStable();
 
-    botonReenviar.click();
+    botonConTexto(elemento, 'Reenviar accesos')!.click();
     await fixture.whenStable();
     botonConTexto(elemento.querySelector('[role="dialog"]')!, 'Cerrar')!.click();
     await fixture.whenStable();
 
-    expect(document.activeElement).toBe(botonReenviar);
+    expect(document.activeElement).toBe(segmento);
   });
 
   it('nombreDemasiadoLargoMuestraMensajeAlCrear', async () => {
@@ -388,13 +456,14 @@ describe('AdministracionUsuarios', () => {
       usuario(2, 'Beto', false, 2),
     ]);
 
-    const filas = elemento.querySelectorAll('.lista-usuarios .mv-fila');
+    const filas = elemento.querySelectorAll('tr.usuario');
     expect(filas).toHaveLength(2);
     expect(filas[0].querySelector('.mv-avatar')?.textContent?.trim()).toBe('AR');
     expect(filas[0].querySelector('.mv-avatar')?.getAttribute('aria-hidden')).toBe('true');
     expect(filas[0].querySelector('.usuario__nombre')?.textContent?.trim()).toBe('Ana Rojas');
     expect(filas[0].querySelector('.usuario__correo')?.textContent?.trim()).toBe('ana rojas@correo.cl');
 
+    expect(filas[0].querySelector('.usuario__telefono')?.textContent?.trim()).toBe('Sin teléfono');
     const chips = (fila: Element) =>
       Array.from(fila.querySelectorAll('.mv-chip')).map((chip) => chip.textContent?.trim());
     expect(chips(filas[0])).toEqual(['Activo', 'Administrador']);
@@ -403,35 +472,98 @@ describe('AdministracionUsuarios', () => {
     expect(filas[1].querySelector('.mv-chip')!.classList).not.toContain('mv-chip--exito');
   });
 
-  it('editarEsLaAccionPrincipalYElRestoVaEnMasAcciones', async () => {
+  it('editarEsLaAccionPrincipalYElRestoVaEnElMenu', async () => {
     const { elemento } = await configurar([usuario(1, 'Ana')]);
 
-    const fila = elemento.querySelector('.lista-usuarios .mv-fila')!;
-    expect(fila.querySelector('.usuario__editar')?.getAttribute('aria-label')).toBe('Editar a Ana');
-    const mas = fila.querySelector<HTMLDetailsElement>('details.mv-mas')!;
-    expect(mas.querySelector('summary')?.getAttribute('aria-label')).toBe('Más acciones: Ana');
-    expect(mas.open).toBe(false);
-    expect(mas.querySelector('#usuario-estado-1')).toBeTruthy();
-    expect(botonConTexto(mas, 'Reenviar accesos')).toBeTruthy();
+    const fila = elemento.querySelector('tr.usuario')!;
+    expect(fila.querySelector('.mv-boton-dividido__principal')?.textContent?.trim()).toBe('Editar');
+    const segmento = fila.querySelector('[aria-haspopup="menu"]')!;
+    expect(segmento.getAttribute('aria-label')).toBe('Más acciones para Ana');
+    expect(fila.querySelector('.mv-boton-dividido__principal')?.getAttribute('aria-label')).toBe(
+      'Editar a Ana',
+    );
+    expect(segmento.getAttribute('aria-expanded')).toBe('false');
+    const items = Array.from(fila.querySelectorAll('[role="menuitem"]')).map((i) => i.textContent?.trim());
+    expect(items).toEqual(['Reenviar accesos', 'Desactivar']);
+  });
+
+  it('conNombresRepetidosLosBotonesDeLaFilaSumanElCorreo', async () => {
+    const { elemento } = await configurar([
+      { ...usuario(1, 'Ana'), email: 'ana.uno@correo.cl' },
+      { ...usuario(2, 'Ana'), email: 'ana.dos@correo.cl' },
+      usuario(3, 'Beto'),
+    ]);
+
+    const nombres = (selector: string) =>
+      Array.from(elemento.querySelectorAll(`tr.usuario ${selector}`)).map((b) => b.getAttribute('aria-label'));
+    expect(nombres('.mv-boton-dividido__principal')).toEqual([
+      'Editar a Ana, ana.uno@correo.cl',
+      'Editar a Ana, ana.dos@correo.cl',
+      'Editar a Beto',
+    ]);
+    expect(nombres('.mv-boton-dividido__segmento')).toEqual([
+      'Más acciones para Ana, ana.uno@correo.cl',
+      'Más acciones para Ana, ana.dos@correo.cl',
+      'Más acciones para Beto',
+    ]);
+  });
+
+  it('grillaConColumnasUsuarioTelefonoEstadoAdministradorYAcciones', async () => {
+    const { elemento } = await configurar([{ ...usuario(1, 'Ana'), telefono: '+56912345678' }]);
+
+    const tabla = elemento.querySelector('.mv-grilla table.mv-grilla__tabla')!;
+    expect(tabla.getAttribute('role')).toBe('table');
+    expect(
+      Array.from(tabla.querySelectorAll('th[role="columnheader"]')).map((th) => th.textContent?.trim()),
+    ).toEqual(['Usuario', 'Teléfono', 'Estado', 'Administrador', 'Acciones']);
+    const celdas = Array.from(tabla.querySelectorAll<HTMLElement>('tr.usuario td[role="cell"]'));
+    expect(celdas).toHaveLength(5);
+    expect(celdas[1].getAttribute('data-etiqueta')).toBe('Teléfono');
+    expect(celdas[1].textContent?.trim()).toBe('+56 9 1234 5678');
+    expect(celdas[2].getAttribute('data-etiqueta')).toBe('Estado');
+    expect(celdas[3].getAttribute('data-etiqueta')).toBe('Administrador');
+    expect(celdas[4].classList).toContain('mv-grilla__celda--acciones');
+    // Un solo nombre: el de la región con scroll (la tabla no repite el suyo).
+    const regionGrilla = elemento.querySelector('.mv-grilla[role="region"]')!;
+    expect(regionGrilla.getAttribute('aria-label') ?? regionGrilla.getAttribute('aria-labelledby')).toBeTruthy();
+    const tablaGrilla = regionGrilla.querySelector('table')!;
+    expect(['aria-label', 'aria-labelledby'].some((a) => tablaGrilla.hasAttribute(a))).toBe(false);
+    expect(tablaGrilla.querySelector('caption')).toBeNull();
   });
 
   it('editarAbreElFormularioEnLaFilaYCancelarDevuelveElFoco', async () => {
     const { fixture, elemento } = await configurar([usuario(1, 'Ana'), usuario(2, 'Beto')]);
 
-    const filas = elemento.querySelectorAll('.lista-usuarios .mv-fila');
-    const editar = filas[1].querySelector<HTMLButtonElement>('.usuario__editar')!;
+    const filas = elemento.querySelectorAll('tr.usuario');
+    const editar = filas[1].querySelector<HTMLButtonElement>('.usuario .mv-boton-dividido__principal')!;
     editar.click();
     await fixture.whenStable();
 
-    expect(filas[1].querySelector('.editar-usuario #usuario-nombre')).toBeTruthy();
-    expect(filas[0].querySelector('.editar-usuario')).toBeFalsy();
+    const edicion = filas[1].nextElementSibling!;
+    expect(edicion.classList).toContain('fila-edicion');
+    expect(edicion.querySelector('.editar-usuario #usuario-nombre')).toBeTruthy();
+    expect(elemento.querySelectorAll('.editar-usuario')).toHaveLength(1);
     expect(document.activeElement?.id).toBe('usuario-nombre');
 
-    botonConTexto(filas[1].querySelector('.editar-usuario')!, 'Cancelar')!.click();
+    botonConTexto(edicion.querySelector<HTMLElement>('.editar-usuario')!, 'Cancelar')!.click();
     await fixture.whenStable();
 
     expect(elemento.querySelector('.editar-usuario')).toBeFalsy();
     expect(document.activeElement).toBe(editar);
+  });
+
+  it('mientrasSeEditaLaGrillaNoLimitaSuAltoParaQueElFormularioQuepaEntero', async () => {
+    const { fixture, elemento } = await configurar([usuario(1, 'Ana')]);
+    const grilla = elemento.querySelector<HTMLElement>('.mv-grilla')!;
+    expect(grilla.classList).not.toContain('grilla-usuarios--editando');
+
+    elemento.querySelector<HTMLButtonElement>('.usuario .mv-boton-dividido__principal')!.click();
+    await fixture.whenStable();
+    expect(grilla.classList).toContain('grilla-usuarios--editando');
+
+    botonConTexto(elemento.querySelector<HTMLElement>('.editar-usuario')!, 'Cancelar')!.click();
+    await fixture.whenStable();
+    expect(grilla.classList).not.toContain('grilla-usuarios--editando');
   });
 
   it('estadosDeCargaVacioYErrorConReintento', async () => {

@@ -28,206 +28,240 @@
       </div>
     }
 
-    <ul class="lista">
-      @for (contacto of contactosOrdenados(); track contacto.idContacto) {
-        <li class="contacto" [class.contacto--inactivo]="estaInactivo(contacto)">
-          @if (!estaEditando(contacto)) {
-            <div class="contacto__principal">
-              <p class="contacto__nombre">
-                {{ contacto.nombreContacto }}
-                @if (contacto.esPrincipal) {
-                  <span class="mv-chip mv-chip--info">Principal</span>
-                }
-                @if (estaInactivo(contacto)) {
-                  <span class="mv-chip">Inactivo</span>
-                }
-              </p>
-              <p class="contacto__detalle">
-                @if (contacto.parentesco) {
-                  <span>{{ contacto.parentesco }}</span>
-                }
-                <a class="telefono" [href]="'tel:' + contacto.telefono">{{ contacto.telefono }}</a>
-              </p>
-            </div>
-
-            @if (pidiendoReemplazoPara() === contacto.idContacto) {
-              <div class="reemplazo mv-campo">
-                <label class="mv-campo__etiqueta" [attr.for]="'reemplazo-' + contacto.idContacto">
-                  Elige el nuevo contacto principal
-                </label>
-                <select
-                  [id]="'reemplazo-' + contacto.idContacto"
-                  class="mv-campo__control"
-                  [formControl]="controlReemplazo(contacto.idContacto)"
-                >
-                  <option [ngValue]="null">Selecciona…</option>
-                  @for (
-                    otro of contactosActivosExcepto(contacto.idContacto);
-                    track otro.idContacto
-                  ) {
-                    <option [ngValue]="otro.idContacto">{{ otro.nombreContacto }}</option>
-                  }
-                </select>
-                <div class="botones">
-                  <button type="button" class="mv-boton" (click)="cancelarReemplazo()">
-                    Cancelar
-                  </button>
-                  <button
-                    type="button"
-                    class="mv-boton mv-boton--primario"
-                    [disabled]="controlReemplazo(contacto.idContacto).value === null"
-                    (click)="confirmarReemplazo(contacto)"
-                  >
-                    Confirmar
-                  </button>
-                </div>
-              </div>
-            } @else if (puedeActuar()) {
-              <div class="contacto__acciones">
-                <button type="button" class="mv-boton" (click)="editar(contacto)">Editar</button>
-                <details class="mv-mas">
-                  <summary
-                    class="mv-boton mv-boton--texto"
-                    [attr.aria-label]="'Más acciones: ' + contacto.nombreContacto"
-                  >
-                    <app-icono nombre="mas" aria-hidden="true" />
-                    Más acciones
-                  </summary>
-                  <div class="botones">
-                    @if (!contacto.esPrincipal && !estaInactivo(contacto)) {
-                      <button type="button" class="mv-boton" (click)="hacerPrincipal(contacto)">
-                        Hacer principal
-                      </button>
+    @if (contactos().length > 0) {
+      <div
+        class="mv-grilla contactos"
+        role="region"
+        aria-label="Contactos de emergencia"
+        tabindex="0"
+      >
+        <table class="mv-grilla__tabla" role="table">
+          <thead role="rowgroup">
+            <tr role="row">
+              <th scope="col" role="columnheader">Nombre</th>
+              <th scope="col" role="columnheader">Parentesco</th>
+              <th scope="col" role="columnheader">Teléfono</th>
+              <th scope="col" role="columnheader" class="mv-grilla__celda--estado">Principal</th>
+              <th scope="col" role="columnheader" class="mv-grilla__celda--acciones">Acciones</th>
+            </tr>
+          </thead>
+          <tbody role="rowgroup">
+            @for (contacto of contactosOrdenados(); track contacto.idContacto) {
+              @if (!estaEditando(contacto)) {
+                <tr role="row" class="contacto" [class.contacto--inactivo]="estaInactivo(contacto)">
+                  <td role="cell" data-etiqueta="Nombre">
+                    <span class="mv-grilla__titulo">{{ contacto.nombreContacto }}</span>
+                    @if (estaInactivo(contacto)) {
+                      <span class="mv-chip">Inactivo</span>
                     }
-                    @if (!estaInactivo(contacto)) {
-                      <button type="button" class="mv-boton" (click)="desactivar(contacto)">
-                        Desactivar
-                      </button>
+                  </td>
+                  <td role="cell" data-etiqueta="Parentesco">{{ contacto.parentesco }}</td>
+                  <td role="cell" data-etiqueta="Teléfono">
+                    <a class="telefono" [href]="enlaceTelefono(contacto.telefono)">{{
+                      formatearTelefono(contacto.telefono)
+                    }}</a>
+                  </td>
+                  <td role="cell" class="mv-grilla__celda--estado" data-etiqueta="Principal">
+                    @if (contacto.esPrincipal) {
+                      <span class="mv-chip mv-chip--info">Principal</span>
                     } @else {
-                      <button type="button" class="mv-boton" (click)="reactivar(contacto)">
-                        Reactivar
-                      </button>
+                      <span aria-hidden="true">—</span><span class="oculto">No</span>
                     }
-                    <button
-                      type="button"
-                      class="mv-boton mv-boton--peligro"
-                      (click)="eliminar(contacto)"
+                  </td>
+                  <td role="cell" class="mv-grilla__celda--acciones">
+                    @if (pidiendoReemplazoPara() === contacto.idContacto) {
+                      <div class="reemplazo mv-campo">
+                        <label
+                          class="mv-campo__etiqueta"
+                          [attr.for]="'reemplazo-' + contacto.idContacto"
+                        >
+                          Elige el nuevo contacto principal
+                        </label>
+                        <select
+                          [id]="'reemplazo-' + contacto.idContacto"
+                          class="mv-campo__control"
+                          [formControl]="controlReemplazo(contacto.idContacto)"
+                        >
+                          <option [ngValue]="null">Selecciona…</option>
+                          @for (
+                            otro of contactosActivosExcepto(contacto.idContacto);
+                            track otro.idContacto
+                          ) {
+                            <option [ngValue]="otro.idContacto">{{ otro.nombreContacto }}</option>
+                          }
+                        </select>
+                        <div class="botones">
+                          <button type="button" class="mv-boton" (click)="cancelarReemplazo()">
+                            Cancelar
+                          </button>
+                          <button
+                            type="button"
+                            class="mv-boton mv-boton--primario"
+                            [disabled]="controlReemplazo(contacto.idContacto).value === null"
+                            (click)="confirmarReemplazo(contacto)"
+                          >
+                            Confirmar
+                          </button>
+                        </div>
+                      </div>
+                    } @else if (puedeActuar()) {
+                      <app-boton-dividido
+                        [id]="'contacto-editar-' + contacto.idContacto"
+                        variante="secundario"
+                        [principal]="{ etiqueta: 'Editar' }"
+                        [acciones]="accionesMenu(contacto)"
+                        [etiquetaPrincipal]="'Editar a ' + contacto.nombreContacto"
+                        [etiquetaMenu]="'Más acciones para ' + contacto.nombreContacto"
+                        (principal)="editar(contacto)"
+                        (accion)="ejecutar(contacto, $event)"
+                      />
+                    }
+                  </td>
+                </tr>
+              } @else {
+                <tr role="row" class="contacto contacto--edicion">
+                  <td role="cell" colspan="5">
+                    <form
+                      class="contacto__edicion formulario"
+                      [formGroup]="formularioEdicion(contacto)"
+                      (ngSubmit)="guardarEdicion(contacto)"
+                      novalidate
                     >
-                      Eliminar
-                    </button>
-                  </div>
-                </details>
-              </div>
+                      <div class="mv-campo">
+                        <label
+                          class="mv-campo__etiqueta"
+                          [attr.for]="'contacto-nombre-' + contacto.idContacto"
+                          >Nombre</label
+                        >
+                        <input
+                          [id]="'contacto-nombre-' + contacto.idContacto"
+                          class="mv-campo__control"
+                          type="text"
+                          formControlName="nombreContacto"
+                          [attr.aria-invalid]="
+                            mensajeCampoEdicion(contacto, 'nombreContacto') ? true : null
+                          "
+                          [attr.aria-describedby]="
+                            mensajeCampoEdicion(contacto, 'nombreContacto')
+                              ? 'contacto-nombre-error-' + contacto.idContacto
+                              : null
+                          "
+                        />
+                        @if (mensajeCampoEdicion(contacto, 'nombreContacto'); as mensaje) {
+                          <p
+                            [id]="'contacto-nombre-error-' + contacto.idContacto"
+                            class="mv-campo__error"
+                            role="alert"
+                          >
+                            {{ mensaje }}
+                          </p>
+                        }
+                      </div>
+
+                      <div class="mv-campo">
+                        <label
+                          class="mv-campo__etiqueta"
+                          [attr.for]="'contacto-parentesco-' + contacto.idContacto"
+                        >
+                          Parentesco
+                        </label>
+                        <select
+                          [id]="'contacto-parentesco-' + contacto.idContacto"
+                          class="mv-campo__control"
+                          formControlName="idParentesco"
+                          [attr.aria-invalid]="
+                            mensajeCampoEdicion(contacto, 'idParentesco') ? true : null
+                          "
+                          [attr.aria-describedby]="
+                            describirCon(
+                              parentescoAntiguo(contacto) &&
+                                'contacto-parentesco-ayuda-' + contacto.idContacto,
+                              mensajeCampoEdicion(contacto, 'idParentesco') &&
+                                'contacto-parentesco-error-' + contacto.idContacto
+                            )
+                          "
+                        >
+                          <option [ngValue]="null">Selecciona…</option>
+                          @for (opcion of parentescos(); track opcion.idOpcion) {
+                            <option [ngValue]="opcion.idOpcion">{{ opcion.descripcion }}</option>
+                          }
+                        </select>
+                        @if (parentescoAntiguo(contacto); as antiguo) {
+                          <p
+                            [id]="'contacto-parentesco-ayuda-' + contacto.idContacto"
+                            class="mv-campo__ayuda"
+                          >
+                            Registrado como «{{ antiguo }}». Elige uno de la lista.
+                          </p>
+                        }
+                        @if (mensajeCampoEdicion(contacto, 'idParentesco'); as mensaje) {
+                          <p
+                            [id]="'contacto-parentesco-error-' + contacto.idContacto"
+                            class="mv-campo__error"
+                            role="alert"
+                          >
+                            {{ mensaje }}
+                          </p>
+                        }
+                      </div>
+
+                      <div class="mv-campo">
+                        <label
+                          class="mv-campo__etiqueta"
+                          [attr.for]="'contacto-telefono-' + contacto.idContacto"
+                        >
+                          Teléfono
+                        </label>
+                        <input
+                          [id]="'contacto-telefono-' + contacto.idContacto"
+                          class="mv-campo__control"
+                          type="tel"
+                          inputmode="tel"
+                          formControlName="telefono"
+                          (blur)="formatearTelefonoEdicion(contacto)"
+                          [attr.aria-invalid]="
+                            mensajeCampoEdicion(contacto, 'telefono') ? true : null
+                          "
+                          [attr.aria-describedby]="
+                            describirCon(
+                              'contacto-telefono-ayuda-' + contacto.idContacto,
+                              mensajeCampoEdicion(contacto, 'telefono') &&
+                                'contacto-telefono-error-' + contacto.idContacto
+                            )
+                          "
+                        />
+                        <p
+                          [id]="'contacto-telefono-ayuda-' + contacto.idContacto"
+                          class="mv-campo__ayuda"
+                        >
+                          {{ ayudaTelefono }}
+                        </p>
+                        @if (mensajeCampoEdicion(contacto, 'telefono'); as mensaje) {
+                          <p
+                            [id]="'contacto-telefono-error-' + contacto.idContacto"
+                            class="mv-campo__error"
+                            role="alert"
+                          >
+                            {{ mensaje }}
+                          </p>
+                        }
+                      </div>
+
+                      <div class="botones">
+                        <button type="button" class="mv-boton" (click)="cancelarEdicion(contacto)">
+                          Cancelar
+                        </button>
+                        <button type="submit" class="mv-boton mv-boton--primario">Guardar</button>
+                      </div>
+                    </form>
+                  </td>
+                </tr>
+              }
             }
-          } @else {
-            <form
-              class="contacto__edicion"
-              [formGroup]="formularioEdicion(contacto)"
-              (ngSubmit)="guardarEdicion(contacto)"
-              novalidate
-            >
-              <div class="mv-campo">
-                <label
-                  class="mv-campo__etiqueta"
-                  [attr.for]="'contacto-nombre-' + contacto.idContacto"
-                  >Nombre</label
-                >
-                <input
-                  [id]="'contacto-nombre-' + contacto.idContacto"
-                  class="mv-campo__control"
-                  type="text"
-                  formControlName="nombreContacto"
-                  [attr.aria-invalid]="
-                    mensajeCampoEdicion(
-                      contacto,
-                      'nombreContacto',
-                      'Ingresa el nombre del contacto'
-                    )
-                      ? true
-                      : null
-                  "
-                  [attr.aria-describedby]="
-                    mensajeCampoEdicion(
-                      contacto,
-                      'nombreContacto',
-                      'Ingresa el nombre del contacto'
-                    )
-                      ? 'contacto-nombre-error-' + contacto.idContacto
-                      : null
-                  "
-                />
-                @if (
-                  mensajeCampoEdicion(contacto, 'nombreContacto', 'Ingresa el nombre del contacto');
-                  as mensaje
-                ) {
-                  <p
-                    [id]="'contacto-nombre-error-' + contacto.idContacto"
-                    class="mv-campo__error"
-                    role="alert"
-                  >
-                    {{ mensaje }}
-                  </p>
-                }
-              </div>
-
-              <div class="mv-campo">
-                <label
-                  class="mv-campo__etiqueta"
-                  [attr.for]="'contacto-parentesco-' + contacto.idContacto"
-                >
-                  Parentesco
-                </label>
-                <input
-                  [id]="'contacto-parentesco-' + contacto.idContacto"
-                  class="mv-campo__control"
-                  type="text"
-                  formControlName="parentesco"
-                />
-              </div>
-
-              <div class="mv-campo">
-                <label
-                  class="mv-campo__etiqueta"
-                  [attr.for]="'contacto-telefono-' + contacto.idContacto"
-                >
-                  Teléfono
-                </label>
-                <input
-                  [id]="'contacto-telefono-' + contacto.idContacto"
-                  class="mv-campo__control"
-                  type="tel"
-                  formControlName="telefono"
-                  [attr.aria-invalid]="
-                    mensajeCampoEdicion(contacto, 'telefono', 'Ingresa un teléfono') ? true : null
-                  "
-                  [attr.aria-describedby]="
-                    mensajeCampoEdicion(contacto, 'telefono', 'Ingresa un teléfono')
-                      ? 'contacto-telefono-error-' + contacto.idContacto
-                      : null
-                  "
-                />
-                @if (mensajeCampoEdicion(contacto, 'telefono', 'Ingresa un teléfono'); as mensaje) {
-                  <p
-                    [id]="'contacto-telefono-error-' + contacto.idContacto"
-                    class="mv-campo__error"
-                    role="alert"
-                  >
-                    {{ mensaje }}
-                  </p>
-                }
-              </div>
-
-              <div class="botones">
-                <button type="button" class="mv-boton" (click)="cancelarEdicion(contacto)">
-                  Cancelar
-                </button>
-                <button type="submit" class="mv-boton mv-boton--primario">Guardar</button>
-              </div>
-            </form>
-          }
-        </li>
-      }
-    </ul>
+          </tbody>
+        </table>
+      </div>
+    }
 
     @if (puedeActuar()) {
       <section class="alta" aria-labelledby="contactos-agregar-titulo">
@@ -241,19 +275,12 @@
               class="mv-campo__control"
               type="text"
               formControlName="nombreContacto"
-              [attr.aria-invalid]="
-                mensajeCampoNuevo('nombreContacto', 'Ingresa el nombre del contacto') ? true : null
-              "
+              [attr.aria-invalid]="mensajeCampoNuevo('nombreContacto') ? true : null"
               [attr.aria-describedby]="
-                mensajeCampoNuevo('nombreContacto', 'Ingresa el nombre del contacto')
-                  ? 'contacto-nuevo-nombre-error'
-                  : null
+                mensajeCampoNuevo('nombreContacto') ? 'contacto-nuevo-nombre-error' : null
               "
             />
-            @if (
-              mensajeCampoNuevo('nombreContacto', 'Ingresa el nombre del contacto');
-              as mensaje
-            ) {
+            @if (mensajeCampoNuevo('nombreContacto'); as mensaje) {
               <p id="contacto-nuevo-nombre-error" class="mv-campo__error" role="alert">
                 {{ mensaje }}
               </p>
@@ -262,12 +289,25 @@
 
           <div class="mv-campo">
             <label class="mv-campo__etiqueta" for="contacto-nuevo-parentesco">Parentesco</label>
-            <input
+            <select
               id="contacto-nuevo-parentesco"
               class="mv-campo__control"
-              type="text"
-              formControlName="parentesco"
-            />
+              formControlName="idParentesco"
+              [attr.aria-invalid]="mensajeCampoNuevo('idParentesco') ? true : null"
+              [attr.aria-describedby]="
+                mensajeCampoNuevo('idParentesco') ? 'contacto-nuevo-parentesco-error' : null
+              "
+            >
+              <option [ngValue]="null">Selecciona…</option>
+              @for (opcion of parentescos(); track opcion.idOpcion) {
+                <option [ngValue]="opcion.idOpcion">{{ opcion.descripcion }}</option>
+              }
+            </select>
+            @if (mensajeCampoNuevo('idParentesco'); as mensaje) {
+              <p id="contacto-nuevo-parentesco-error" class="mv-campo__error" role="alert">
+                {{ mensaje }}
+              </p>
+            }
           </div>
 
           <div class="mv-campo">
@@ -276,17 +316,19 @@
               id="contacto-nuevo-telefono"
               class="mv-campo__control"
               type="tel"
+              inputmode="tel"
               formControlName="telefono"
-              [attr.aria-invalid]="
-                mensajeCampoNuevo('telefono', 'Ingresa un teléfono') ? true : null
-              "
+              (blur)="formatearTelefonoNuevo()"
+              [attr.aria-invalid]="mensajeCampoNuevo('telefono') ? true : null"
               [attr.aria-describedby]="
-                mensajeCampoNuevo('telefono', 'Ingresa un teléfono')
-                  ? 'contacto-nuevo-telefono-error'
-                  : null
+                describirCon(
+                  'contacto-nuevo-telefono-ayuda',
+                  mensajeCampoNuevo('telefono') && 'contacto-nuevo-telefono-error'
+                )
               "
             />
-            @if (mensajeCampoNuevo('telefono', 'Ingresa un teléfono'); as mensaje) {
+            <p id="contacto-nuevo-telefono-ayuda" class="mv-campo__ayuda">{{ ayudaTelefono }}</p>
+            @if (mensajeCampoNuevo('telefono'); as mensaje) {
               <p id="contacto-nuevo-telefono-error" class="mv-campo__error" role="alert">
                 {{ mensaje }}
               </p>

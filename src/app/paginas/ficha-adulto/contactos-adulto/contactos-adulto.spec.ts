@@ -8,8 +8,15 @@ import { RespuestaContacto } from '../../../nucleo/adultos/modelos-adultos';
 import { ServicioAdultos } from '../../../nucleo/adultos/servicio-adultos';
 import {
   RespuestaEstadoCatalogo,
+  RespuestaOpcionCatalogo,
   ServicioCatalogos,
 } from '../../../nucleo/catalogos/servicio-catalogos';
+
+const PARENTESCOS: RespuestaOpcionCatalogo[] = [
+  { idOpcion: 31, codigo: 'PADRE', descripcion: 'Padre', orden: 1 },
+  { idOpcion: 33, codigo: 'HIJO', descripcion: 'Hijo', orden: 3 },
+  { idOpcion: 36, codigo: 'TIO', descripcion: 'Tío', orden: 6 },
+];
 
 const ESTADOS_CONTACTO: RespuestaEstadoCatalogo[] = [
   { idEstado: 1, codigo: 'ACTIVO', descripcion: 'Activo', orden: 1 },
@@ -21,7 +28,8 @@ function contacto(datos: Partial<RespuestaContacto> = {}): RespuestaContacto {
     idContacto: 1,
     idAdultoMayor: 1,
     nombreContacto: 'Juana Pérez',
-    parentesco: 'Hija',
+    idParentesco: 33,
+    parentesco: 'Hijo',
     telefono: '+56911111111',
     esPrincipal: true,
     idEstado: 1,
@@ -58,7 +66,10 @@ async function configurar(opciones: Opciones = {}) {
       { provide: ServicioAdultos, useValue: servicioAdultos },
       {
         provide: ServicioCatalogos,
-        useValue: { estados: () => of(opciones.estados ?? ESTADOS_CONTACTO) },
+        useValue: {
+          estados: () => of(opciones.estados ?? ESTADOS_CONTACTO),
+          opciones: () => of(PARENTESCOS),
+        },
       },
     ],
   });
@@ -81,6 +92,18 @@ function botonConTexto(elemento: HTMLElement, texto: string): HTMLButtonElement 
   );
 }
 
+function escribir(raiz: ParentNode, selector: string, valor: string): void {
+  const campo = raiz.querySelector<HTMLInputElement>(selector)!;
+  campo.value = valor;
+  campo.dispatchEvent(new Event('input'));
+}
+
+function elegir(raiz: ParentNode, selector: string, indice: number): void {
+  const select = raiz.querySelector<HTMLSelectElement>(selector)!;
+  select.selectedIndex = indice;
+  select.dispatchEvent(new Event('change'));
+}
+
 function filaDe(elemento: HTMLElement, nombre: string): HTMLElement {
   return Array.from(elemento.querySelectorAll('.contacto')).find((fila) =>
     fila.textContent?.includes(nombre),
@@ -88,7 +111,7 @@ function filaDe(elemento: HTMLElement, nombre: string): HTMLElement {
 }
 
 describe('ContactosAdulto', () => {
-  it('cadaContactoTieneEditarYElRestoEnMasAcciones', async () => {
+  it('cadaContactoTieneEditarYElRestoEnElBotonCombinado', async () => {
     const { elemento } = await configurar({
       contactosIniciales: [
         contacto({ idContacto: 1, nombreContacto: 'Juana Pérez', esPrincipal: true }),
@@ -97,16 +120,103 @@ describe('ContactosAdulto', () => {
     });
 
     const fila = filaDe(elemento, 'Pedro Pérez');
-    const acciones = fila.querySelector('.contacto__acciones')!;
-    expect(acciones.querySelector(':scope > .mv-boton')?.textContent?.trim()).toBe('Editar');
-    const mas = acciones.querySelector('details.mv-mas')!;
-    expect(mas.querySelector('summary')?.getAttribute('aria-label')).toBe(
-      'Más acciones: Pedro Pérez',
+    expect(fila.tagName).toBe('TR');
+    const combinado = fila.querySelector('.mv-grilla__celda--acciones app-boton-dividido')!;
+    expect(combinado.querySelector('.mv-boton-dividido__principal')?.textContent?.trim()).toBe(
+      'Editar',
     );
-    const secundarias = Array.from(mas.querySelectorAll('button')).map((b) =>
-      b.textContent?.trim(),
+    expect(combinado.querySelector('[aria-haspopup="menu"]')?.getAttribute('aria-label')).toBe(
+      'Más acciones para Pedro Pérez',
     );
-    expect(secundarias).toEqual(['Hacer principal', 'Desactivar', 'Eliminar']);
+    expect(combinado.querySelector('.mv-boton-dividido__principal')?.getAttribute('aria-label')).toBe(
+      'Editar a Pedro Pérez',
+    );
+    const items = Array.from(combinado.querySelectorAll('[role="menuitem"]'));
+    expect(items.map((b) => b.textContent?.trim())).toEqual([
+      'Hacer principal',
+      'Desactivar',
+      'Eliminar',
+    ]);
+    expect(items[2].classList).toContain('mv-menu__item--peligro');
+    expect(elemento.querySelector('details.mv-mas')).toBeNull();
+  });
+
+  it('grillaConColumnasYRolesExplicitos', async () => {
+    const { elemento } = await configurar({
+      contactosIniciales: [
+        contacto({ idContacto: 1, nombreContacto: 'Juana Pérez', esPrincipal: true }),
+        contacto({ idContacto: 2, nombreContacto: 'Pedro Pérez', esPrincipal: false, idEstado: 2 }),
+      ],
+    });
+
+    const tabla = elemento.querySelector('.mv-grilla table.mv-grilla__tabla')!;
+    expect(tabla.getAttribute('role')).toBe('table');
+    const encabezados = Array.from(tabla.querySelectorAll('th')).map((th) => [
+      th.textContent?.trim(),
+      th.getAttribute('role'),
+    ]);
+    expect(encabezados).toEqual([
+      ['Nombre', 'columnheader'],
+      ['Parentesco', 'columnheader'],
+      ['Teléfono', 'columnheader'],
+      ['Principal', 'columnheader'],
+      ['Acciones', 'columnheader'],
+    ]);
+    const fila = filaDe(elemento, 'Juana Pérez');
+    expect(fila.getAttribute('role')).toBe('row');
+    const etiquetas = Array.from(fila.querySelectorAll('td')).map((td) => [
+      td.getAttribute('role'),
+      td.getAttribute('data-etiqueta'),
+    ]);
+    expect(etiquetas).toEqual([
+      ['cell', 'Nombre'],
+      ['cell', 'Parentesco'],
+      ['cell', 'Teléfono'],
+      ['cell', 'Principal'],
+      ['cell', null],
+    ]);
+    expect(fila.querySelector('a.telefono')?.textContent?.trim()).toBe('+56 9 1111 1111');
+    // Un solo nombre: el de la región con scroll (la tabla no repite el suyo).
+    const regionGrilla = elemento.querySelector('.mv-grilla[role="region"]')!;
+    expect(regionGrilla.getAttribute('aria-label') ?? regionGrilla.getAttribute('aria-labelledby')).toBeTruthy();
+    const tablaGrilla = regionGrilla.querySelector('table')!;
+    expect(['aria-label', 'aria-labelledby'].some((a) => tablaGrilla.hasAttribute(a))).toBe(false);
+    expect(tablaGrilla.querySelector('caption')).toBeNull();
+  });
+
+  it('sinPermisoLaCeldaDeAccionesQuedaVacia', async () => {
+    const { elemento } = await configurar({ puedeAdministrar: false });
+
+    const celda = filaDe(elemento, 'Juana Pérez').querySelector('.mv-grilla__celda--acciones')!;
+    expect(celda.children.length).toBe(0);
+    expect(celda.textContent?.trim()).toBe('');
+  });
+
+  it('cancelarElReemplazoDevuelveElFocoAEditar', async () => {
+    const { fixture, elemento } = await configurar({
+      contactosIniciales: [
+        contacto({ idContacto: 1, nombreContacto: 'Juana Pérez', esPrincipal: true }),
+        contacto({ idContacto: 2, nombreContacto: 'Pedro Pérez', esPrincipal: false }),
+      ],
+    });
+
+    botonConTexto(filaDe(elemento, 'Juana Pérez'), 'Desactivar')!.click();
+    await fixture.whenStable();
+    botonConTexto(filaDe(elemento, 'Juana Pérez'), 'Cancelar')!.click();
+    await fixture.whenStable();
+
+    expect(document.activeElement?.closest('#contacto-editar-1')).toBeTruthy();
+  });
+
+  it('elFormularioDeEdicionOcupaLaFilaCompleta', async () => {
+    const { fixture, elemento } = await configurar({});
+
+    botonConTexto(elemento, 'Editar')!.click();
+    await fixture.whenStable();
+
+    const celda = elemento.querySelector('#contacto-nombre-1')!.closest('td')!;
+    expect(celda.getAttribute('colspan')).toBe('5');
+    expect(celda.closest('tr')?.getAttribute('role')).toBe('row');
   });
 
   it('marcaPrincipalEInactivoConChips', async () => {
@@ -346,30 +456,167 @@ describe('ContactosAdulto', () => {
     expect(servicioAdultos.crearContacto).not.toHaveBeenCalled();
   });
 
-  it('telefonoInvalidoMuestraErrorDeCampo', async () => {
+  it('agregarSinParentescoLoPide', async () => {
+    const { fixture, elemento, servicioAdultos } = await configurar({ contactosIniciales: [] });
+    escribir(elemento, '#contacto-nuevo-nombre', 'Mario Rojas');
+    escribir(elemento, '#contacto-nuevo-telefono', '912345678');
+
+    elemento.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    const error = elemento.querySelector('#contacto-nuevo-parentesco-error');
+    expect(error?.classList).toContain('mv-campo__error');
+    expect(error?.textContent).toContain('Elige el parentesco');
+    expect(
+      elemento.querySelector('#contacto-nuevo-parentesco')?.getAttribute('aria-describedby'),
+    ).toBe('contacto-nuevo-parentesco-error');
+    expect(document.activeElement?.id).toBe('contacto-nuevo-parentesco');
+    expect(servicioAdultos.crearContacto).not.toHaveBeenCalled();
+  });
+
+  it('elParentescoSeEligeDelCatalogo', async () => {
+    const { elemento } = await configurar({ contactosIniciales: [] });
+
+    const opciones = Array.from(
+      elemento.querySelectorAll<HTMLOptionElement>('#contacto-nuevo-parentesco option'),
+    ).map((opcion) => opcion.textContent?.trim());
+    expect(opciones).toEqual(['Selecciona…', 'Padre', 'Hijo', 'Tío']);
+    expect(elemento.querySelector('input#contacto-nuevo-parentesco')).toBeFalsy();
+  });
+
+  it('telefonoNoChilenoMuestraLaReglaSinLlamarALaApi', async () => {
+    const { fixture, elemento, servicioAdultos } = await configurar({ contactosIniciales: [] });
+    escribir(elemento, '#contacto-nuevo-nombre', 'Mario Rojas');
+    elegir(elemento, '#contacto-nuevo-parentesco', 1);
+    escribir(elemento, '#contacto-nuevo-telefono', '+54 9 11 2345 6789');
+
+    elemento.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    const error = elemento.querySelector('#contacto-nuevo-telefono-error');
+    expect(error?.getAttribute('role')).toBe('alert');
+    expect(error?.textContent).toContain('Ingresa un teléfono chileno: +56 y 9 dígitos.');
+    const campo = elemento.querySelector('#contacto-nuevo-telefono')!;
+    expect(campo.getAttribute('inputmode')).toBe('tel');
+    expect(campo.getAttribute('aria-describedby')).toBe(
+      'contacto-nuevo-telefono-ayuda contacto-nuevo-telefono-error',
+    );
+    expect(elemento.querySelector('#contacto-nuevo-telefono-ayuda')?.textContent).toContain(
+      'Ej.: +56 9 1234 5678',
+    );
+    expect(servicioAdultos.crearContacto).not.toHaveBeenCalled();
+  });
+
+  it('agregarEnviaElParentescoYElTelefonoNormalizado', async () => {
+    const { fixture, elemento, servicioAdultos } = await configurar({ contactosIniciales: [] });
+    servicioAdultos.crearContacto.mockReturnValue(of(contacto({ idContacto: 7 })));
+    escribir(elemento, '#contacto-nuevo-nombre', ' Mario Rojas ');
+    elegir(elemento, '#contacto-nuevo-parentesco', 3);
+    escribir(elemento, '#contacto-nuevo-telefono', '9 8765-4321');
+
+    elemento.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    expect(servicioAdultos.crearContacto).toHaveBeenCalledWith(1, 1, {
+      nombreContacto: 'Mario Rojas',
+      idParentesco: 36,
+      telefono: '+56987654321',
+      esPrincipal: null,
+    });
+  });
+
+  it('errorDelServidorEnElTelefonoSeMuestraEnSuCampo', async () => {
     const { fixture, elemento, servicioAdultos } = await configurar({ contactosIniciales: [] });
     servicioAdultos.crearContacto.mockReturnValue(
       throwError(
         () =>
           new HttpErrorResponse({
             status: 400,
-            error: { errores: [{ campo: 'telefono', mensaje: 'Ingresa un teléfono válido.' }] },
+            error: { errores: [{ campo: 'telefono', mensaje: 'Rechazado por la API.' }] },
           }),
       ),
     );
+    escribir(elemento, '#contacto-nuevo-nombre', 'Mario Rojas');
+    elegir(elemento, '#contacto-nuevo-parentesco', 1);
+    escribir(elemento, '#contacto-nuevo-telefono', '912345678');
 
-    const nombre = elemento.querySelector<HTMLInputElement>('#contacto-nuevo-nombre')!;
-    nombre.value = 'Mario Rojas';
-    nombre.dispatchEvent(new Event('input'));
-    const telefono = elemento.querySelector<HTMLInputElement>('#contacto-nuevo-telefono')!;
-    telefono.value = 'no-es-un-telefono';
-    telefono.dispatchEvent(new Event('input'));
     elemento.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'));
     await fixture.whenStable();
 
     const error = elemento.querySelector('#contacto-nuevo-telefono-error');
     expect(error?.getAttribute('role')).toBe('alert');
-    expect(error?.textContent).toContain('Ingresa un teléfono válido.');
+    expect(error?.textContent).toContain('Rechazado por la API.');
+  });
+
+  it('elTelefonoSeMuestraFormateadoYElEnlaceUsaElNormalizado', async () => {
+    const { elemento } = await configurar({});
+
+    const enlace = elemento.querySelector<HTMLAnchorElement>('a.telefono')!;
+    expect(enlace.textContent?.trim()).toBe('+56 9 1111 1111');
+    expect(enlace.getAttribute('href')).toBe('tel:+56911111111');
+  });
+
+  it('alSalirDelTelefonoNuevoLoFormatea', async () => {
+    const { fixture, elemento } = await configurar({ contactosIniciales: [] });
+    escribir(elemento, '#contacto-nuevo-telefono', '+56912345678');
+
+    const campo = elemento.querySelector<HTMLInputElement>('#contacto-nuevo-telefono')!;
+    campo.dispatchEvent(new Event('blur'));
+    await fixture.whenStable();
+
+    expect(campo.value).toBe('+56 9 1234 5678');
+  });
+
+  it('contactoAntiguoMuestraSuTextoYAlEditarloHayQueElegirDelCatalogo', async () => {
+    const { fixture, elemento, servicioAdultos } = await configurar({
+      contactosIniciales: [contacto({ idParentesco: null, parentesco: 'Vecina' })],
+    });
+    servicioAdultos.actualizarContacto.mockReturnValue(of(contacto()));
+    expect(filaDe(elemento, 'Juana Pérez').textContent).toContain('Vecina');
+
+    botonConTexto(elemento, 'Editar')!.click();
+    await fixture.whenStable();
+
+    const select = elemento.querySelector<HTMLSelectElement>('#contacto-parentesco-1')!;
+    expect(select.selectedIndex).toBe(0);
+    expect(elemento.querySelector('#contacto-parentesco-ayuda-1')?.textContent).toContain(
+      'Registrado como «Vecina». Elige uno de la lista.',
+    );
+    select.closest('form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+    expect(elemento.querySelector('#contacto-parentesco-error-1')?.textContent).toContain(
+      'Elige el parentesco',
+    );
+    expect(select.getAttribute('aria-describedby')).toBe(
+      'contacto-parentesco-ayuda-1 contacto-parentesco-error-1',
+    );
+    expect(document.activeElement).toBe(select);
+    expect(servicioAdultos.actualizarContacto).not.toHaveBeenCalled();
+
+    elegir(elemento, '#contacto-parentesco-1', 1);
+    select.closest('form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+    expect(servicioAdultos.actualizarContacto).toHaveBeenCalledWith(1, 1, 1, {
+      nombreContacto: 'Juana Pérez',
+      idParentesco: 31,
+      telefono: '+56911111111',
+    });
+  });
+
+  it('editarEnfocaElNombreYCancelarDevuelveElFocoAEditar', async () => {
+    const { fixture, elemento } = await configurar({});
+
+    botonConTexto(elemento, 'Editar')!.click();
+    await fixture.whenStable();
+    expect(document.activeElement?.id).toBe('contacto-nombre-1');
+    expect(elemento.querySelector<HTMLInputElement>('#contacto-telefono-1')?.value).toBe(
+      '+56 9 1111 1111',
+    );
+
+    botonConTexto(elemento, 'Cancelar')!.click();
+    await fixture.whenStable();
+    expect(document.activeElement?.closest('#contacto-editar-1')).toBeTruthy();
+    expect(document.activeElement?.textContent?.trim()).toBe('Editar');
   });
 
   it('errorDeEdicionDeUnaFilaNoApareceEnElFormularioDeAgregar', async () => {
@@ -393,7 +640,7 @@ describe('ContactosAdulto', () => {
     await fixture.whenStable();
 
     const telefonoFila = elemento.querySelector<HTMLInputElement>('#contacto-telefono-1')!;
-    telefonoFila.value = 'no-es-un-telefono';
+    telefonoFila.value = '+56922222222';
     telefonoFila.dispatchEvent(new Event('input'));
     telefonoFila.closest('form')!.dispatchEvent(new Event('submit'));
     await fixture.whenStable();

@@ -1,4 +1,5 @@
-// Contactos de emergencia, celular primero. Sólo var(--mv-...); lo común son las clases `mv-`.
+// Contactos de emergencia, celular primero. Sólo var(--mv-...); grilla, botón
+// combinado, campos y botones son las clases globales `mv-`.
 @use 'estilos/puntos-quiebre' as pq;
 
 :host {
@@ -7,74 +8,43 @@
 
 .cuerpo,
 .esqueleto,
-.formulario,
-.contacto__edicion {
+.formulario {
   display: grid;
   gap: var(--mv-espacio-4);
 }
 
-.lista {
-  display: grid;
-  gap: var(--mv-espacio-3);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-
-  &:empty {
-    display: none;
-  }
-}
-
-.contacto {
-  display: grid;
-  gap: var(--mv-espacio-3);
-  padding: var(--mv-espacio-4);
-  border: 1px solid var(--mv-color-borde);
-  border-radius: var(--mv-radio-md);
-  background: var(--mv-color-fondo);
-
-  &--inactivo &__principal {
-    color: var(--mv-color-secundario);
-  }
-
-  &__principal {
-    display: grid;
-    gap: var(--mv-espacio-1);
-    min-width: 0;
-  }
-
-  &__nombre,
-  &__detalle {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--mv-espacio-2);
-    margin: 0;
-  }
-
-  &__nombre {
-    font-weight: var(--mv-texto-peso-negrita);
-  }
-
-  &__detalle {
-    color: var(--mv-color-secundario);
-  }
-
-  &__acciones {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: var(--mv-espacio-2);
-  }
-
+// Formularios de alta y edición: dos columnas desde tableta; la casilla y los
+// botones, a todo el ancho.
+.formulario {
   @include pq.desde-tableta {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: start;
 
-    > :not(.contacto__principal):not(.contacto__acciones) {
+    > .mv-campo--casilla,
+    > .botones {
       grid-column: 1 / -1;
     }
   }
+}
+
+// Pocos contactos y edición en el lugar: la grilla crece en vez de desplazarse.
+.contactos {
+  --grilla-alto: none;
+}
+
+.contacto--inactivo td {
+  color: var(--mv-color-secundario);
+}
+
+// Fila en edición: el formulario ocupa la fila, sin estilo de título.
+.contacto--edicion td {
+  justify-items: stretch;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.contacto--edicion:hover td {
+  background: none;
 }
 
 .telefono {
@@ -85,10 +55,28 @@
   font-weight: var(--mv-texto-peso-negrita);
 }
 
+.reemplazo {
+  width: 100%;
+  white-space: normal;
+  text-align: left;
+
+  @include pq.desde-tableta {
+    min-width: 18rem;
+  }
+}
+
 .botones {
   display: flex;
   flex-wrap: wrap;
   gap: var(--mv-espacio-2);
+
+  .mv-boton {
+    flex: 1 1 100%;
+
+    @include pq.desde-tableta {
+      flex: none;
+    }
+  }
 }
 
 // En los formularios, con los botones apilados en celular, el primario queda arriba.
@@ -109,13 +97,5 @@ form .botones {
   &__titulo {
     margin: 0;
     font-size: var(--mv-texto-grande);
-  }
-
-  .formulario > .botones .mv-boton {
-    flex: 1 1 100%;
-
-    @include pq.desde-tableta {
-      flex: none;
-    }
   }
 }

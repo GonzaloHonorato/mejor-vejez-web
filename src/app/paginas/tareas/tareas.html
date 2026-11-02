@@ -174,38 +174,59 @@
           </div>
         }
       } @else {
-        <ul class="mv-lista lista-tareas">
-          @for (tarea of tareasVisibles(); track tarea.idTarea) {
-            <li class="mv-fila">
-              <span class="mv-fila__dato">{{ formatearHora(tarea.fechaHorario) }}</span>
-              <div class="mv-fila__principal">
-                <a
-                  class="mv-fila__titulo mv-fila__enlace"
-                  [routerLink]="['/tareas', tarea.idTarea]"
-                  [attr.aria-label]="tarea.titulo + ', ' + formatearHora(tarea.fechaHorario)"
-                  >{{ tarea.titulo }}</a
-                >
-                <p class="mv-fila__meta">{{ etiquetaTipo(tarea) }}</p>
-                <p class="mv-fila__meta">{{ tarea.nombreAdulto }} · {{ responsable(tarea) }}</p>
-              </div>
-              <span class="chips">
-                <span class="mv-chip {{ tonoEstado(tarea) }}">{{ descripcionEstado(tarea) }}</span>
-                @if (tarea.atrasada) {
-                  <span class="mv-chip mv-chip--peligro">Atrasada</span>
-                }
-              </span>
-              <div class="mv-fila__acciones">
-                <app-acciones-tarea
-                  [tarea]="tarea"
-                  [idGrupo]="activo()!.idGrupo"
-                  [estados]="estados()"
-                  [quien]="quien()"
-                  (actualizada)="actualizarTarea($event)"
-                />
-              </div>
-            </li>
-          }
-        </ul>
+        <div class="mv-grilla" role="region" aria-labelledby="tareas-agenda" tabindex="0">
+          <table class="mv-grilla__tabla" role="table">
+            <thead role="rowgroup">
+              <tr role="row">
+                <th scope="col" role="columnheader" class="mv-grilla__celda--dato">Hora</th>
+                <th scope="col" role="columnheader">Tarea</th>
+                <th scope="col" role="columnheader">Adulto mayor</th>
+                <th scope="col" role="columnheader">Responsable</th>
+                <th scope="col" role="columnheader" class="mv-grilla__celda--estado">Estado</th>
+                <th scope="col" role="columnheader" class="mv-grilla__celda--acciones">Acciones</th>
+              </tr>
+            </thead>
+            <tbody role="rowgroup">
+              @for (tarea of tareasVisibles(); track tarea.idTarea) {
+                <tr role="row">
+                  <td role="cell" class="mv-grilla__celda--dato" data-etiqueta="Hora">
+                    {{ formatearHora(tarea.fechaHorario) }}
+                  </td>
+                  <td role="cell" data-etiqueta="Tarea">
+                    <a
+                      class="mv-grilla__titulo mv-fila__enlace"
+                      [routerLink]="['/tareas', tarea.idTarea]"
+                      [attr.aria-label]="tarea.titulo + ', ' + formatearHora(tarea.fechaHorario)"
+                      >{{ tarea.titulo }}</a
+                    >
+                    <span class="mv-grilla__secundario">{{ etiquetaTipo(tarea) }}</span>
+                  </td>
+                  <td role="cell" data-etiqueta="Adulto mayor">{{ tarea.nombreAdulto }}</td>
+                  <td role="cell" data-etiqueta="Responsable">{{ responsable(tarea) }}</td>
+                  <td role="cell" class="mv-grilla__celda--estado" data-etiqueta="Estado">
+                    <span class="chips">
+                      <span class="mv-chip {{ tonoEstado(tarea) }}">{{ descripcionEstado(tarea) }}</span>
+                      @if (tarea.atrasada) {
+                        <span class="mv-chip mv-chip--peligro">Atrasada</span>
+                      }
+                    </span>
+                  </td>
+                  <td role="cell" class="mv-grilla__celda--acciones">
+                    @if (tieneAcciones(tarea)) {
+                      <app-acciones-tarea
+                        [tarea]="tarea"
+                        [idGrupo]="activo()!.idGrupo"
+                        [estados]="estados()"
+                        [quien]="quien()"
+                        (actualizada)="actualizarTarea($event)"
+                      />
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
       }
     </section>
   }

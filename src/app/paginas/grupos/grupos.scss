@@ -42,26 +42,13 @@
   }
 }
 
-.lista-grupos {
-  --fila-columnas: minmax(0, 1fr) 10rem auto;
-
-  .mv-fila__acciones .mv-boton {
-    flex: 1 1 auto;
-
-    @include pq.desde-tableta {
-      flex: none;
-    }
-  }
-}
-
+// Grupo en uso: borde de la tarjeta en celular; franja a la izquierda en tabla.
 .grupo--activo {
   border-color: var(--mv-color-primario);
 
-  @include pq.desde-escritorio {
-    box-shadow: inset var(--mv-espacio-1) 0 0 var(--mv-color-primario);
+  @include pq.desde-tableta {
+    td:first-child {
+      box-shadow: inset var(--mv-espacio-1) 0 0 var(--mv-color-primario);
+    }
   }
-}
-
-.rol {
-  display: flex;
 }

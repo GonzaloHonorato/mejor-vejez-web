@@ -20,6 +20,7 @@ import {
 } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
+import { AccionMenu, BotonDividido } from '../../compartido/boton-dividido/boton-dividido';
 import { ClaveTemporal } from '../../compartido/clave-temporal/clave-temporal';
 import { Icono } from '../../compartido/icono/icono';
 import { inicialesDe } from '../../compartido/marco-app/identidad-usuario';
@@ -48,10 +49,12 @@ function validarCorreoConEspacios(control: AbstractControl<string>): ValidationE
 }
 
 /**
- * Página "Integrantes" (`/grupos/:idGrupo`): lista de integrantes del grupo
+ * Página "Integrantes" (`/grupos/:idGrupo`): grilla de integrantes del grupo
  * y, si quien mira es COORDINADOR o admin, las acciones de administración
  * (agregar, crear, cambiar rol, desactivar/reactivar, eliminar), con los
- * formularios de alta plegados tras sus acciones del encabezado. Cualquier
+ * formularios de alta plegados tras sus acciones del encabezado. Por fila,
+ * un botón combinado: "Editar" muestra el selector de rol en la celda Rol y
+ * el menú tiene desactivar/reactivar y eliminar. Cualquier
  * integrante activo puede salir del grupo. El enlace "Auditoría del grupo"
  * (`/grupos/:idGrupo/auditoria`) usa el mismo `puedeAdministrar()`: la API
  * ya exige coordinador o administrador, pero el enlace no se ofrece a quien
@@ -64,7 +67,7 @@ function validarCorreoConEspacios(control: AbstractControl<string>): ValidationE
  */
 @Component({
   selector: 'app-integrantes',
-  imports: [ReactiveFormsModule, RouterLink, SeccionSucesion, ClaveTemporal, Icono],
+  imports: [ReactiveFormsModule, RouterLink, SeccionSucesion, ClaveTemporal, Icono, BotonDividido],
   templateUrl: './integrantes.html',
   styleUrl: './integrantes.scss',
 })
@@ -84,6 +87,19 @@ export class Integrantes implements OnInit {
   /** Falso mientras no sepamos si la carga del grupo fue exitosa: sin esto no mostramos acciones. */
   protected readonly grupoCargado = signal(false);
   protected readonly integrantes = signal<RespuestaIntegrante[]>([]);
+
+  /** Nombres que se repiten en la página: esas filas suman el correo a sus nombres accesibles. */
+  private readonly nombresRepetidos = computed(() => {
+    const vistos = new Set<string>();
+    const repetidos = new Set<string>();
+    for (const { nombre } of this.integrantes()) (vistos.has(nombre) ? repetidos : vistos).add(nombre);
+    return repetidos;
+  });
+
+  /** Nombre de la fila para lectores: "Ana" o, si hay otra "Ana", "Ana, ana@correo.cl". */
+  protected nombreDistintivo(integrante: RespuestaIntegrante): string {
+    return this.nombresRepetidos().has(integrante.nombre) ? `${integrante.nombre}, ${integrante.email}` : integrante.nombre;
+  }
   /** Falso hasta que llega la primera lista: mientras tanto se muestra el esqueleto. */
   protected readonly integrantesCargados = signal(false);
   private readonly errorCargaGrupo = signal<string | null>(null);
@@ -100,6 +116,8 @@ export class Integrantes implements OnInit {
   protected readonly agregando = signal(false);
   /** "Agregar integrante" por correo: plegado tras su acción del encabezado. */
   protected readonly agregarAbierto = signal(false);
+  /** Integrante cuyo rol se está editando (selector en la celda Rol); null si ninguno. */
+  protected readonly editandoRol = signal<number | null>(null);
   /** Interruptor "Notificar las alertas al coordinador". */
   protected readonly cambiandoNotificaCoordinador = signal(false);
 
@@ -340,10 +358,50 @@ export class Integrantes implements OnInit {
     restaurar?.();
   }
 
+  /** Menú del botón combinado: desactivar o reactivar y, al final, eliminar. */
+  protected accionesMenu(integrante: RespuestaIntegrante): AccionMenu[] {
+    return [
+      this.estaActivo(integrante)
+        ? { id: 'desactivar', etiqueta: 'Desactivar' }
+        : { id: 'reactivar', etiqueta: 'Reactivar' },
+      { id: 'eliminar', etiqueta: 'Eliminar', peligro: true },
+    ];
+  }
+
+  protected ejecutar(integrante: RespuestaIntegrante, accion: string): void {
+    if (accion === 'desactivar') this.desactivar(integrante);
+    else if (accion === 'reactivar') this.reactivar(integrante);
+    else if (accion === 'eliminar') this.eliminar(integrante);
+  }
+
+  /** "Editar" muestra el selector de rol de la fila (y lo enfoca); "Listo" lo cierra. */
+  protected alternarEdicionRol(integrante: RespuestaIntegrante): void {
+    if (this.editandoRol() === integrante.idIntegrante) {
+      this.cerrarEdicionRol(integrante);
+      return;
+    }
+    this.controlRol(integrante).setValue(integrante.idRol);
+    this.editandoRol.set(integrante.idIntegrante);
+    this.enfocar(() => document.getElementById(`integrante-rol-${integrante.idIntegrante}`));
+  }
+
+  /** Cierra el selector de rol y devuelve el foco al "Editar" de la fila. */
+  protected cerrarEdicionRol(integrante: RespuestaIntegrante): void {
+    this.editandoRol.set(null);
+    this.enfocar(() =>
+      document.querySelector<HTMLElement>(
+        `#integrante-acciones-${integrante.idIntegrante} .mv-boton-dividido__principal`,
+      ),
+    );
+  }
+
   protected cambiarRol(integrante: RespuestaIntegrante, idRol: number): void {
     this.error.set(null);
     this.servicioGrupos.cambiarRol(this.idGrupo, integrante.idIntegrante, idRol).subscribe({
-      next: () => this.cargarIntegrantes(),
+      next: () => {
+        this.cerrarEdicionRol(integrante);
+        this.cargarIntegrantes();
+      },
       error: (error: unknown) => {
         // Revertimos el select recargando el estado real desde la API.
         this.error.set(mensajeDeError(error));

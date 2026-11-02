@@ -11,10 +11,23 @@
   }
 }
 
-.contenido {
+.contenido,
+.columna {
   display: grid;
   gap: var(--mv-espacio-4);
+  align-content: start;
+}
+
+// Celular y tableta: una columna de lectura. Escritorio: datos y contraseña a
+// la izquierda, canales a la derecha.
+.contenido {
   max-width: var(--mv-ancho-lectura);
+
+  @include pq.desde-escritorio {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    max-width: var(--mv-ancho-contenido);
+  }
 }
 
 .cuerpo,

@@ -21,7 +21,8 @@ export interface RespuestaOpcionCatalogo {
 }
 
 /** Tipos de catálogo de negocio soportados por `GET /api/catalogos/opciones`. */
-export type TipoCatalogo = 'PRESENTACION_MEDICAMENTO' | 'UNIDAD_DOSIS' | 'DIA_SEMANA';
+export type TipoCatalogo =
+  'PRESENTACION_MEDICAMENTO' | 'UNIDAD_DOSIS' | 'DIA_SEMANA' | 'PARENTESCO';
 
 /** Acceso a los catálogos de referencia (`/api/catalogos`). */
 @Injectable({ providedIn: 'root' })

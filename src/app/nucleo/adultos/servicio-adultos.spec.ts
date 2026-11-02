@@ -10,7 +10,8 @@ function contacto(idContacto: number): RespuestaContacto {
     idContacto,
     idAdultoMayor: 2,
     nombreContacto: 'Juana Pérez',
-    parentesco: 'Hija',
+    idParentesco: 33,
+    parentesco: 'Hijo',
     telefono: '+56911111111',
     esPrincipal: false,
     idEstado: 1,
@@ -47,6 +48,24 @@ describe('ServicioAdultos', () => {
     );
     expect(conParametro.request.params.get('incluirInactivos')).toBe('true');
     conParametro.flush([]);
+  });
+
+  it('crearEnviaElPerfilConSuContactoPrincipal', () => {
+    const solicitud = {
+      nombreCompleto: 'Rosa Díaz',
+      codigoInterno: null,
+      fechaNacimiento: '1944-02-01',
+      notasEmergencia: null,
+      observacionesGenerales: null,
+      contactoPrincipal: { nombre: 'Pedro Díaz', idParentesco: 33, telefono: '+56912345678' },
+    };
+    servicio.crear(1, solicitud).subscribe();
+
+    const peticion = http.expectOne(
+      (req) => req.method === 'POST' && req.url.endsWith('/api/grupos/1/adultos'),
+    );
+    expect(peticion.request.body).toEqual(solicitud);
+    peticion.flush({});
   });
 
   it('desactivarContactoEnviaElNuevoPrincipal', () => {

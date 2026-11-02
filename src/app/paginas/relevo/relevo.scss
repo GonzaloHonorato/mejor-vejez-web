@@ -41,7 +41,9 @@
   @include pq.desde-escritorio {
     grid-template-columns: repeat(2, minmax(0, 1fr));
 
-    > :only-child {
+    // Con la grilla de reasignar, tareas y alertas van una bajo la otra.
+    > :only-child,
+    > .ancho-completo {
       grid-column: 1 / -1;
     }
   }

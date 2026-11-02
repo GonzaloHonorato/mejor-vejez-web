@@ -1,6 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 
-import { erroresDeCampos, mensajeDeError } from './mensaje-de-error';
+import { describirCon, erroresDeCampos, mensajeDeError } from './mensaje-de-error';
 
 function errorHttp(status: number, cuerpo: unknown): HttpErrorResponse {
   return new HttpErrorResponse({ status, error: cuerpo, url: 'https://api.x.cl/api/grupos' });
@@ -53,5 +53,17 @@ describe('erroresDeCampos', () => {
 
   it('devuelveVacioSinErroresDeCampo', () => {
     expect(erroresDeCampos(errorHttp(500, {}))).toEqual({});
+  });
+});
+
+describe('describirCon', () => {
+  it('uneLosIdsPresentesEnOrden', () => {
+    expect(describirCon('campo-ayuda', 'campo-error')).toBe('campo-ayuda campo-error');
+    expect(describirCon('campo-ayuda', null)).toBe('campo-ayuda');
+    expect(describirCon(false, 'campo-error')).toBe('campo-error');
+  });
+
+  it('sinNingunIdDevuelveNull', () => {
+    expect(describirCon(null, undefined, false, '')).toBeNull();
   });
 });

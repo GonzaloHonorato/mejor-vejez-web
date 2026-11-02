@@ -50,6 +50,7 @@ function contacto(datos: Partial<RespuestaContacto> = {}): RespuestaContacto {
     idContacto: 1,
     idAdultoMayor: 1,
     nombreContacto: 'Juana Pérez',
+    idParentesco: null,
     parentesco: 'Hija',
     telefono: '+56911111111',
     esPrincipal: true,
@@ -174,14 +175,24 @@ describe('FichaAdulto', () => {
     expect(titulos).toEqual(['Datos', 'Notas de emergencia', 'Observaciones generales']);
   });
 
-  it('administradorTieneUnaAccionPrincipalYElRestoEnMasAcciones', async () => {
+  it('administradorTieneEditarPerfilYElRestoEnElBotonCombinado', async () => {
     const { elemento } = await configurar({});
 
+    const combinado = elemento.querySelector('.mv-encabezado app-boton-dividido')!;
+    expect(combinado.id).toBe('ficha-editar');
     expect(botonConTexto(elemento, 'Editar perfil')?.classList).toContain('mv-boton--primario');
-    const mas = elemento.querySelector('details.mv-mas')!;
-    expect(mas.querySelector('summary')?.textContent).toContain('Más acciones');
-    expect(botonConTexto(mas as HTMLElement, 'Desactivar perfil')).toBeTruthy();
-    expect(botonConTexto(mas as HTMLElement, 'Eliminar')?.classList).toContain('mv-boton--peligro');
+    const segmento = combinado.querySelector('[aria-haspopup="menu"]')!;
+    expect(segmento.getAttribute('aria-label')).toBe('Más acciones para Rosa González');
+    expect(botonConTexto(elemento, 'Editar perfil')?.getAttribute('aria-label')).toBe(
+      'Editar perfil de Rosa González',
+    );
+    const items = Array.from(combinado.querySelectorAll('[role="menuitem"]'));
+    expect(items.map((item) => item.textContent?.trim())).toEqual([
+      'Desactivar perfil',
+      'Eliminar',
+    ]);
+    expect(items[1].classList).toContain('mv-menu__item--peligro');
+    expect(elemento.querySelector('details.mv-mas')).toBeNull();
   });
 
   it('perfilInactivoOfreceReactivarComoAccionPrincipal', async () => {
@@ -189,7 +200,26 @@ describe('FichaAdulto', () => {
 
     expect(botonConTexto(elemento, 'Reactivar perfil')?.classList).toContain('mv-boton--primario');
     expect(botonConTexto(elemento, 'Editar perfil')).toBeFalsy();
+    expect(botonConTexto(elemento, 'Reactivar perfil')?.getAttribute('aria-label')).toBe(
+      'Reactivar perfil de Rosa González',
+    );
+    const items = Array.from(elemento.querySelectorAll('.mv-encabezado [role="menuitem"]'));
+    expect(items.map((item) => item.textContent?.trim())).toEqual(['Eliminar']);
     expect(elemento.querySelector('.mv-encabezado .mv-chip')?.textContent?.trim()).toBe('Inactivo');
+  });
+
+  it('reactivarPerfilEsLaAccionPrincipalDelInactivo', async () => {
+    const { fixture, elemento, servicioAdultos } = await configurar({
+      obtenerImpl: () => of(adulto({ idEstado: 2 })),
+    });
+    servicioAdultos.reactivar.mockReturnValue(of(adulto()));
+
+    botonConTexto(elemento, 'Reactivar perfil')!.click();
+    await fixture.whenStable();
+
+    expect(servicioAdultos.reactivar).toHaveBeenCalledWith(1, 1);
+    expect(botonConTexto(elemento, 'Editar perfil')).toBeTruthy();
+    expect(elemento.textContent).toContain('Perfil reactivado.');
   });
 
   it('mientrasCargaMuestraElEsqueleto', async () => {
@@ -314,7 +344,7 @@ describe('FichaAdulto', () => {
     botonConTexto(elemento, 'Cancelar')!.click();
     await fixture.whenStable();
     const editar = botonConTexto(elemento, 'Editar perfil')!;
-    expect(editar.id).toBe('ficha-editar');
+    expect(editar.closest('#ficha-editar')).toBeTruthy();
     expect(document.activeElement).toBe(editar);
   });
 
@@ -349,6 +379,34 @@ describe('FichaAdulto', () => {
     expect(servicioAdultos.actualizar).not.toHaveBeenCalled();
   });
 
+  it('editarSinFechaDeNacimientoLaPideYNoLlamaALaApi', async () => {
+    const { fixture, elemento, servicioAdultos } = await configurar({
+      obtenerImpl: () => of(adulto({ fechaNacimiento: null })),
+    });
+
+    botonConTexto(elemento, 'Editar perfil')!.click();
+    await fixture.whenStable();
+    elemento.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    const error = elemento.querySelector('#ficha-fecha-nacimiento-error');
+    expect(error?.classList).toContain('mv-campo__error');
+    expect(error?.textContent).toContain('Ingresa la fecha de nacimiento');
+    const campo = elemento.querySelector('#ficha-fecha-nacimiento')!;
+    expect(campo.getAttribute('aria-invalid')).toBe('true');
+    expect(campo.getAttribute('aria-describedby')).toBe('ficha-fecha-nacimiento-error');
+    expect(document.activeElement).toBe(campo);
+    expect(servicioAdultos.actualizar).not.toHaveBeenCalled();
+  });
+
+  it('elTelefonoDelContactoPrincipalSeMuestraFormateado', async () => {
+    const { elemento } = await configurar({});
+
+    const enlace = elemento.querySelector<HTMLAnchorElement>('a.telefono')!;
+    expect(enlace.getAttribute('href')).toBe('tel:+56911111111');
+    expect(enlace.textContent?.trim()).toBe('+56 9 1111 1111');
+  });
+
   it('desactivarEvitaElDobleTapYMuestraConfirmacion', async () => {
     const { fixture, elemento, servicioAdultos } = await configurar({});
     const sujeto = new Subject<RespuestaAdultoMayor>();
@@ -361,13 +419,18 @@ describe('FichaAdulto', () => {
 
     // El doble tap antes de que responda la API solo dispara una llamada, y el botón queda deshabilitado mientras está en vuelo.
     expect(servicioAdultos.desactivar).toHaveBeenCalledTimes(1);
-    expect(boton.disabled).toBe(true);
+    const segmento = elemento.querySelector<HTMLButtonElement>(
+      '.mv-encabezado [aria-haspopup="menu"]',
+    )!;
+    expect(boton.getAttribute('aria-disabled')).toBe('true');
+    expect(segmento.disabled).toBe(true);
 
     sujeto.next(adulto());
     sujeto.complete();
     await fixture.whenStable();
 
-    expect(boton.disabled).toBe(false);
+    expect(boton.getAttribute('aria-disabled')).toBeNull();
+    expect(segmento.disabled).toBe(false);
     const confirmaciones = Array.from(elemento.querySelectorAll('[role="status"]'));
     expect(confirmaciones.some((p) => p.textContent?.includes('Perfil desactivado.'))).toBe(true);
   });

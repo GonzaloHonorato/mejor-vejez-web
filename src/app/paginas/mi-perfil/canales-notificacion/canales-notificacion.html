@@ -64,10 +64,24 @@
               id="canales-whatsapp"
               class="mv-campo__control"
               type="tel"
+              inputmode="tel"
               autocomplete="tel"
-              placeholder="+56912345678"
               formControlName="whatsappDestino"
+              (blur)="formatearWhatsapp()"
+              [attr.aria-invalid]="mensajeCampoWhatsapp() ? true : null"
+              [attr.aria-describedby]="
+                describirCon(
+                  'canales-whatsapp-ayuda',
+                  mensajeCampoWhatsapp() && 'canales-whatsapp-error'
+                )
+              "
             />
+            <p id="canales-whatsapp-ayuda" class="mv-campo__ayuda">{{ ayudaTelefono }}</p>
+            @if (mensajeCampoWhatsapp(); as mensajeWhatsapp) {
+              <p id="canales-whatsapp-error" class="mv-campo__error" role="alert">
+                {{ mensajeWhatsapp }}
+              </p>
+            }
           </div>
 
           <label class="mv-campo mv-campo--casilla">

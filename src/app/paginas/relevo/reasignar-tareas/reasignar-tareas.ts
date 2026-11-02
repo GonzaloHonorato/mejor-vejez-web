@@ -70,6 +70,18 @@ export class ReasignarTareas {
     return this.estados()[idTarea];
   }
 
+  /** Texto visible del botón de cada fila. */
+  protected textoReasignar(idTarea: number): string {
+    return this.estado(idTarea)?.tipo === 'enviando'
+      ? 'Reasignando…'
+      : `Reasignar a ${this.entrante().nombre}`;
+  }
+
+  /** Nombre accesible único: el texto visible más la tarea de la fila. */
+  protected etiquetaReasignar(tarea: RespuestaDetalleRelevo): string {
+    return `${this.textoReasignar(tarea.idReferencia)}, ${tarea.resumen}`;
+  }
+
   /** El botón se muestra mientras no haya un resultado final (ok o "ya asignada"). */
   protected muestraBoton(idTarea: number): boolean {
     const estado = this.estado(idTarea);

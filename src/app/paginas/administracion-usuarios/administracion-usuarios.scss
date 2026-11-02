@@ -72,36 +72,41 @@
   }
 }
 
-.lista-usuarios {
-  --fila-columnas: minmax(0, 1fr) auto auto;
-
-  .editar-usuario {
-    grid-column: 1 / -1;
-    box-shadow: none;
-  }
+// Fila con el formulario de edición, bajo la del usuario: en celular sin
+// tarjeta propia (la tarjeta es el formulario) y sin el estilo de título que
+// la grilla da a la primera celda.
+.fila-edicion {
+  padding: 0;
+  border: 0;
+  box-shadow: none;
 }
 
-.usuario {
-  &__persona {
-    display: flex;
-    align-items: center;
-    gap: var(--mv-espacio-3);
-    min-width: 0;
-  }
+.fila-edicion td {
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+}
 
-  &__chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--mv-espacio-2);
-  }
+// Con un usuario en edición la grilla deja de limitar su alto: el formulario
+// queda entero en el flujo de la página, sin un scroll anidado dentro de la grilla.
+.grilla-usuarios--editando {
+  --grilla-alto: none;
+}
 
-  &__acciones {
-    align-items: flex-start;
+.editar-usuario {
+  width: 100%;
+  box-shadow: none;
+}
 
-    .mv-mas__panel {
-      min-width: 14rem;
-    }
-  }
+.usuario__persona {
+  display: flex;
+  align-items: center;
+  gap: var(--mv-espacio-3);
+  min-width: 0;
+}
+
+.usuario__telefono {
+  white-space: nowrap;
 }
 
 .paginacion {

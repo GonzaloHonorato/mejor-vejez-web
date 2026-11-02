@@ -147,11 +147,26 @@ export class Auditoria implements OnInit {
     return TONO_RESULTADO[evento.codigoResultado] ?? '';
   }
 
-  /** Nombre accesible del detalle: acción, elemento y fecha, para distinguir cada evento. */
+  /** Nombre accesible de "Ver detalles": el texto visible, la acción, el elemento y la fecha. */
   protected etiquetaDetalle(evento: RespuestaEventoAuditoria): string {
-    return `Detalles: ${etiquetaAccion(evento.codigoAccion)}, ${etiquetaEntidad(
+    return `Ver detalles: ${etiquetaAccion(evento.codigoAccion)}, ${etiquetaEntidad(
       evento.tipoEntidad,
     )} ${evento.idEntidad}, ${fechaHoraLegible(evento.fechaEvento)}`;
+  }
+
+  /** Eventos con su fila de detalle desplegada (de la página visible). */
+  private readonly detallesAbiertos = signal<ReadonlySet<number>>(new Set());
+
+  protected detalleAbierto(idEvento: number): boolean {
+    return this.detallesAbiertos().has(idEvento);
+  }
+
+  protected alternarDetalle(idEvento: number): void {
+    this.detallesAbiertos.update((abiertos) => {
+      const siguiente = new Set(abiertos);
+      if (!siguiente.delete(idEvento)) siguiente.add(idEvento);
+      return siguiente;
+    });
   }
 
   protected detallesComoJson(detalles: Record<string, unknown>): string {
@@ -207,6 +222,7 @@ export class Auditoria implements OnInit {
       next: (respuesta) => {
         if (generacion !== this.generacionCarga) return;
         this.elementos.set(respuesta.elementos);
+        this.detallesAbiertos.set(new Set());
         this.total.set(respuesta.total);
         this.cargando.set(false);
       },

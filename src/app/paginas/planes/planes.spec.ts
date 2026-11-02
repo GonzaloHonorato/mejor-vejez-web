@@ -180,13 +180,13 @@ describe('Planes', () => {
 
     expect(servicioPlanes.listar).toHaveBeenCalledWith(1, { idAdulto: undefined, incluirInactivos: false });
 
-    const tarjetas = Array.from(elemento.querySelectorAll('.lista-planes .mv-fila'));
+    const tarjetas = Array.from(elemento.querySelectorAll('.mv-grilla tbody tr'));
     expect(tarjetas).toHaveLength(2);
 
     expect(tarjetas[0].textContent).toContain('Plan mañana');
     expect(tarjetas[0].textContent).toContain('Rosa González');
     expect(tarjetas[0].textContent).toContain('2');
-    expect(tarjetas[0].querySelector('a.mv-fila__titulo')?.getAttribute('href')).toBe('/planes/1');
+    expect(tarjetas[0].querySelector('a.mv-grilla__titulo')?.getAttribute('href')).toBe('/planes/1');
     expect(tarjetas[0].textContent).not.toContain('Inactivo');
 
     expect(tarjetas[1].textContent).toContain('Plan noche');
@@ -474,7 +474,7 @@ describe('Planes', () => {
     const otro = plan({ idPlan: 2, nombrePlan: 'Plan mañana', nombreAdulto: 'Pedro Soto' });
     const { elemento } = await configurar({ planesIniciales: [plan(), otro] });
 
-    const enlaces = Array.from(elemento.querySelectorAll<HTMLAnchorElement>('a.mv-fila__titulo'));
+    const enlaces = Array.from(elemento.querySelectorAll<HTMLAnchorElement>('a.mv-grilla__titulo'));
     expect(enlaces.map((a) => a.getAttribute('href'))).toEqual(['/planes/1', '/planes/2']);
     expect(enlaces.map((a) => a.getAttribute('aria-label'))).toEqual([
       'Plan mañana, Rosa González',
@@ -483,15 +483,47 @@ describe('Planes', () => {
     expect(elemento.textContent).not.toContain('Ver plan');
   });
 
+  it('listaEnGrillaConColumnasYRolesExplicitos', async () => {
+    const { elemento } = await configurar({ planesIniciales: [plan()] });
+
+    const tabla = elemento.querySelector('.mv-grilla table.mv-grilla__tabla')!;
+    expect(tabla.getAttribute('role')).toBe('table');
+    const encabezados = Array.from(tabla.querySelectorAll('th')).map((th) => th.textContent?.trim());
+    expect(encabezados).toEqual(['Plan', 'Adulto mayor', 'Medicamentos activos', 'Vigencia', 'Estado']);
+    expect(Array.from(tabla.querySelectorAll('th')).every((th) => th.getAttribute('role') === 'columnheader')).toBe(true);
+    expect(tabla.querySelector('thead')?.getAttribute('role')).toBe('rowgroup');
+    expect(tabla.querySelector('tbody')?.getAttribute('role')).toBe('rowgroup');
+
+    const fila = tabla.querySelector('tbody tr')!;
+    expect(fila.getAttribute('role')).toBe('row');
+    const celdas = Array.from(fila.querySelectorAll('td'));
+    expect(celdas.every((td) => td.getAttribute('role') === 'cell')).toBe(true);
+    expect(celdas.slice(1).map((td) => td.getAttribute('data-etiqueta'))).toEqual([
+      'Adulto mayor',
+      'Medicamentos activos',
+      'Vigencia',
+      'Estado',
+    ]);
+    expect(celdas[2].textContent?.trim()).toBe('2');
+    expect(celdas[3].textContent).toContain('Desde');
+    expect(elemento.querySelector('.mv-mas, details')).toBeFalsy();
+    // Un solo nombre: el de la región con scroll (la tabla no repite el suyo).
+    const regionGrilla = elemento.querySelector('.mv-grilla[role="region"]')!;
+    expect(regionGrilla.getAttribute('aria-label') ?? regionGrilla.getAttribute('aria-labelledby')).toBeTruthy();
+    const tablaGrilla = regionGrilla.querySelector('table')!;
+    expect(['aria-label', 'aria-labelledby'].some((a) => tablaGrilla.hasAttribute(a))).toBe(false);
+    expect(tablaGrilla.querySelector('caption')).toBeNull();
+  });
+
   it('chipDeEstadoPorPlan', async () => {
     const inactivo = plan({ idPlan: 2, nombrePlan: 'Plan noche', idEstado: 2 });
     const { elemento } = await configurar({ planesIniciales: [plan(), inactivo] });
 
-    const chips = Array.from(elemento.querySelectorAll('.lista-planes .mv-chip')).map((c) =>
+    const chips = Array.from(elemento.querySelectorAll('.mv-grilla .mv-chip')).map((c) =>
       c.textContent?.trim(),
     );
     expect(chips).toEqual(['Activo', 'Inactivo']);
-    expect(elemento.querySelector('.lista-planes .mv-chip--exito')?.textContent).toContain('Activo');
+    expect(elemento.querySelector('.mv-grilla .mv-chip--exito')?.textContent).toContain('Activo');
   });
 
   it('nuevoPlanDespliegaYPliegaElFormulario', async () => {

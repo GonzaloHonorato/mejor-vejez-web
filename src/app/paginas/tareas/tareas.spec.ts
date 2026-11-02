@@ -266,7 +266,7 @@ describe('Tareas', () => {
       ],
     });
 
-    const enlaces = Array.from(elemento.querySelectorAll<HTMLAnchorElement>('.lista-tareas a.mv-fila__titulo'));
+    const enlaces = Array.from(elemento.querySelectorAll<HTMLAnchorElement>('.mv-grilla a.mv-grilla__titulo'));
     expect(enlaces).toHaveLength(2);
     expect(enlaces[0].textContent?.trim()).toBe('Comprar Losartán');
     expect(enlaces[0].getAttribute('href')).toBe('/tareas/1');
@@ -354,7 +354,7 @@ describe('Tareas', () => {
     select.dispatchEvent(new Event('change'));
     await fixture.whenStable();
 
-    const titulos = Array.from(elemento.querySelectorAll('.lista-tareas .mv-fila__titulo')).map((p) =>
+    const titulos = Array.from(elemento.querySelectorAll('.mv-grilla .mv-grilla__titulo')).map((p) =>
       p.textContent?.trim(),
     );
     expect(titulos).toEqual(['Tarea en curso']);
@@ -376,7 +376,7 @@ describe('Tareas', () => {
     servicioTareas.listar.mockClear();
     const buscar = elemento.querySelector<HTMLInputElement>('#tareas-buscar')!;
     const titulosVisibles = () =>
-      Array.from(elemento.querySelectorAll('.lista-tareas .mv-fila__titulo')).map((p) => p.textContent?.trim());
+      Array.from(elemento.querySelectorAll('.mv-grilla .mv-grilla__titulo')).map((p) => p.textContent?.trim());
 
     for (const [texto, esperado] of [
       ['LOSARTAN', ['Comprar Losartán']],
@@ -410,7 +410,7 @@ describe('Tareas', () => {
     await fixture.whenStable();
 
     expect(buscar.value).toBe('');
-    expect(elemento.querySelectorAll('.lista-tareas .mv-fila')).toHaveLength(1);
+    expect(elemento.querySelectorAll('.mv-grilla tbody tr')).toHaveLength(1);
   });
 
   it('limpiarFiltrosTambienQuitaAdultoYSoloMisTareas', async () => {
@@ -459,15 +459,107 @@ describe('Tareas', () => {
       ],
     });
 
-    const fila = elemento.querySelector('.lista-tareas .mv-fila')!;
-    expect(fila.querySelector('.mv-fila__dato')?.textContent?.trim()).toBe('08:00');
+    const fila = elemento.querySelector('.mv-grilla tbody tr')!;
+    expect(fila.querySelector('.mv-grilla__celda--dato')?.textContent?.trim()).toBe('08:00');
     expect(fila.textContent).toContain('Cita o control médico');
     expect(fila.textContent).toContain('Rosa González');
     expect(fila.textContent).toContain('Patricia Silva');
     expect(fila.querySelector('.mv-chip--peligro')?.textContent?.trim()).toBe('Atrasada');
     expect(fila.querySelector('.mv-chip--alerta')?.textContent?.trim()).toBe('Pendiente');
-    const detalle = fila.querySelector<HTMLAnchorElement>('a.mv-fila__titulo')!;
+    const detalle = fila.querySelector<HTMLAnchorElement>('a.mv-grilla__titulo')!;
     expect(detalle.getAttribute('href')).toBe('/tareas/1');
+  });
+
+  it('laAgendaEsUnaGrillaConHoraTareaAdultoResponsableEstadoYAcciones', async () => {
+    const { elemento } = await configurar({
+      tareasIniciales: [tarea({ responsable: { idUsuario: 7, nombre: 'Patricia Silva' } })],
+    });
+
+    const grilla = elemento.querySelector('.mv-grilla')!;
+    expect(grilla.getAttribute('role')).toBe('region');
+    expect(grilla.getAttribute('tabindex')).toBe('0');
+    const tabla = grilla.querySelector('table.mv-grilla__tabla')!;
+    expect(tabla.getAttribute('role')).toBe('table');
+    expect(Array.from(tabla.querySelectorAll('thead, tbody')).map((g) => g.getAttribute('role'))).toEqual([
+      'rowgroup',
+      'rowgroup',
+    ]);
+    const encabezados = Array.from(tabla.querySelectorAll('th'));
+    expect(encabezados.map((th) => th.textContent?.trim())).toEqual([
+      'Hora',
+      'Tarea',
+      'Adulto mayor',
+      'Responsable',
+      'Estado',
+      'Acciones',
+    ]);
+    expect(encabezados.every((th) => th.getAttribute('role') === 'columnheader')).toBe(true);
+
+    const fila = tabla.querySelector('tbody tr')!;
+    expect(fila.getAttribute('role')).toBe('row');
+    const celdas = Array.from(fila.querySelectorAll('td'));
+    expect(celdas.every((td) => td.getAttribute('role') === 'cell')).toBe(true);
+    expect(celdas.map((td) => td.getAttribute('data-etiqueta'))).toEqual([
+      'Hora',
+      'Tarea',
+      'Adulto mayor',
+      'Responsable',
+      'Estado',
+      null,
+    ]);
+    expect(celdas[1].querySelector('.mv-grilla__secundario')?.textContent?.trim()).toBe(
+      'Compra o retiro de medicamentos',
+    );
+    expect(celdas[2].textContent?.trim()).toBe('Rosa González');
+    expect(celdas[3].textContent?.trim()).toBe('Patricia Silva');
+    // Un solo nombre: el de la región con scroll (la tabla no repite el suyo).
+    const regionGrilla = elemento.querySelector('.mv-grilla[role="region"]')!;
+    expect(regionGrilla.getAttribute('aria-label') ?? regionGrilla.getAttribute('aria-labelledby')).toBeTruthy();
+    const tablaGrilla = regionGrilla.querySelector('table')!;
+    expect(['aria-label', 'aria-labelledby'].some((a) => tablaGrilla.hasAttribute(a))).toBe(false);
+    expect(tablaGrilla.querySelector('caption')).toBeNull();
+  });
+
+  it('sinResponsableLaColumnaDiceSinAsignar', async () => {
+    const { elemento } = await configurar({ tareasIniciales: [tarea({ responsable: null })] });
+
+    expect(elemento.querySelector('td[data-etiqueta="Responsable"]')?.textContent?.trim()).toBe('Sin asignar');
+  });
+
+  it('cadaFilaConAccionesUsaElBotonCombinadoConEtiquetaUnicaYSinAccionesLaCeldaQuedaVacia', async () => {
+    const { elemento } = await configurar({
+      tareasIniciales: [
+        tarea({ idTarea: 1, titulo: 'Comprar Losartán', fechaHorario: '2026-11-02T11:00:00Z' }),
+        tarea({ idTarea: 2, titulo: 'Comprar Losartán', fechaHorario: '2026-11-02T20:00:00Z', idEstado: 11 }),
+        tarea({ idTarea: 3, titulo: 'Control con geriatra', idEstado: 12 }),
+      ],
+    });
+
+    const celdas = Array.from(elemento.querySelectorAll<HTMLElement>('td.mv-grilla__celda--acciones'));
+    expect(celdas).toHaveLength(3);
+    expect(celdas[0].querySelector('.mv-boton-dividido__principal')?.textContent?.trim()).toBe('Iniciar');
+    expect(celdas[1].querySelector('.mv-boton-dividido__principal')?.textContent?.trim()).toBe('Completar');
+    const etiquetas = celdas
+      .slice(0, 2)
+      .map((celda) => celda.querySelector('.mv-boton-dividido__segmento')?.getAttribute('aria-label'));
+    expect(etiquetas).toEqual(['Más acciones para Comprar Losartán, Rosa González, 08:00', 'Más acciones para Comprar Losartán, Rosa González, 17:00']);
+    const nombresPrincipales = celdas
+      .slice(0, 2)
+      .map((celda) => celda.querySelector('.mv-boton-dividido__principal')?.getAttribute('aria-label'));
+    expect(nombresPrincipales).toEqual(['Iniciar: Comprar Losartán, Rosa González, 08:00', 'Completar: Comprar Losartán, Rosa González, 17:00']);
+    expect(celdas[2].children).toHaveLength(0);
+    expect(celdas[2].textContent?.trim()).toBe('');
+    expect(elemento.querySelector('details')).toBeNull();
+  });
+
+  it('colaboradorSinPermisoSobreLaTareaVeLaCeldaDeAccionesVacia', async () => {
+    const { elemento } = await configurar({
+      activo: grupo(1, 'COLABORADOR'),
+      tareasIniciales: [tarea({ responsable: { idUsuario: 999, nombre: 'Otra persona' } })],
+    });
+
+    const celda = elemento.querySelector<HTMLElement>('td.mv-grilla__celda--acciones')!;
+    expect(celda.children).toHaveLength(0);
   });
 
   it('nuevaTareaEsElBotonPrincipalDelEncabezado', async () => {

@@ -130,39 +130,75 @@
     }
 
     @if (!cargando() && elementos().length > 0) {
-      <ul class="mv-lista lista-eventos">
-        @for (evento of elementos(); track evento.idEvento) {
-          <li class="mv-fila tarjeta-evento">
-            <time class="tarjeta-evento__fecha" [attr.datetime]="evento.fechaEvento">{{
-              fechaHoraLegible(evento.fechaEvento)
-            }}</time>
-            <div class="mv-fila__principal">
-              <p class="mv-fila__titulo tarjeta-evento__accion">{{ etiquetaAccion(evento.codigoAccion) }}</p>
-            </div>
-            <p class="mv-fila__meta tarjeta-evento__entidad">
-              {{ etiquetaEntidad(evento.tipoEntidad) }} · {{ evento.idEntidad }}
-            </p>
-            <p class="tarjeta-evento__actor">{{ evento.actor?.nombre ?? 'Proceso automático' }}</p>
-            <span class="tarjeta-evento__resultado"
-              ><span class="mv-chip {{ tonoResultado(evento) }}">{{
-                descripcionResultado(evento.idResultado)
-              }}</span></span
-            >
-
-            <details class="mv-mas detalles">
-              <summary class="mv-boton mv-boton--texto" [attr.aria-label]="etiquetaDetalle(evento)">
-                Ver detalles
-              </summary>
-              <p class="detalles__codigo">
-                Código de acción: <code class="tarjeta-evento__codigo">{{ evento.codigoAccion }}</code>
-              </p>
-              @if (evento.detalles) {
-                <pre>{{ detallesComoJson(evento.detalles) }}</pre>
+      <div class="mv-grilla" role="region" aria-labelledby="auditoria-actividad" tabindex="0">
+        <table class="mv-grilla__tabla" role="table">
+          <thead role="rowgroup">
+            <tr role="row">
+              <th scope="col" role="columnheader" class="mv-grilla__celda--dato">Fecha</th>
+              <th scope="col" role="columnheader">Evento</th>
+              <th scope="col" role="columnheader">Elemento afectado</th>
+              <th scope="col" role="columnheader">Realizado por</th>
+              <th scope="col" role="columnheader" class="mv-grilla__celda--estado">Resultado</th>
+            </tr>
+          </thead>
+          <tbody role="rowgroup">
+            @for (evento of elementos(); track evento.idEvento) {
+              <tr role="row" class="tarjeta-evento">
+                <td role="cell" class="mv-grilla__celda--dato">
+                  <time class="tarjeta-evento__fecha" [attr.datetime]="evento.fechaEvento">{{
+                    fechaHoraLegible(evento.fechaEvento)
+                  }}</time>
+                </td>
+                <td role="cell" data-etiqueta="Evento">
+                  <span class="mv-grilla__titulo tarjeta-evento__accion">{{
+                    etiquetaAccion(evento.codigoAccion)
+                  }}</span>
+                  <button
+                    type="button"
+                    class="mv-boton mv-boton--texto ver-detalles"
+                    [attr.aria-label]="etiquetaDetalle(evento)"
+                    [attr.aria-expanded]="detalleAbierto(evento.idEvento)"
+                    [attr.aria-controls]="
+                      detalleAbierto(evento.idEvento) ? 'auditoria-detalle-' + evento.idEvento : null
+                    "
+                    (click)="alternarDetalle(evento.idEvento)"
+                  >
+                    Ver detalles
+                  </button>
+                </td>
+                <td role="cell" data-etiqueta="Elemento afectado">
+                  <span class="tarjeta-evento__entidad"
+                    >{{ etiquetaEntidad(evento.tipoEntidad) }} · {{ evento.idEntidad }}</span
+                  >
+                </td>
+                <td role="cell" data-etiqueta="Realizado por">
+                  <span class="tarjeta-evento__actor">{{
+                    evento.actor?.nombre ?? 'Proceso automático'
+                  }}</span>
+                </td>
+                <td role="cell" class="mv-grilla__celda--estado" data-etiqueta="Resultado">
+                  <span class="mv-chip {{ tonoResultado(evento) }}">{{
+                    descripcionResultado(evento.idResultado)
+                  }}</span>
+                </td>
+              </tr>
+              @if (detalleAbierto(evento.idEvento)) {
+                <tr role="row" class="fila-detalle" [id]="'auditoria-detalle-' + evento.idEvento">
+                  <td role="cell" colspan="5" class="detalles">
+                    <p class="detalles__codigo">
+                      Código de acción:
+                      <code class="tarjeta-evento__codigo">{{ evento.codigoAccion }}</code>
+                    </p>
+                    @if (evento.detalles) {
+                      <pre>{{ detallesComoJson(evento.detalles) }}</pre>
+                    }
+                  </td>
+                </tr>
               }
-            </details>
-          </li>
-        }
-      </ul>
+            }
+          </tbody>
+        </table>
+      </div>
     }
 
     @if (total() > 0) {

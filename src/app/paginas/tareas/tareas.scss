@@ -114,49 +114,8 @@
   color: var(--mv-color-secundario);
 }
 
-.lista-tareas {
-  --fila-columnas: 4.5rem minmax(0, 1fr) 9rem minmax(auto, 18rem);
-
-  .mv-fila {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: center;
-  }
-
-  .mv-fila__principal,
-  .mv-fila__acciones {
-    grid-column: 1 / -1;
-  }
-
-  .mv-fila__acciones {
-    align-items: flex-start;
-  }
-
-  @include pq.desde-escritorio {
-    .mv-fila {
-      grid-template-columns: var(--fila-columnas);
-    }
-
-    .mv-fila__principal,
-    .mv-fila__acciones {
-      grid-column: auto;
-    }
-
-    .mv-fila__acciones {
-      justify-content: flex-end;
-    }
-  }
-}
-
 .chips {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
   gap: var(--mv-espacio-1);
-  grid-area: 1 / 2;
-
-  @include pq.desde-escritorio {
-    justify-content: flex-start;
-    grid-area: auto;
-  }
 }

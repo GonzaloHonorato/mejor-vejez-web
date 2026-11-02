@@ -223,77 +223,82 @@
     }
 
     @if (integrantes().length > 0) {
-      <ul class="mv-lista lista-integrantes">
-        @for (integrante of integrantesOrdenados(); track integrante.idIntegrante) {
-          <li class="mv-fila integrante" [class.integrante--inactivo]="!estaActivo(integrante)">
-            <span class="mv-avatar" aria-hidden="true">{{ inicialesDe(integrante.nombre) }}</span>
-            <div class="mv-fila__principal">
-              <p class="mv-fila__titulo">{{ integrante.nombre }}</p>
-              <p class="mv-fila__meta">
-                {{ integrante.email }}
-                @if (integrante.idUsuario === idUsuario()) {
-                  · Tú
-                }
-              </p>
-            </div>
-
-            <span class="rol">
-              <span class="oculto">Rol: </span>
-              <span class="mv-chip" [class.mv-chip--info]="integrante.nombreRol === 'COORDINADOR'">
-                {{ etiquetaRol(integrante.nombreRol) }}
-              </span>
-            </span>
-
-            <span class="estado">
-              <span class="mv-chip" [class.mv-chip--exito]="estaActivo(integrante)">
-                {{ estaActivo(integrante) ? 'Activo' : 'Inactivo' }}
-              </span>
-            </span>
-
-            @if (puedeAdministrar()) {
-              <details class="mv-mas mas">
-                <summary
-                  class="mv-boton mv-boton--texto"
-                  [attr.aria-label]="'Más acciones: ' + integrante.nombre"
-                >
-                  <app-icono nombre="mas" aria-hidden="true" />
-                  Más acciones
-                </summary>
-                <div class="mv-mas__panel">
-                  <div class="mv-campo">
-                    <label class="mv-campo__etiqueta" [attr.for]="'integrante-rol-' + integrante.idIntegrante">
-                      Rol
-                    </label>
+      <div class="mv-grilla" role="region" aria-labelledby="integrantes-lista-titulo" tabindex="0">
+        <table class="mv-grilla__tabla" role="table">
+          <thead role="rowgroup">
+            <tr role="row">
+              <th scope="col" role="columnheader">Integrante</th>
+              <th scope="col" role="columnheader">Rol</th>
+              <th scope="col" role="columnheader" class="mv-grilla__celda--estado">Estado</th>
+              <th scope="col" role="columnheader" class="mv-grilla__celda--acciones">Acciones</th>
+            </tr>
+          </thead>
+          <tbody role="rowgroup">
+            @for (integrante of integrantesOrdenados(); track integrante.idIntegrante) {
+              <tr role="row" class="integrante" [class.integrante--inactivo]="!estaActivo(integrante)">
+                <td role="cell">
+                  <div class="persona">
+                    <span class="mv-avatar" aria-hidden="true">{{ inicialesDe(integrante.nombre) }}</span>
+                    <div>
+                      <span class="mv-grilla__titulo">{{ integrante.nombre }}</span>
+                      <span class="mv-grilla__secundario">
+                        {{ integrante.email }}
+                        @if (integrante.idUsuario === idUsuario()) {
+                          · Tú
+                        }
+                      </span>
+                    </div>
+                  </div>
+                </td>
+                <td role="cell" class="rol" data-etiqueta="Rol">
+                  @if (puedeAdministrar() && editandoRol() === integrante.idIntegrante) {
                     <select
                       class="mv-campo__control"
                       [id]="'integrante-rol-' + integrante.idIntegrante"
                       [formControl]="controlRol(integrante)"
-                      [attr.aria-label]="'Rol de ' + integrante.nombre"
+                      [attr.aria-label]="'Rol de ' + nombreDistintivo(integrante)"
                       (change)="cambiarRol(integrante, controlRol(integrante).value)"
+                      (keydown.escape)="cerrarEdicionRol(integrante)"
                     >
                       @for (rol of roles(); track rol.idRol) {
                         <option [ngValue]="rol.idRol">{{ etiquetaRol(rol.nombreRol) }}</option>
                       }
                     </select>
-                  </div>
-                  @if (estaActivo(integrante)) {
-                    <button type="button" class="mv-boton" (click)="desactivar(integrante)">
-                      Desactivar
-                    </button>
                   } @else {
-                    <button type="button" class="mv-boton" (click)="reactivar(integrante)">
-                      Reactivar
-                    </button>
+                    <span class="mv-chip" [class.mv-chip--info]="integrante.nombreRol === 'COORDINADOR'">
+                      {{ etiquetaRol(integrante.nombreRol) }}
+                    </span>
                   }
-                  <button type="button" class="mv-boton mv-boton--peligro" (click)="eliminar(integrante)">
-                    Eliminar
-                  </button>
-                </div>
-              </details>
+                </td>
+                <td role="cell" class="mv-grilla__celda--estado estado" data-etiqueta="Estado">
+                  <span class="mv-chip" [class.mv-chip--exito]="estaActivo(integrante)">
+                    {{ estaActivo(integrante) ? 'Activo' : 'Inactivo' }}
+                  </span>
+                </td>
+                <td
+                  role="cell"
+                  class="mv-grilla__celda--acciones"
+                  [id]="'integrante-acciones-' + integrante.idIntegrante"
+                >@if (puedeAdministrar()) {
+                    <app-boton-dividido
+                      variante="secundario"
+                      [principal]="{ etiqueta: editandoRol() === integrante.idIntegrante ? 'Listo' : 'Editar' }"
+                      [acciones]="accionesMenu(integrante)"
+                      [etiquetaPrincipal]="
+                        editandoRol() === integrante.idIntegrante
+                          ? 'Listo, rol de ' + nombreDistintivo(integrante)
+                          : 'Editar a ' + nombreDistintivo(integrante)
+                      "
+                      [etiquetaMenu]="'Más acciones para ' + nombreDistintivo(integrante)"
+                      (principal)="alternarEdicionRol(integrante)"
+                      (accion)="ejecutar(integrante, $event)"
+                    />
+                  }</td>
+              </tr>
             }
-          </li>
-        }
-      </ul>
+          </tbody>
+        </table>
+      </div>
       <p class="ayuda">Desactivar una membresía no elimina la cuenta de la persona.</p>
     }
   </section>

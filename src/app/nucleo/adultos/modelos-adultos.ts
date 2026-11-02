@@ -3,6 +3,9 @@ export interface RespuestaContacto {
   idContacto: number;
   idAdultoMayor: number;
   nombreContacto: string;
+  /** Opción del catálogo `PARENTESCO`; null en contactos anteriores al catálogo. */
+  idParentesco: number | null;
+  /** Descripción del parentesco, o el texto libre de un contacto antiguo. */
   parentesco: string | null;
   telefono: string;
   esPrincipal: boolean;

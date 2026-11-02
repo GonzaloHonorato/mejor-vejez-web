@@ -200,32 +200,60 @@
       }
 
       @if (elementos().length > 0) {
-        <ul class="mv-lista lista-relevos">
-          @for (relevo of elementos(); track relevo.idRelevo) {
-            <li class="mv-fila">
-              <div class="mv-fila__principal">
-                <a
-                  class="mv-fila__titulo mv-fila__enlace"
-                  [routerLink]="['/relevos', relevo.idRelevo]"
-                  [attr.aria-label]="etiquetaEnlace(relevo)"
-                  >{{ relevo.nombreAdulto }}</a
-                >
-              </div>
-              <p class="personas">
-                <span>{{ relevo.saliente.nombre }}</span>
-                <app-icono nombre="flecha-derecha" aria-hidden="true" />
-                <span class="oculto"> entrega a </span>
-                <span>{{ relevo.entrante.nombre }}</span>
-              </p>
-              <p class="mv-fila__meta">{{ fechaHoraLegible(relevo.fechaTraspaso) }}</p>
-              <span class="estado"
-                ><span class="mv-chip {{ tonoEstado(relevo) }}">{{
-                  descripcionEstadoRelevo(relevo.idEstado)
-                }}</span></span
-              >
-            </li>
-          }
-        </ul>
+        <div class="mv-grilla" role="region" aria-labelledby="relevos-lista-titulo" tabindex="0">
+          <table class="mv-grilla__tabla" role="table">
+            <thead role="rowgroup">
+              <tr role="row">
+                <th scope="col" role="columnheader">Adulto mayor</th>
+                <th scope="col" role="columnheader">Entrega → recibe</th>
+                <th scope="col" role="columnheader" class="mv-grilla__celda--dato">Fecha y hora</th>
+                <th scope="col" role="columnheader" class="mv-grilla__celda--estado">Estado</th>
+                <th scope="col" role="columnheader" class="mv-grilla__celda--acciones">Acciones</th>
+              </tr>
+            </thead>
+            <tbody role="rowgroup">
+              @for (relevo of elementos(); track relevo.idRelevo) {
+                <tr role="row">
+                  <td role="cell">
+                    <a
+                      class="mv-grilla__titulo mv-fila__enlace"
+                      [routerLink]="['/relevos', relevo.idRelevo]"
+                      [attr.aria-label]="etiquetaEnlace(relevo)"
+                      >{{ relevo.nombreAdulto }}</a
+                    >
+                  </td>
+                  <td role="cell" data-etiqueta="Entrega → recibe">
+                    <p class="personas">
+                      <span>{{ relevo.saliente.nombre }}</span>
+                      <app-icono nombre="flecha-derecha" aria-hidden="true" />
+                      <span class="oculto"> entrega a </span>
+                      <span>{{ relevo.entrante.nombre }}</span>
+                    </p>
+                  </td>
+                  <td role="cell" class="mv-grilla__celda--dato" data-etiqueta="Fecha y hora">
+                    <time [attr.datetime]="relevo.fechaTraspaso">{{
+                      fechaHoraLegible(relevo.fechaTraspaso)
+                    }}</time>
+                  </td>
+                  <td role="cell" class="mv-grilla__celda--estado" data-etiqueta="Estado">
+                    <span class="mv-chip {{ tonoEstado(relevo) }}">{{
+                      descripcionEstadoRelevo(relevo.idEstado)
+                    }}</span>
+                  </td>
+                  <td role="cell" class="mv-grilla__celda--acciones acciones">
+                    <a
+                      class="mv-boton"
+                      [routerLink]="['/relevos', relevo.idRelevo]"
+                      tabindex="-1"
+                      aria-hidden="true"
+                      >Ver relevo</a
+                    >
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
       }
 
       @if (!cargando() && hayMas()) {

@@ -1,8 +1,10 @@
-// Acciones de una tarea: una principal y el resto en "Más acciones".
+// Acciones de una tarea: el botón combinado (principal + menú) o el campo de observación.
 // Botones, campos y avisos son las clases globales `mv-`.
 
 :host {
   display: block;
+  // En la celda de acciones de la grilla (flex): ocupa el ancho de la tarjeta.
+  flex: 1 1 auto;
 }
 
 .acciones-tarea {

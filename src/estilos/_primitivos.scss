@@ -59,6 +59,7 @@
 
   // Sombras — suave, del color azul-900 con muy poca opacidad
   --mv-p-sombra-suave: 0 2px 8px rgba(11, 37, 69, 0.06);
+  --mv-p-sombra-flotante: 0 8px 24px rgba(11, 37, 69, 0.16); // menús que flotan sobre el contenido
 
   // Movimiento
   --mv-p-duracion-pulso: 1.6s;
@@ -83,5 +84,6 @@
   --mv-p-texto-6: clamp(1.75rem, 5vw, 1.875rem); // 28px (móvil) → 30px (escritorio) — h1
 
   // Tipografía — peso
+  --mv-p-peso-normal: 400;
   --mv-p-peso-negrita: 700;
 }

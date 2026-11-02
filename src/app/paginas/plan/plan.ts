@@ -1,9 +1,10 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { Component, Injector, OnInit, afterNextRender, computed, effect, inject, signal } from '@angular/core';
 import { FormControl, NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { FormularioDetalle } from './formulario-detalle/formulario-detalle';
+import { AccionMenu, AccionPrincipal, BotonDividido } from '../../compartido/boton-dividido/boton-dividido';
 import { Icono } from '../../compartido/icono/icono';
 import { puedeAdministrarGrupo } from '../../nucleo/adultos/permisos-adultos';
 import { RespuestaOpcionCatalogo, ServicioCatalogos } from '../../nucleo/catalogos/servicio-catalogos';
@@ -34,6 +35,41 @@ const ABREVIATURA_DIA: Record<string, string> = {
   DOMINGO: 'Dom',
 };
 
+/** Una fila de la grilla de medicamentos, con sus acciones ya resueltas según el estado. */
+interface FilaDetalle {
+  detalle: RespuestaDetallePlan;
+  /** Nombre único en el plan para los nombres accesibles (ver `nombresUnicos`). */
+  nombre: string;
+  inactivo: boolean;
+  principal: AccionPrincipal;
+  acciones: AccionMenu[];
+  etiquetaPrincipal: string;
+  etiquetaMenu: string;
+  editandoCantidad: boolean;
+}
+
+/**
+ * Nombre de cada medicamento, único dentro del plan: el base (medicamento +
+ * concentración). Si el base se repite: más el horario y " (inactivo)" si
+ * lo está; y si aún coincide con otro, más la fecha de inicio. Sin repetidos,
+ * el nombre es el base.
+ */
+function nombresUnicos(detalles: RespuestaDetallePlan[], inactivo: (d: RespuestaDetallePlan) => boolean): string[] {
+  const contar = (nombres: string[]) =>
+    nombres.reduce((mapa, n) => mapa.set(n, (mapa.get(n) ?? 0) + 1), new Map<string, number>());
+  const bases = detalles.map((d) => (d.concentracion ? `${d.nombreMedicamento} ${d.concentracion}` : d.nombreMedicamento));
+  const repeticionesBase = contar(bases);
+  const nombres = detalles.map((d, i) => {
+    if (repeticionesBase.get(bases[i])! === 1) return bases[i];
+    const conHorario = `${bases[i]}, ${textoHorario(d.horas)}`;
+    return inactivo(d) ? `${conHorario} (inactivo)` : conHorario;
+  });
+  const repeticiones = contar(nombres);
+  return nombres.map((n, i) =>
+    repeticiones.get(n)! > 1 ? `${n}, desde ${fechaConAnio(detalles[i].fechaInicio)}` : n,
+  );
+}
+
 /**
  * Texto de lectura del horario guardado (`horas` expandidas): reconstruye
  * el contrato con `reconstruirHorario` (igual que `FormularioDetalle` al
@@ -59,7 +95,7 @@ function textoHorario(horas: string[]): string {
  */
 @Component({
   selector: 'app-plan',
-  imports: [ReactiveFormsModule, RouterLink, FormularioDetalle, Icono],
+  imports: [ReactiveFormsModule, RouterLink, FormularioDetalle, Icono, BotonDividido],
   templateUrl: './plan.html',
   styleUrl: './plan.scss',
 })
@@ -71,6 +107,7 @@ export class Plan implements OnInit {
   private readonly servicioGrupos = inject(ServicioGrupos);
   private readonly servicioYo = inject(ServicioYo);
   private readonly fb = inject(NonNullableFormBuilder);
+  private readonly injector = inject(Injector);
 
   protected readonly grupoActivo = inject(ServicioGrupoActivo);
   protected readonly activo = this.grupoActivo.activo;
@@ -160,6 +197,65 @@ export class Plan implements OnInit {
   /** idDetallePlan en vuelo (desactivar/reactivar/cantidad): evita el doble tap de ESA fila. */
   private readonly idsEnAccion = signal<ReadonlySet<number>>(new Set());
   private readonly controlesCantidad = new Map<number, FormControl<number | null>>();
+  /** Detalle con el campo "Cantidad disponible" abierto (se abre desde el menú de la fila). */
+  protected readonly idDetalleCantidad = signal<number | null>(null);
+
+  /** "Medicamentos activos: N de M" en los datos del plan. */
+  protected readonly conteoMedicamentos = computed(() => {
+    const detalles = this.detalles();
+    return {
+      activos: detalles.filter((detalle) => !this.detalleInactivo(detalle)).length,
+      total: detalles.length,
+    };
+  });
+
+  /** Activo: "Editar plan" + Desactivar/Eliminar. Inactivo: "Reactivar plan" + Eliminar. */
+  protected readonly accionPrincipalPlan = computed<AccionPrincipal>(() => ({
+    etiqueta: this.planInactivo() ? 'Reactivar plan' : 'Editar plan',
+  }));
+
+  protected readonly accionesPlan = computed<AccionMenu[]>(() => {
+    const eliminar: AccionMenu = { id: 'eliminar', etiqueta: 'Eliminar', peligro: true };
+    if (this.planInactivo()) return [eliminar];
+    return [
+      { id: 'desactivar', etiqueta: 'Desactivar plan', deshabilitada: this.cambiandoEstadoPlan() },
+      eliminar,
+    ];
+  });
+
+  /**
+   * Filas de la grilla. Activo: "Editar" + cantidad disponible, Desactivar y
+   * Eliminar. Inactivo: "Reactivar" + Eliminar.
+   */
+  protected readonly filasDetalle = computed<FilaDetalle[]>(() => {
+    const puedeEditar = this.puedeEditarMedicamentos();
+    const detalles = this.detalles();
+    const nombres = nombresUnicos(detalles, (d) => this.detalleInactivo(d));
+    return detalles.map((detalle, indice) => {
+      const inactivo = this.detalleInactivo(detalle);
+      const enAccion = this.estaEnAccion(detalle.idDetallePlan);
+      const eliminar: AccionMenu = { id: 'eliminar', etiqueta: 'Eliminar', peligro: true };
+      const nombre = nombres[indice];
+      const etiqueta = inactivo ? 'Reactivar' : 'Editar';
+      return {
+        detalle,
+        nombre,
+        inactivo,
+        principal: { etiqueta },
+        acciones: inactivo
+          ? [eliminar]
+          : [
+              { id: 'cantidad', etiqueta: 'Registrar cantidad disponible' },
+              { id: 'desactivar', etiqueta: 'Desactivar', deshabilitada: enAccion },
+              eliminar,
+            ],
+        etiquetaPrincipal: `${etiqueta} ${nombre}`,
+        etiquetaMenu: `Más acciones para ${nombre}`,
+        editandoCantidad:
+          puedeEditar && !inactivo && this.idDetalleCantidad() === detalle.idDetallePlan,
+      };
+    });
+  });
 
   /** idGrupo con el que ya se cargó (o se intentó cargar) el plan; ver `FichaAdulto` para la explicación completa del patrón. */
   private idGrupoCargado: number | null = null;
@@ -392,6 +488,11 @@ export class Plan implements OnInit {
     });
   }
 
+  protected ejecutarAccionPlan(id: string): void {
+    if (id === 'desactivar') this.desactivarPlan();
+    else if (id === 'eliminar') this.eliminarPlan();
+  }
+
   protected eliminarPlan(): void {
     const grupo = this.activo();
     const plan = this.plan();
@@ -416,19 +517,64 @@ export class Plan implements OnInit {
     this.agregandoDetalle.set(true);
   }
 
+  /** Abre el formulario bajo la grilla y enfoca su primer campo. */
   protected editarDetalle(detalle: RespuestaDetallePlan): void {
     this.agregandoDetalle.set(false);
     this.detalleEnEdicion.set(detalle);
+    afterNextRender(
+      () =>
+        document
+          .querySelector<HTMLElement>('app-formulario-detalle form :is(input, select, textarea):not(:disabled)')
+          ?.focus(),
+      { injector: this.injector },
+    );
   }
 
+  /** Cierra el formulario; si editaba un medicamento, el foco vuelve al botón de su fila. */
   protected cerrarFormulario(): void {
+    const editado = this.detalleEnEdicion();
     this.agregandoDetalle.set(false);
     this.detalleEnEdicion.set(null);
+    if (editado) this.enfocarBotonDeFila(editado, 'principal');
   }
 
   protected alGuardarDetalle(): void {
     this.cerrarFormulario();
     this.recargarPlan();
+  }
+
+  protected ejecutarAccionDetalle(detalle: RespuestaDetallePlan, id: string): void {
+    if (id === 'cantidad') this.abrirCantidad(detalle);
+    else if (id === 'desactivar') this.desactivarDetalle(detalle);
+    else if (id === 'eliminar') this.eliminarDetalle(detalle);
+  }
+
+  /** Abre el campo "Cantidad disponible" bajo la fila y lo enfoca. */
+  protected abrirCantidad(detalle: RespuestaDetallePlan): void {
+    this.idDetalleCantidad.set(detalle.idDetallePlan);
+    afterNextRender(
+      () => document.getElementById(`detalle-cantidad-${detalle.idDetallePlan}`)?.focus(),
+      { injector: this.injector },
+    );
+  }
+
+  /** Cierra el campo y devuelve el foco al menú de la fila. */
+  protected cerrarCantidad(detalle: RespuestaDetallePlan): void {
+    this.idDetalleCantidad.set(null);
+    this.enfocarBotonDeFila(detalle, 'segmento');
+  }
+
+  /** Enfoca, tras el render, un lado del botón dividido de la fila del medicamento. */
+  private enfocarBotonDeFila(detalle: RespuestaDetallePlan, lado: 'principal' | 'segmento'): void {
+    afterNextRender(
+      () =>
+        document
+          .querySelector<HTMLElement>(
+            `[data-id-detalle="${detalle.idDetallePlan}"] .mv-boton-dividido__${lado}`,
+          )
+          ?.focus(),
+      { injector: this.injector },
+    );
   }
 
   protected desactivarDetalle(detalle: RespuestaDetallePlan): void {

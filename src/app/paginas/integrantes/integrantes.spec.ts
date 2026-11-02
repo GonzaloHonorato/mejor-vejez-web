@@ -132,6 +132,13 @@ async function abrirAgregar(fixture: ComponentFixture<Integrantes>): Promise<voi
   await fixture.whenStable();
 }
 
+/** Pulsa "Editar" (la acción principal del botón combinado) de la fila. */
+async function editarRol(fixture: ComponentFixture<Integrantes>, fila: HTMLElement): Promise<HTMLSelectElement> {
+  fila.querySelector<HTMLButtonElement>('.mv-boton-dividido__principal')!.click();
+  await fixture.whenStable();
+  return fila.querySelector<HTMLSelectElement>('.rol select')!;
+}
+
 function enviarAgregar(elemento: HTMLElement): void {
   elemento.querySelector<HTMLFormElement>('#integrantes-agregar form')!.dispatchEvent(new Event('submit'));
 }
@@ -156,7 +163,7 @@ describe('Integrantes', () => {
 
     const filas = Array.from(elemento.querySelectorAll('.integrante'));
     expect(filas).toHaveLength(2);
-    expect(filas[0].querySelector('select')).toBeTruthy();
+    expect(filas[0].querySelector('app-boton-dividido')).toBeTruthy();
     expect(botonConTexto(filas[0] as HTMLElement, 'Desactivar')).toBeTruthy();
     expect(botonConTexto(filas[0] as HTMLElement, 'Eliminar')).toBeTruthy();
     expect(botonConTexto(elemento, 'Salir del grupo')).toBeTruthy();
@@ -231,6 +238,7 @@ describe('Integrantes', () => {
     expect(elemento.querySelector('#integrantes-abrir-agregar')).toBeFalsy();
     const fila = elemento.querySelector('.integrante') as HTMLElement;
     expect(fila.querySelector('select')).toBeFalsy();
+    expect(fila.querySelector('app-boton-dividido')).toBeFalsy();
     expect(botonConTexto(fila, 'Desactivar')).toBeFalsy();
     expect(botonConTexto(fila, 'Eliminar')).toBeFalsy();
     // Puede dejar el grupo aunque no administre: no es una acción de administración.
@@ -308,12 +316,12 @@ describe('Integrantes', () => {
   });
 
   it('selectDeRolMuestraElRolReal', async () => {
-    const { elemento } = await configurar({
+    const { fixture, elemento } = await configurar({
       miRol: 'COORDINADOR',
       integrantesIniciales: [integrante(2, 'Beto', 2, 'COLABORADOR')],
     });
 
-    const select = elemento.querySelector<HTMLSelectElement>('.integrante select')!;
+    const select = await editarRol(fixture, elemento.querySelector<HTMLElement>('.integrante')!);
     expect(select.selectedOptions[0]?.textContent?.trim()).toBe('Colaborador/a');
   });
 
@@ -333,12 +341,13 @@ describe('Integrantes', () => {
       ),
     );
 
-    const select = elemento.querySelector<HTMLSelectElement>('.integrante select')!;
+    const select = await editarRol(fixture, elemento.querySelector<HTMLElement>('.integrante')!);
     const opciones = Array.from(select.querySelectorAll('option'));
     select.value = opciones.find((o) => o.textContent?.trim() === 'Colaborador/a')!.value;
     select.dispatchEvent(new Event('change'));
     await fixture.whenStable();
 
+    expect(select.isConnected).toBe(true);
     expect(select.selectedOptions[0]?.textContent?.trim()).toBe('Coordinador/a');
     expect(elemento.querySelector('[role="alert"]')?.textContent).toContain(
       'No se puede cambiar el rol',
@@ -679,11 +688,130 @@ describe('Integrantes', () => {
     expect(beto.textContent).not.toContain('Tú');
     expect(beto.querySelector('.estado .mv-chip')?.textContent).toContain('Inactivo');
 
-    const mas = beto.querySelector('details')!;
-    expect(mas.querySelector('summary')?.getAttribute('aria-label')).toBe('Más acciones: Beto');
-    expect(mas.querySelector('select')).toBeTruthy();
-    expect(botonConTexto(mas, 'Reactivar')).toBeTruthy();
-    expect(botonConTexto(mas, 'Eliminar')).toBeTruthy();
+    const combinado = beto.querySelector<HTMLElement>('app-boton-dividido')!;
+    expect(combinado.querySelector('.mv-boton-dividido__principal')?.textContent?.trim()).toBe('Editar');
+    expect(combinado.querySelector('[aria-haspopup="menu"]')?.getAttribute('aria-label')).toBe(
+      'Más acciones para Beto',
+    );
+    expect(combinado.querySelector('.mv-boton-dividido__principal')?.getAttribute('aria-label')).toBe(
+      'Editar a Beto',
+    );
+    const items = Array.from(combinado.querySelectorAll<HTMLElement>('[role="menuitem"]'));
+    expect(items.map((item) => item.textContent?.trim())).toEqual(['Reactivar', 'Eliminar']);
+    expect(items[1].classList).toContain('mv-menu__item--peligro');
+    expect(beto.querySelector('select')).toBeFalsy();
+  });
+
+  it('conNombresRepetidosLosBotonesDeLaFilaSumanElCorreo', async () => {
+    const { elemento } = await configurar({
+      miRol: 'COORDINADOR',
+      integrantesIniciales: [
+        integrante(1, 'Ana Rojas', 1, 'COORDINADOR'),
+        { ...integrante(2, 'Beto', 2, 'COLABORADOR'), email: 'beto.uno@correo.cl' },
+        { ...integrante(3, 'Beto', 2, 'COLABORADOR'), email: 'beto.dos@correo.cl' },
+      ],
+    });
+
+    const nombres = (selector: string) =>
+      Array.from(elemento.querySelectorAll(`.integrante ${selector}`)).map((b) => b.getAttribute('aria-label'));
+    expect(nombres('.mv-boton-dividido__principal')).toEqual([
+      'Editar a Ana Rojas',
+      'Editar a Beto, beto.uno@correo.cl',
+      'Editar a Beto, beto.dos@correo.cl',
+    ]);
+    expect(nombres('.mv-boton-dividido__segmento')).toEqual([
+      'Más acciones para Ana Rojas',
+      'Más acciones para Beto, beto.uno@correo.cl',
+      'Más acciones para Beto, beto.dos@correo.cl',
+    ]);
+  });
+
+  it('grillaConColumnasIntegranteRolEstadoYAcciones', async () => {
+    const { elemento } = await configurar({
+      miRol: 'COORDINADOR',
+      integrantesIniciales: [integrante(1, 'Ana Rojas', 1, 'COORDINADOR')],
+    });
+
+    const tabla = elemento.querySelector('.mv-grilla table.mv-grilla__tabla')!;
+    expect(tabla.getAttribute('role')).toBe('table');
+    expect(
+      Array.from(tabla.querySelectorAll('th[role="columnheader"]')).map((th) => th.textContent?.trim()),
+    ).toEqual(['Integrante', 'Rol', 'Estado', 'Acciones']);
+    const celdas = Array.from(tabla.querySelectorAll<HTMLElement>('tbody tr[role="row"] td[role="cell"]'));
+    expect(celdas).toHaveLength(4);
+    expect(celdas[1].getAttribute('data-etiqueta')).toBe('Rol');
+    expect(celdas[2].getAttribute('data-etiqueta')).toBe('Estado');
+    expect(celdas[3].classList).toContain('mv-grilla__celda--acciones');
+    // Un solo nombre: el de la región con scroll (la tabla no repite el suyo).
+    const regionGrilla = elemento.querySelector('.mv-grilla[role="region"]')!;
+    expect(regionGrilla.getAttribute('aria-label') ?? regionGrilla.getAttribute('aria-labelledby')).toBeTruthy();
+    const tablaGrilla = regionGrilla.querySelector('table')!;
+    expect(['aria-label', 'aria-labelledby'].some((a) => tablaGrilla.hasAttribute(a))).toBe(false);
+    expect(tablaGrilla.querySelector('caption')).toBeNull();
+  });
+
+  it('editarMuestraElSelectorDeRolYAlCambiarDevuelveElFoco', async () => {
+    const { fixture, elemento, servicioGrupos } = await configurar({
+      miRol: 'COORDINADOR',
+      integrantesIniciales: [integrante(2, 'Beto', 2, 'COLABORADOR')],
+    });
+    servicioGrupos.cambiarRol.mockReturnValue(of(undefined));
+    const fila = elemento.querySelector<HTMLElement>('.integrante')!;
+    const editar = fila.querySelector<HTMLButtonElement>('.mv-boton-dividido__principal')!;
+
+    const select = await editarRol(fixture, fila);
+    expect(document.activeElement).toBe(select);
+    expect(select.getAttribute('aria-label')).toBe('Rol de Beto');
+    expect(editar.textContent?.trim()).toBe('Listo');
+    expect(editar.getAttribute('aria-label')).toBe('Listo, rol de Beto');
+
+    select.value = Array.from(select.options).find((o) => o.textContent?.trim() === 'Coordinador/a')!.value;
+    select.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+
+    expect(servicioGrupos.cambiarRol).toHaveBeenCalledWith(5, 2, 1);
+    expect(fila.querySelector('select')).toBeFalsy();
+    expect(document.activeElement).toBe(editar);
+    expect(editar.textContent?.trim()).toBe('Editar');
+  });
+
+  it('escapeEnElSelectorDeRolLoCierraSinCambiarYDevuelveElFoco', async () => {
+    const { fixture, elemento, servicioGrupos } = await configurar({
+      miRol: 'COORDINADOR',
+      integrantesIniciales: [integrante(2, 'Beto', 2, 'COLABORADOR')],
+    });
+    const fila = elemento.querySelector<HTMLElement>('.integrante')!;
+
+    const select = await editarRol(fixture, fila);
+    select.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await fixture.whenStable();
+
+    expect(fila.querySelector('select')).toBeFalsy();
+    expect(fila.querySelector('.rol .mv-chip')?.textContent?.trim()).toBe('Colaborador/a');
+    expect(document.activeElement).toBe(fila.querySelector('.mv-boton-dividido__principal'));
+    expect(servicioGrupos.cambiarRol).not.toHaveBeenCalled();
+  });
+
+  it('menuDesactivaYEliminaConConfirmacion', async () => {
+    const { fixture, elemento, servicioGrupos } = await configurar({
+      miRol: 'COORDINADOR',
+      integrantesIniciales: [integrante(2, 'Beto', 2, 'COLABORADOR')],
+    });
+    servicioGrupos.desactivar.mockReturnValue(of(undefined));
+    servicioGrupos.eliminar.mockReturnValue(of(undefined));
+    const confirmar = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const fila = elemento.querySelector<HTMLElement>('.integrante')!;
+
+    botonConTexto(fila, 'Desactivar')!.click();
+    await fixture.whenStable();
+    expect(servicioGrupos.desactivar).toHaveBeenCalledWith(5, 2);
+
+    botonConTexto(fila, 'Eliminar')!.click();
+    expect(confirmar).toHaveBeenCalled();
+    expect(servicioGrupos.eliminar).not.toHaveBeenCalled();
+    confirmar.mockReturnValue(true);
+    botonConTexto(fila, 'Eliminar')!.click();
+    expect(servicioGrupos.eliminar).toHaveBeenCalledWith(5, 2);
   });
 
   it('colaboradorVeElRolComoChipSinMasAcciones', async () => {
@@ -694,7 +822,8 @@ describe('Integrantes', () => {
 
     const fila = elemento.querySelector<HTMLElement>('.integrante')!;
     expect(fila.querySelector('.rol .mv-chip')?.textContent?.trim()).toBe('Colaborador/a');
-    expect(fila.querySelector('details')).toBeFalsy();
+    expect(fila.querySelector('app-boton-dividido')).toBeFalsy();
+    expect(fila.querySelector('.mv-grilla__celda--acciones')?.children).toHaveLength(0);
   });
 
   it('encabezadoCuentaLosIntegrantesActivos', async () => {

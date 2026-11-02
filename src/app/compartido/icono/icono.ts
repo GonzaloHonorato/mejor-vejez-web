@@ -16,6 +16,7 @@ export const NOMBRES_ICONO = [
   'salir',
   'flecha-izquierda',
   'flecha-derecha',
+  'chevron-abajo',
 ] as const;
 
 export type NombreIcono = (typeof NOMBRES_ICONO)[number];
@@ -118,6 +119,9 @@ export type NombreIcono = (typeof NOMBRES_ICONO)[number];
         @case ('flecha-derecha') {
           <path d="M5 12h14" />
           <path d="M13 6l6 6-6 6" />
+        }
+        @case ('chevron-abajo') {
+          <path d="M6 9l6 6 6-6" />
         }
       }
     </svg>

@@ -1,9 +1,18 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, ElementRef, Injector, OnInit, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 
 import { inicialesDe } from '../../compartido/marco-app/identidad-usuario';
 import { ServicioAutenticacion } from '../../nucleo/autenticacion/servicio-autenticacion';
-import { erroresDeCampos, mensajeDeError } from '../../nucleo/http/mensaje-de-error';
+import { describirCon, erroresDeCampos, mensajeDeError } from '../../nucleo/http/mensaje-de-error';
+import {
+  AYUDA_TELEFONO,
+  formatearControlTelefono,
+  formatearTelefono,
+  mensajeCampoTelefono,
+  normalizarTelefono,
+  validadorTelefonoChilenoSalvo,
+} from '../../nucleo/telefono';
+import { dentroDe, enfocarPrimerCampoInvalido } from '../../nucleo/foco';
 import { RespuestaYo, ServicioYo } from '../../nucleo/usuarios/servicio-yo';
 import { CanalesNotificacion } from './canales-notificacion/canales-notificacion';
 
@@ -16,7 +25,11 @@ const MENSAJES_ERROR_CLAVE_NUEVA: Record<string, string> = {
 };
 const MENSAJE_ERROR_CLAVE_GENERICO = 'No pudimos cambiar tu contraseña. Intenta de nuevo.';
 
-/** Página "Mi perfil": correo de solo lectura, nombre y teléfono editables, canales de notificación y cambio de contraseña. */
+/**
+ * Página "Mi perfil": correo de solo lectura, nombre y teléfono editables
+ * (teléfono chileno opcional, con la regla de `nucleo/telefono`), canales
+ * de notificación y cambio de contraseña.
+ */
 @Component({
   selector: 'app-mi-perfil',
   imports: [ReactiveFormsModule, CanalesNotificacion],
@@ -26,8 +39,12 @@ const MENSAJE_ERROR_CLAVE_GENERICO = 'No pudimos cambiar tu contraseña. Intenta
 export class MiPerfil implements OnInit {
   private readonly servicioYo = inject(ServicioYo);
   protected readonly auth = inject(ServicioAutenticacion);
+  private readonly injector = inject(Injector);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   protected readonly iniciales = inicialesDe;
+  protected readonly ayudaTelefono = AYUDA_TELEFONO;
+  protected readonly describirCon = describirCon;
   protected readonly yo = signal<RespuestaYo | null>(null);
   protected readonly guardando = signal(false);
   protected readonly confirmacion = signal(false);
@@ -38,7 +55,7 @@ export class MiPerfil implements OnInit {
 
   protected readonly formulario = inject(NonNullableFormBuilder).group({
     nombre: ['', Validators.required],
-    telefono: [''],
+    telefono: ['', validadorTelefonoChilenoSalvo(() => this.yo()?.telefono)],
   });
 
   protected readonly cambiandoClave = signal(false);
@@ -60,11 +77,23 @@ export class MiPerfil implements OnInit {
     this.servicioYo.obtener().subscribe({
       next: (yo) => {
         this.yo.set(yo);
-        this.formulario.patchValue({ nombre: yo.nombre, telefono: yo.telefono ?? '' });
+        this.formulario.patchValue({ nombre: yo.nombre, telefono: formatearTelefono(yo.telefono) });
       },
       error: (error: unknown) =>
         this.errorCarga.set(mensajeDeError(error, 'No pudimos cargar tu perfil.')),
     });
+  }
+
+  protected mensajeCampoTelefono(): string | null {
+    return mensajeCampoTelefono(
+      this.formulario.controls.telefono,
+      this.erroresCampos(),
+      'telefono',
+    );
+  }
+
+  protected formatearTelefono(): void {
+    formatearControlTelefono(this.formulario.controls.telefono);
   }
 
   protected guardar(): void {
@@ -75,6 +104,7 @@ export class MiPerfil implements OnInit {
       this.erroresCampos.set(
         this.formulario.controls.nombre.invalid ? { nombre: 'El nombre es obligatorio.' } : {},
       );
+      this.enfocarPrimerInvalido();
       return;
     }
 
@@ -85,10 +115,14 @@ export class MiPerfil implements OnInit {
     const { nombre, telefono } = this.formulario.getRawValue();
     this.guardando.set(true);
     this.servicioYo
-      .actualizar({ nombre, telefono: telefono.trim() === '' ? null : telefono })
+      .actualizar({
+        nombre,
+        telefono: telefono.trim() === '' ? null : (normalizarTelefono(telefono) ?? telefono.trim()),
+      })
       .subscribe({
         next: (yo) => {
           this.yo.set(yo);
+          this.formulario.controls.telefono.setValue(formatearTelefono(yo.telefono));
           this.guardando.set(false);
           this.confirmacion.set(true);
         },
@@ -98,9 +132,16 @@ export class MiPerfil implements OnInit {
           this.erroresCampos.set(campos);
           if (Object.keys(campos).length === 0) {
             this.errorGeneral.set(mensajeDeError(error));
+          } else {
+            this.enfocarPrimerInvalido();
           }
         },
       });
+  }
+
+  /** El primer `form` del host es el de datos (canales y contraseña vienen después). */
+  private enfocarPrimerInvalido(): void {
+    enfocarPrimerCampoInvalido(dentroDe(this.host, 'form'), this.injector);
   }
 
   /**

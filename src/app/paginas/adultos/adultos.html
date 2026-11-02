@@ -94,21 +94,93 @@
                   class="mv-campo__control"
                   type="date"
                   formControlName="fechaNacimiento"
-                  [attr.aria-invalid]="erroresCampos()['fechaNacimiento'] ? true : null"
-                  [attr.aria-describedby]="
-                    erroresCampos()['fechaNacimiento'] ? 'adulto-fecha-nacimiento-error' : null
-                  "
+                  [max]="hoy"
+                  [attr.aria-invalid]="mensajeCampoFecha() ? true : null"
+                  [attr.aria-describedby]="describirCampo('adulto-fecha-nacimiento', mensajeCampoFecha())"
                 />
-                @if (erroresCampos()['fechaNacimiento']; as mensaje) {
-                  <p
-                    id="adulto-fecha-nacimiento-error"
-                    class="mv-campo__error"
-                    role="alert"
-                  >
+                @if (mensajeCampoFecha(); as mensaje) {
+                  <p id="adulto-fecha-nacimiento-error" class="mv-campo__error" role="alert">
                     {{ mensaje }}
                   </p>
                 }
               </div>
+
+              <fieldset class="contacto-principal" formGroupName="contactoPrincipal">
+                <legend class="contacto-principal__titulo">Contacto principal</legend>
+                <p class="mv-campo__ayuda">A quién llamar primero ante una emergencia.</p>
+
+                @if (errorParentescos(); as mensaje) {
+                  <p class="mv-aviso mv-aviso--error" role="alert">{{ mensaje }}</p>
+                }
+
+                <div class="mv-campo">
+                  <label class="mv-campo__etiqueta" for="adulto-contacto-nombre">Nombre</label>
+                  <input
+                    id="adulto-contacto-nombre"
+                    class="mv-campo__control"
+                    type="text"
+                    autocomplete="off"
+                    formControlName="nombre"
+                    [attr.aria-invalid]="mensajeCampoContacto('nombre') ? true : null"
+                    [attr.aria-describedby]="
+                      describirCampo('adulto-contacto-nombre', mensajeCampoContacto('nombre'))
+                    "
+                  />
+                  @if (mensajeCampoContacto('nombre'); as mensaje) {
+                    <p id="adulto-contacto-nombre-error" class="mv-campo__error" role="alert">
+                      {{ mensaje }}
+                    </p>
+                  }
+                </div>
+
+                <div class="mv-campo">
+                  <label class="mv-campo__etiqueta" for="adulto-contacto-parentesco"
+                    >Parentesco</label
+                  >
+                  <select
+                    id="adulto-contacto-parentesco"
+                    class="mv-campo__control"
+                    formControlName="idParentesco"
+                    [attr.aria-invalid]="mensajeCampoContacto('idParentesco') ? true : null"
+                    [attr.aria-describedby]="
+                      describirCampo('adulto-contacto-parentesco', mensajeCampoContacto('idParentesco'))
+                    "
+                  >
+                    <option [ngValue]="null">Selecciona…</option>
+                    @for (opcion of parentescos(); track opcion.idOpcion) {
+                      <option [ngValue]="opcion.idOpcion">{{ opcion.descripcion }}</option>
+                    }
+                  </select>
+                  @if (mensajeCampoContacto('idParentesco'); as mensaje) {
+                    <p id="adulto-contacto-parentesco-error" class="mv-campo__error" role="alert">
+                      {{ mensaje }}
+                    </p>
+                  }
+                </div>
+
+                <div class="mv-campo">
+                  <label class="mv-campo__etiqueta" for="adulto-contacto-telefono">Teléfono</label>
+                  <input
+                    id="adulto-contacto-telefono"
+                    class="mv-campo__control"
+                    type="tel"
+                    inputmode="tel"
+                    autocomplete="off"
+                    formControlName="telefono"
+                    (blur)="formatearTelefonoContacto()"
+                    [attr.aria-invalid]="mensajeCampoContacto('telefono') ? true : null"
+                    [attr.aria-describedby]="
+                      describirCampo('adulto-contacto-telefono', mensajeCampoContacto('telefono'), true)
+                    "
+                  />
+                  <p id="adulto-contacto-telefono-ayuda" class="mv-campo__ayuda">{{ ayudaTelefono }}</p>
+                  @if (mensajeCampoContacto('telefono'); as mensaje) {
+                    <p id="adulto-contacto-telefono-error" class="mv-campo__error" role="alert">
+                      {{ mensaje }}
+                    </p>
+                  }
+                </div>
+              </fieldset>
 
               <div class="botones">
                 <button
@@ -165,49 +237,73 @@
           <p class="mv-vacio__titulo">Aún no hay adultos mayores registrados en este grupo.</p>
         </div>
       } @else {
-        <ul class="mv-lista lista-adultos">
-          @for (adulto of adultos(); track adulto.idAdultoMayor) {
-            <li class="mv-fila" [class.inactivo]="estaInactivo(adulto)">
-              <span class="mv-avatar" aria-hidden="true">{{ iniciales(adulto) }}</span>
-              <div class="mv-fila__principal">
-                <a
-                  class="mv-fila__titulo mv-fila__enlace"
-                  [routerLink]="['/adultos', adulto.idAdultoMayor]"
-                  [attr.aria-label]="etiquetaFicha(adulto)"
-                  >{{ adulto.nombreCompleto }}</a
-                >
-                @if (detalle(adulto); as texto) {
-                  <p class="mv-fila__meta">{{ texto }}</p>
-                }
-              </div>
-              <div class="contacto">
-                <p class="contacto__rotulo">Contacto principal</p>
-                @if (adulto.contactoPrincipal; as contacto) {
-                  <p class="contacto__nombre">
-                    {{ contacto.nombreContacto }}
-                    @if (contacto.parentesco) {
-                      <span class="contacto__parentesco">· {{ contacto.parentesco }}</span>
+        <div class="mv-grilla" role="region" aria-labelledby="adultos-lista-titulo" tabindex="0">
+          <table class="mv-grilla__tabla" role="table">
+            <thead role="rowgroup">
+              <tr role="row">
+                <th scope="col" role="columnheader">Adulto</th>
+                <th scope="col" role="columnheader">Contacto principal</th>
+                <th scope="col" role="columnheader" class="mv-grilla__celda--estado">Estado</th>
+                <th scope="col" role="columnheader" class="mv-grilla__celda--acciones">Acciones</th>
+              </tr>
+            </thead>
+            <tbody role="rowgroup">
+              @for (adulto of adultos(); track adulto.idAdultoMayor) {
+                <tr role="row" [class.inactivo]="estaInactivo(adulto)">
+                  <td role="cell">
+                    <div class="adulto">
+                      <span class="mv-avatar" aria-hidden="true">{{ iniciales(adulto) }}</span>
+                      <div>
+                        <a
+                          class="mv-grilla__titulo mv-fila__enlace"
+                          [routerLink]="['/adultos', adulto.idAdultoMayor]"
+                          [attr.aria-label]="etiquetaAdulto(adulto)"
+                          >{{ adulto.nombreCompleto }}</a
+                        >
+                        @if (detalle(adulto); as texto) {
+                          <span class="mv-grilla__secundario detalle">{{ texto }}</span>
+                        }
+                      </div>
+                    </div>
+                  </td>
+                  <td role="cell" class="contacto" data-etiqueta="Contacto principal">
+                    @if (adulto.contactoPrincipal; as contacto) {
+                      <span class="contacto__nombre">{{ contacto.nombreContacto
+                        }}{{ contacto.parentesco ? ' · ' + contacto.parentesco : '' }}</span>
+                      <a class="contacto__telefono" [href]="enlaceTelefono(contacto.telefono)">{{
+                        formatearTelefono(contacto.telefono)
+                      }}</a>
+                    } @else {
+                      <span class="mv-grilla__secundario">Sin contacto principal</span>
                     }
-                  </p>
-                  <a class="contacto__telefono" [href]="'tel:' + contacto.telefono">{{
-                    contacto.telefono
-                  }}</a>
-                } @else {
-                  <p class="mv-fila__meta">Sin contacto principal</p>
-                }
-              </div>
-              @if (conoceEstado()) {
-                <span class="estado">
-                  @if (estaInactivo(adulto)) {
-                    <span class="mv-chip">Inactivo</span>
-                  } @else {
-                    <span class="mv-chip mv-chip--exito">Activo</span>
-                  }
-                </span>
+                  </td>
+                  <td
+                    role="cell"
+                    class="mv-grilla__celda--estado"
+                    [attr.data-etiqueta]="conoceEstado() ? 'Estado' : null"
+                  >
+                    @if (conoceEstado()) {
+                      @if (estaInactivo(adulto)) {
+                        <span class="mv-chip">Inactivo</span>
+                      } @else {
+                        <span class="mv-chip mv-chip--exito">Activo</span>
+                      }
+                    }
+                  </td>
+                  <td role="cell" class="mv-grilla__celda--acciones acciones">
+                    <a
+                      class="mv-boton"
+                      [routerLink]="['/adultos', adulto.idAdultoMayor]"
+                      tabindex="-1"
+                      aria-hidden="true"
+                      >Ver ficha</a
+                    >
+                  </td>
+                </tr>
               }
-            </li>
-          }
-        </ul>
+            </tbody>
+          </table>
+        </div>
       }
     </section>
   }

@@ -97,44 +97,58 @@
   }
 
   @if (lista().length > 0) {
-    <ul class="mv-lista lista-grupos" aria-label="Grupos familiares">
-      @for (grupo of lista(); track grupo.idGrupo) {
-        <li class="mv-fila grupo" [class.grupo--activo]="grupo.idGrupo === activo()?.idGrupo">
-          <div class="mv-fila__principal">
-            <p class="mv-fila__titulo">{{ grupo.nombreGrupo }}</p>
-            <p class="mv-fila__meta">{{ creadoEl(grupo) }}</p>
-          </div>
-
-          <span class="rol">
-            <span class="oculto">Mi rol: </span>
-            <span class="mv-chip">{{ grupo.miRol ? etiquetaRol(grupo.miRol) : 'Sin membresía' }}</span>
-          </span>
-
-          <div class="mv-fila__acciones">
-            @if (grupo.idGrupo === activo()?.idGrupo) {
-              <span class="mv-chip mv-chip--info">Grupo activo</span>
-            } @else if (grupo.miRol) {
-              <button
-                type="button"
-                class="mv-boton"
-                [attr.aria-label]="'Usar el grupo ' + grupo.nombreGrupo"
-                (click)="usar(grupo.idGrupo)"
-              >
-                Usar grupo
-              </button>
-            }
-            <a
-              class="mv-boton mv-boton--texto"
-              [routerLink]="['/grupos', grupo.idGrupo]"
-              [attr.aria-label]="'Integrantes de ' + grupo.nombreGrupo"
-            >
-              Integrantes
-              <app-icono nombre="flecha-derecha" aria-hidden="true" />
-            </a>
-          </div>
-        </li>
-      }
-    </ul>
+    <div class="mv-grilla" role="region" aria-label="Grupos familiares" tabindex="0">
+      <table class="mv-grilla__tabla" role="table">
+        <thead role="rowgroup">
+          <tr role="row">
+            <th scope="col" role="columnheader">Grupo</th>
+            <th scope="col" role="columnheader">Mi rol</th>
+            <th scope="col" role="columnheader" class="mv-grilla__celda--estado">Estado</th>
+            <th scope="col" role="columnheader" class="mv-grilla__celda--acciones">Acciones</th>
+          </tr>
+        </thead>
+        <tbody role="rowgroup">
+          @for (grupo of lista(); track grupo.idGrupo) {
+            <tr role="row" class="grupo" [class.grupo--activo]="grupo.idGrupo === activo()?.idGrupo">
+              <td role="cell">
+                <span class="mv-grilla__titulo">{{ grupo.nombreGrupo }}</span>
+                <span class="mv-grilla__secundario">{{ creadoEl(grupo) }}</span>
+              </td>
+              <td role="cell" class="rol" data-etiqueta="Mi rol">
+                <span class="mv-chip">{{ grupo.miRol ? etiquetaRol(grupo.miRol) : 'Sin membresía' }}</span>
+              </td>
+              <td role="cell" class="mv-grilla__celda--estado estado" data-etiqueta="Estado">
+                @if (descripcionEstado(grupo); as estado) {
+                  <span class="mv-chip" [class.mv-chip--exito]="estaActivo(grupo)">{{ estado }}</span>
+                }
+              </td>
+              <td role="cell" class="mv-grilla__celda--acciones">
+                @if (grupo.idGrupo === activo()?.idGrupo) {
+                  <span class="mv-chip mv-chip--info">Grupo activo</span>
+                } @else if (grupo.miRol) {
+                  <button
+                    type="button"
+                    class="mv-boton"
+                    [attr.aria-label]="'Usar el grupo ' + grupo.nombreGrupo"
+                    (click)="usar(grupo.idGrupo)"
+                  >
+                    Usar grupo
+                  </button>
+                }
+                <a
+                  class="mv-boton mv-boton--texto"
+                  [routerLink]="['/grupos', grupo.idGrupo]"
+                  [attr.aria-label]="'Integrantes de ' + grupo.nombreGrupo"
+                >
+                  Integrantes
+                  <app-icono nombre="flecha-derecha" aria-hidden="true" />
+                </a>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
     <p class="ayuda">Cada persona puede pertenecer a varios grupos y tener un rol distinto en cada uno.</p>
   }
 </div>

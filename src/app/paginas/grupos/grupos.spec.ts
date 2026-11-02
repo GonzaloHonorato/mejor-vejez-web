@@ -7,8 +7,20 @@ import { of, throwError } from 'rxjs';
 
 import { Grupos } from './grupos';
 import { RespuestaGrupo } from '../../nucleo/grupos/modelos-grupos';
+import { ServicioCatalogos } from '../../nucleo/catalogos/servicio-catalogos';
 import { ServicioGrupoActivo } from '../../nucleo/grupos/servicio-grupo-activo';
 import { ServicioYo } from '../../nucleo/usuarios/servicio-yo';
+
+const catalogos = {
+  provide: ServicioCatalogos,
+  useValue: {
+    estados: () =>
+      of([
+        { idEstado: 1, codigo: 'ACTIVO', descripcion: 'Activo', orden: 1 },
+        { idEstado: 2, codigo: 'INACTIVO', descripcion: 'Inactivo', orden: 2 },
+      ]),
+  },
+};
 
 function grupo(idGrupo: number, nombreGrupo: string, miRol: string | null): RespuestaGrupo {
   return {
@@ -52,6 +64,7 @@ async function configurar(
       provideHttpClient(),
       provideHttpClientTesting(),
       { provide: ServicioGrupoActivo, useValue: grupoActivo },
+      catalogos,
       {
         provide: ServicioYo,
         useValue: {
@@ -193,6 +206,7 @@ describe('Grupos', () => {
           },
         },
         { provide: ServicioYo, useValue: { obtener: () => throwError(() => new Error('boom')) } },
+        catalogos,
       ],
     });
     const fixture = TestBed.createComponent(Grupos);
@@ -275,6 +289,38 @@ describe('Grupos', () => {
     expect(enlace.querySelector('app-icono')).toBeTruthy();
     const usar = filas[1].querySelector('button')!;
     expect(usar.getAttribute('aria-label')).toBe('Usar el grupo Familia Soto');
+  });
+
+  it('grillaConColumnasGrupoMiRolEstadoYAcciones', async () => {
+    const inactivo = { ...grupo(2, 'Familia Soto', 'COLABORADOR'), idEstado: 2 };
+    const { elemento } = await configurar([grupo(1, 'Familia Rojas', 'COORDINADOR'), inactivo]);
+
+    const tabla = elemento.querySelector('.mv-grilla table.mv-grilla__tabla')!;
+    expect(tabla.getAttribute('role')).toBe('table');
+    const encabezados = Array.from(tabla.querySelectorAll('th[role="columnheader"]')).map((th) =>
+      th.textContent?.trim(),
+    );
+    expect(encabezados).toEqual(['Grupo', 'Mi rol', 'Estado', 'Acciones']);
+
+    const filas = Array.from(tabla.querySelectorAll<HTMLElement>('tbody tr[role="row"]'));
+    const celdas = Array.from(filas[0].querySelectorAll<HTMLElement>('td[role="cell"]'));
+    expect(celdas).toHaveLength(4);
+    expect(celdas[0].textContent).toContain('Familia Rojas');
+    expect(celdas[0].textContent).toContain('Creado el 1 ene 2026');
+    expect(celdas[1].getAttribute('data-etiqueta')).toBe('Mi rol');
+    expect(celdas[2].getAttribute('data-etiqueta')).toBe('Estado');
+    expect(celdas[2].querySelector('.mv-chip--exito')?.textContent?.trim()).toBe('Activo');
+    expect(filas[1].querySelector('.estado .mv-chip')?.textContent?.trim()).toBe('Inactivo');
+    expect(filas[1].querySelector('.estado .mv-chip--exito')).toBeFalsy();
+    expect(celdas[3].classList).toContain('mv-grilla__celda--acciones');
+    expect(celdas[3].textContent).toContain('Grupo activo');
+    expect(celdas[3].querySelector('a')?.getAttribute('href')).toBe('/grupos/1');
+    // Un solo nombre: el de la región con scroll (la tabla no repite el suyo).
+    const regionGrilla = elemento.querySelector('.mv-grilla[role="region"]')!;
+    expect(regionGrilla.getAttribute('aria-label') ?? regionGrilla.getAttribute('aria-labelledby')).toBeTruthy();
+    const tablaGrilla = regionGrilla.querySelector('table')!;
+    expect(['aria-label', 'aria-labelledby'].some((a) => tablaGrilla.hasAttribute(a))).toBe(false);
+    expect(tablaGrilla.querySelector('caption')).toBeNull();
   });
 
   it('muestraCargandoMientrasLlegaLaLista', async () => {
