@@ -55,7 +55,13 @@
                       <span class="mv-chip">Inactivo</span>
                     }
                   </td>
-                  <td role="cell" data-etiqueta="Parentesco">{{ contacto.parentesco }}</td>
+                  <td role="cell" data-etiqueta="Parentesco">
+                    @if (contacto.parentesco) {
+                      {{ contacto.parentesco }}
+                    } @else {
+                      <span class="sin-parentesco">Sin parentesco</span>
+                    }
+                  </td>
                   <td role="cell" data-etiqueta="Teléfono">
                     <a class="telefono" [href]="enlaceTelefono(contacto.telefono)">{{
                       formatearTelefono(contacto.telefono)
@@ -174,8 +180,6 @@
                           "
                           [attr.aria-describedby]="
                             describirCon(
-                              parentescoAntiguo(contacto) &&
-                                'contacto-parentesco-ayuda-' + contacto.idContacto,
                               mensajeCampoEdicion(contacto, 'idParentesco') &&
                                 'contacto-parentesco-error-' + contacto.idContacto
                             )
@@ -186,14 +190,6 @@
                             <option [ngValue]="opcion.idOpcion">{{ opcion.descripcion }}</option>
                           }
                         </select>
-                        @if (parentescoAntiguo(contacto); as antiguo) {
-                          <p
-                            [id]="'contacto-parentesco-ayuda-' + contacto.idContacto"
-                            class="mv-campo__ayuda"
-                          >
-                            Registrado como «{{ antiguo }}». Elige uno de la lista.
-                          </p>
-                        }
                         @if (mensajeCampoEdicion(contacto, 'idParentesco'); as mensaje) {
                           <p
                             [id]="'contacto-parentesco-error-' + contacto.idContacto"

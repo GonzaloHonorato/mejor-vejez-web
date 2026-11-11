@@ -36,6 +36,11 @@
   color: var(--mv-color-secundario);
 }
 
+.sin-parentesco {
+  color: var(--mv-color-secundario);
+  font-style: italic;
+}
+
 // Fila en edición: el formulario ocupa la fila, sin estilo de título.
 .contacto--edicion td {
   justify-items: stretch;

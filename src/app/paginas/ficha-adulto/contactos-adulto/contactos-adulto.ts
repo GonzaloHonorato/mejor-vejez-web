@@ -73,9 +73,9 @@ const MENSAJES_REQUERIDO: Record<CampoContacto, string> = {
  * `FichaAdulto`: `idGrupo`/`idAdulto` son obligatorios porque sin ellos no
  * hay contactos que pedir.
  *
- * El parentesco se elige del catálogo `PARENTESCO`; un contacto antiguo con
- * texto libre se muestra tal cual y, al editarlo, hay que elegir uno de la
- * lista. El teléfono sigue la regla chilena de `nucleo/telefono` y se
+ * El parentesco se elige del catálogo `PARENTESCO`; un contacto antiguo sin
+ * parentesco se muestra como "Sin parentesco" y, al editarlo, hay que elegir
+ * uno de la lista. El teléfono sigue la regla chilena de `nucleo/telefono` y se
  * muestra formateado.
  *
  * Desactivar al principal habiendo otros contactos activos exige elegir un
@@ -219,11 +219,6 @@ export class ContactosAdulto implements OnInit {
   }
 
   protected readonly describirCon = describirCon;
-
-  /** Contacto antiguo con parentesco en texto libre: al editarlo hay que elegir del catálogo. */
-  protected parentescoAntiguo(contacto: RespuestaContacto): string | null {
-    return contacto.idParentesco === null && contacto.parentesco ? contacto.parentesco : null;
-  }
 
   protected formatearTelefonoNuevo(): void {
     formatearControlTelefono(this.formulario.controls.telefono);

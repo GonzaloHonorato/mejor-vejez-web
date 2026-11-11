@@ -567,29 +567,35 @@ describe('ContactosAdulto', () => {
     expect(campo.value).toBe('+56 9 1234 5678');
   });
 
-  it('contactoAntiguoMuestraSuTextoYAlEditarloHayQueElegirDelCatalogo', async () => {
+  it('contactoConParentescoMuestraLaDescripcionDelCatalogo', async () => {
+    const { elemento } = await configurar({});
+
+    const celda = filaDe(elemento, 'Juana Pérez').querySelector('[data-etiqueta="Parentesco"]');
+    expect(celda?.textContent?.trim()).toBe('Hijo');
+  });
+
+  it('contactoSinParentescoMuestraSinParentescoYAlEditarloHayQueElegirDelCatalogo', async () => {
     const { fixture, elemento, servicioAdultos } = await configurar({
-      contactosIniciales: [contacto({ idParentesco: null, parentesco: 'Vecina' })],
+      contactosIniciales: [contacto({ idParentesco: null, parentesco: null })],
     });
     servicioAdultos.actualizarContacto.mockReturnValue(of(contacto()));
-    expect(filaDe(elemento, 'Juana Pérez').textContent).toContain('Vecina');
+    const celda = filaDe(elemento, 'Juana Pérez').querySelector('[data-etiqueta="Parentesco"]');
+    expect(celda?.textContent?.trim()).toBe('Sin parentesco');
 
     botonConTexto(elemento, 'Editar')!.click();
     await fixture.whenStable();
 
     const select = elemento.querySelector<HTMLSelectElement>('#contacto-parentesco-1')!;
     expect(select.selectedIndex).toBe(0);
-    expect(elemento.querySelector('#contacto-parentesco-ayuda-1')?.textContent).toContain(
-      'Registrado como «Vecina». Elige uno de la lista.',
-    );
+    expect(elemento.querySelector('#contacto-parentesco-ayuda-1')).toBeNull();
+    expect(elemento.textContent).not.toContain('Registrado como');
+    expect(select.getAttribute('aria-describedby')).toBeNull();
     select.closest('form')!.dispatchEvent(new Event('submit'));
     await fixture.whenStable();
     expect(elemento.querySelector('#contacto-parentesco-error-1')?.textContent).toContain(
       'Elige el parentesco',
     );
-    expect(select.getAttribute('aria-describedby')).toBe(
-      'contacto-parentesco-ayuda-1 contacto-parentesco-error-1',
-    );
+    expect(select.getAttribute('aria-describedby')).toBe('contacto-parentesco-error-1');
     expect(document.activeElement).toBe(select);
     expect(servicioAdultos.actualizarContacto).not.toHaveBeenCalled();
 

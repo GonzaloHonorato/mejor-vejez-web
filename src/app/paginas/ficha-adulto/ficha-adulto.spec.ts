@@ -50,7 +50,7 @@ function contacto(datos: Partial<RespuestaContacto> = {}): RespuestaContacto {
     idContacto: 1,
     idAdultoMayor: 1,
     nombreContacto: 'Juana Pérez',
-    idParentesco: null,
+    idParentesco: 4,
     parentesco: 'Hija',
     telefono: '+56911111111',
     esPrincipal: true,
@@ -405,6 +405,22 @@ describe('FichaAdulto', () => {
     const enlace = elemento.querySelector<HTMLAnchorElement>('a.telefono')!;
     expect(enlace.getAttribute('href')).toBe('tel:+56911111111');
     expect(enlace.textContent?.trim()).toBe('+56 9 1111 1111');
+  });
+
+  it('contactoPrincipalConParentescoLoMuestraJuntoAlNombre', async () => {
+    const { elemento } = await configurar({});
+
+    expect(elemento.textContent).toMatch(/Juana Pérez\s*·\s*Hija/);
+  });
+
+  it('contactoPrincipalSinParentescoMuestraSoloElNombre', async () => {
+    const { elemento } = await configurar({
+      obtenerImpl: () =>
+        of(adulto({ contactoPrincipal: contacto({ idParentesco: null, parentesco: null }) })),
+    });
+
+    expect(elemento.textContent).toContain('Juana Pérez');
+    expect(elemento.textContent).not.toMatch(/Juana Pérez\s*·/);
   });
 
   it('desactivarEvitaElDobleTapYMuestraConfirmacion', async () => {

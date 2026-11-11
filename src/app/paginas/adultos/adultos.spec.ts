@@ -43,7 +43,7 @@ function contacto(datos: Partial<RespuestaContacto> = {}): RespuestaContacto {
     idContacto: 1,
     idAdultoMayor: 1,
     nombreContacto: 'Juana Pérez',
-    idParentesco: null,
+    idParentesco: 4,
     parentesco: 'Hija',
     telefono: '+56911111111',
     esPrincipal: true,
@@ -196,6 +196,15 @@ describe('Adultos', () => {
     expect(tarjetas[1].textContent).toContain('Pedro Soto');
     expect(tarjetas[1].textContent).toContain('Inactivo');
     expect(tarjetas[1].textContent).toContain('Sin contacto principal');
+  });
+
+  it('contactoPrincipalSinParentescoMuestraSoloElNombre', async () => {
+    const { elemento } = await configurar({
+      adultosIniciales: [adulto({ contactoPrincipal: contacto({ idParentesco: null, parentesco: null }) })],
+    });
+
+    const nombre = elemento.querySelector('.mv-grilla tbody tr .contacto__nombre');
+    expect(nombre?.textContent?.trim()).toBe('Juana Pérez');
   });
 
   it('cadaFilaMuestraInicialesEdadYCodigoYElNombreEnlazaALaFicha', async () => {
