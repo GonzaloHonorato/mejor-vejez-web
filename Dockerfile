@@ -11,6 +11,7 @@ RUN npm run build
 
 FROM nginx:1.29-alpine
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker/cabeceras-seguridad.conf /etc/nginx/snippets/cabeceras-seguridad.conf
 COPY docker/40-runtime-env.sh /docker-entrypoint.d/40-runtime-env.sh
 COPY --from=build /app/dist/mejor-vejez-web/browser /usr/share/nginx/html
 EXPOSE 80
