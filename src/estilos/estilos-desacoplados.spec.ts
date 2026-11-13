@@ -1,10 +1,11 @@
 import { readFileSync, readdirSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join, resolve } from 'node:path';
 
 import { encontrarValoresVisualesLiterales } from './detectar-valores-literales';
 
-const directorioActual = dirname(fileURLToPath(import.meta.url));
+// Rutas desde la raíz del proyecto (donde corre `ng test`): con `--coverage` el
+// archivo de prueba se ejecuta empaquetado y `import.meta.url` ya no apunta a src/estilos.
+const directorioActual = resolve(process.cwd(), 'src', 'estilos');
 const directorioApp = resolve(directorioActual, '..', 'app');
 // La capa de componentes globales vive fuera de `src/app` pero sigue la misma
 // regla: sólo tokens semánticos.
