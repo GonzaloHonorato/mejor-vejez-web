@@ -7,10 +7,12 @@ import {
   OnInit,
   afterNextRender,
   computed,
+  effect,
   inject,
   input,
   output,
   signal,
+  untracked,
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import {
@@ -144,6 +146,8 @@ export class FormularioDetalle implements OnInit {
   readonly dias = input<RespuestaOpcionCatalogo[]>([]);
   /** Integrantes ACTIVOS del grupo (la página filtra); el valor enviado es `idUsuario`. */
   readonly integrantes = input<RespuestaIntegrante[]>([]);
+  /** Usuario de la sesión (`idUsuario`), o `null` mientras no se conoce. */
+  readonly idUsuarioActual = input<number | null>(null);
 
   readonly guardado = output<RespuestaDetallePlan>();
   readonly cancelado = output<void>();
@@ -283,6 +287,17 @@ export class FormularioDetalle implements OnInit {
     () => this.dias().length > 0 && this.dias().every((d) => this.diasElegidos().has(d.idOpcion)),
   );
 
+  /**
+   * Responsable sugerido al agregar: quien agrega, si es integrante activo;
+   * si no, el único integrante activo del grupo; si no, ninguno.
+   */
+  private readonly responsablePorDefecto = computed(() => {
+    const integrantes = this.integrantes();
+    const idActual = this.idUsuarioActual();
+    if (idActual !== null && integrantes.some((i) => i.idUsuario === idActual)) return idActual;
+    return integrantes.length === 1 ? integrantes[0].idUsuario : null;
+  });
+
   protected readonly errorDias = computed(
     () =>
       this.erroresServidor()['diasSemana'] ??
@@ -301,6 +316,16 @@ export class FormularioDetalle implements OnInit {
         }
         fechaTermino.updateValueAndValidity();
       });
+
+    // Al agregar, el responsable sugerido se aplica cuando llegan los
+    // integrantes y el usuario de la sesión, salvo que la persona ya lo haya
+    // elegido (incluido "Sin responsable").
+    const responsable = this.formulario.controls.idResponsablePredeterminado;
+    effect(() => {
+      const sugerido = this.responsablePorDefecto();
+      if (this.detalle() !== null || responsable.dirty) return;
+      untracked(() => responsable.setValue(sugerido));
+    });
   }
 
   ngOnInit(): void {

@@ -44,6 +44,7 @@ class FormularioDetalleFalso implements OnInit {
   @Input() unidades?: RespuestaOpcionCatalogo[];
   @Input() dias?: RespuestaOpcionCatalogo[];
   @Input() integrantes?: RespuestaIntegrante[];
+  @Input() idUsuarioActual?: number | null;
   readonly guardado = output<RespuestaDetallePlan>();
   readonly cancelado = output<void>();
 
@@ -853,6 +854,17 @@ describe('Plan: desplazamiento y foco', () => {
     const i = desplazar.mock.contexts.indexOf(elemento);
     return i < 0 ? undefined : (desplazar.mock.calls[i][0] as ScrollIntoViewOptions).block;
   }
+
+  it('pasaAlFormularioElUsuarioDeLaSesionComoResponsablePorDefecto', async () => {
+    const { fixture, elemento } = await configurar({});
+
+    elemento.querySelector<HTMLButtonElement>('#plan-agregar-medicamento')!.click();
+    await fixture.whenStable();
+
+    const formulario = fixture.debugElement.query(By.directive(FormularioDetalleFalso))
+      .componentInstance as FormularioDetalleFalso;
+    expect(formulario.idUsuarioActual).toBe(1);
+  });
 
   it('agregarMedicamentoTraeElFormularioALaVistaEnfocaSuPrimerCampoYAlCerrarVuelveAlBoton', async () => {
     const { fixture, elemento } = await configurar({});

@@ -123,6 +123,8 @@ export class Plan implements OnInit {
   protected readonly noEncontrado = signal(false);
   protected readonly errorGeneral = signal<string | null>(null);
   protected readonly esAdministrador = signal(false);
+  /** Usuario de la sesión: responsable por defecto al agregar un medicamento. */
+  protected readonly idUsuarioActual = signal<number | null>(null);
 
   protected readonly presentaciones = signal<RespuestaOpcionCatalogo[]>([]);
   protected readonly unidades = signal<RespuestaOpcionCatalogo[]>([]);
@@ -280,7 +282,10 @@ export class Plan implements OnInit {
 
   ngOnInit(): void {
     this.servicioYo.obtener().subscribe({
-      next: (yo) => this.esAdministrador.set(yo.esAdministrador),
+      next: (yo) => {
+        this.esAdministrador.set(yo.esAdministrador);
+        this.idUsuarioActual.set(yo.idUsuario);
+      },
       error: () => undefined,
     });
     this.servicioCatalogos.estados('PLAN_MEDICAMENTOS', 'ESTADO').subscribe({

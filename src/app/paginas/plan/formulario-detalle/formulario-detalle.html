@@ -30,6 +30,41 @@
       }
     </ng-template>
 
+    <!-- En los dos modos: sin responsable, las tareas quedan sin asignar. -->
+    <ng-template #campoResponsable>
+      <div class="mv-campo">
+        <label class="mv-campo__etiqueta" for="detalle-responsable">Responsable</label>
+        @if (responsableAnteriorInvalido()) {
+          <p id="detalle-responsable-anterior" class="mv-aviso mv-aviso--error" role="status">
+            {{ mensajeResponsableAnterior }}
+          </p>
+        }
+        <select
+          id="detalle-responsable"
+          class="mv-campo__control"
+          formControlName="idResponsablePredeterminado"
+          [attr.aria-describedby]="
+            responsableAnteriorInvalido()
+              ? 'detalle-responsable-anterior detalle-responsable-ayuda'
+              : mensaje('idResponsablePredeterminado')
+                ? 'detalle-responsable-ayuda detalle-idResponsablePredeterminado-error'
+                : 'detalle-responsable-ayuda'
+          "
+        >
+          <option [ngValue]="null">Sin responsable</option>
+          @for (integrante of integrantes(); track integrante.idUsuario) {
+            <option [ngValue]="integrante.idUsuario">{{ integrante.nombre }}</option>
+          }
+        </select>
+        <p id="detalle-responsable-ayuda" class="mv-campo__ayuda">
+          Las tareas de este medicamento se le asignan automáticamente.
+        </p>
+        <ng-container
+          *ngTemplateOutlet="campoError; context: { campo: 'idResponsablePredeterminado' }"
+        />
+      </div>
+    </ng-template>
+
     <div class="fila">
       <div class="mv-campo">
         <label class="mv-campo__etiqueta" for="detalle-presentacion">Presentación</label>
@@ -179,6 +214,7 @@
           }
         }
       </fieldset>
+      <ng-container *ngTemplateOutlet="campoResponsable" />
       <button
         type="button"
         class="mv-boton mv-boton--texto cambio-modo"
@@ -339,34 +375,7 @@
         }
       </fieldset>
 
-      <div class="mv-campo">
-        <label class="mv-campo__etiqueta" for="detalle-responsable">Responsable</label>
-        @if (responsableAnteriorInvalido()) {
-          <p id="detalle-responsable-anterior" class="mv-aviso mv-aviso--error" role="status">
-            {{ mensajeResponsableAnterior }}
-          </p>
-        }
-        <select
-          id="detalle-responsable"
-          class="mv-campo__control"
-          formControlName="idResponsablePredeterminado"
-          [attr.aria-describedby]="
-            responsableAnteriorInvalido()
-              ? 'detalle-responsable-anterior'
-              : mensaje('idResponsablePredeterminado')
-                ? 'detalle-idResponsablePredeterminado-error'
-                : null
-          "
-        >
-          <option [ngValue]="null">Sin responsable</option>
-          @for (integrante of integrantes(); track integrante.idUsuario) {
-            <option [ngValue]="integrante.idUsuario">{{ integrante.nombre }}</option>
-          }
-        </select>
-        <ng-container
-          *ngTemplateOutlet="campoError; context: { campo: 'idResponsablePredeterminado' }"
-        />
-      </div>
+      <ng-container *ngTemplateOutlet="campoResponsable" />
 
       <div class="mv-campo">
         <label class="mv-campo__etiqueta" for="detalle-instrucciones">Instrucciones</label>

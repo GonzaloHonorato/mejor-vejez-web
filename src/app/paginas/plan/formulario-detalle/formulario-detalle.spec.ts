@@ -106,6 +106,8 @@ function detalle(datos: Partial<RespuestaDetallePlan> = {}): RespuestaDetallePla
 interface Opciones {
   plan?: RespuestaPlan;
   detalle?: RespuestaDetallePlan | null;
+  integrantes?: RespuestaIntegrante[];
+  idUsuarioActual?: number | null;
 }
 
 async function configurar(opciones: Opciones = {}) {
@@ -129,7 +131,8 @@ async function configurar(opciones: Opciones = {}) {
   fixture.componentRef.setInput('presentaciones', PRESENTACIONES);
   fixture.componentRef.setInput('unidades', UNIDADES);
   fixture.componentRef.setInput('dias', DIAS);
-  fixture.componentRef.setInput('integrantes', INTEGRANTES);
+  fixture.componentRef.setInput('integrantes', opciones.integrantes ?? INTEGRANTES);
+  fixture.componentRef.setInput('idUsuarioActual', opciones.idUsuarioActual ?? null);
   const guardados: RespuestaDetallePlan[] = [];
   let cancelados = 0;
   fixture.componentInstance.guardado.subscribe((d) => guardados.push(d));
@@ -543,6 +546,70 @@ describe('FormularioDetalle', () => {
     });
   });
 
+  describe('Responsable por defecto al agregar', () => {
+    function elegido(elemento: HTMLElement): string | undefined {
+      return porId<HTMLSelectElement>(elemento, 'detalle-responsable').selectedOptions[0]
+        ?.textContent?.trim();
+    }
+
+    it('sugiereAQuienAgregaSiEsIntegranteActivo', async () => {
+      const { elemento } = await configurar({ idUsuarioActual: 301 });
+
+      expect(elegido(elemento)).toBe('Luis Rojas');
+      expect(porId(elemento, 'detalle-responsable').getAttribute('aria-describedby')).toBe(
+        'detalle-responsable-ayuda',
+      );
+    });
+
+    it('sugiereAlUnicoIntegranteActivoSiQuienAgregaNoEsIntegrante', async () => {
+      const { elemento } = await configurar({
+        integrantes: [integrante(300, 'Ana Rojas')],
+        idUsuarioActual: 999,
+      });
+
+      expect(elegido(elemento)).toBe('Ana Rojas');
+    });
+
+    it('sinSugerenciaConVariosIntegrantesSiQuienAgregaNoEsIntegrante', async () => {
+      const { elemento } = await configurar({ idUsuarioActual: 999 });
+
+      expect(elegido(elemento)).toBe('Sin responsable');
+    });
+
+    it('aplicaLaSugerenciaCuandoLleganLosDatosDespues', async () => {
+      const { fixture, elemento } = await configurar({ integrantes: [] });
+      expect(elegido(elemento)).toBe('Sin responsable');
+
+      fixture.componentRef.setInput('integrantes', INTEGRANTES);
+      fixture.componentRef.setInput('idUsuarioActual', 300);
+      await fixture.whenStable();
+
+      expect(elegido(elemento)).toBe('Ana Rojas');
+    });
+
+    it('respetaLaEleccionDeLaPersona', async () => {
+      const { fixture, elemento } = await configurar({ integrantes: [] });
+      fixture.componentRef.setInput('integrantes', INTEGRANTES);
+      await fixture.whenStable();
+      elegirOpcion(porId(elemento, 'detalle-responsable'), 'Sin responsable');
+      await fixture.whenStable();
+
+      fixture.componentRef.setInput('idUsuarioActual', 300);
+      await fixture.whenStable();
+
+      expect(elegido(elemento)).toBe('Sin responsable');
+    });
+
+    it('alEditarNoCambiaElResponsableGuardado', async () => {
+      const { elemento } = await configurar({
+        detalle: detalle({ idResponsablePredeterminado: null }),
+        idUsuarioActual: 300,
+      });
+
+      expect(elegido(elemento)).toBe('Sin responsable');
+    });
+  });
+
   describe('Modo simple', () => {
     afterEach(() => vi.useRealTimers());
 
@@ -580,7 +647,8 @@ describe('FormularioDetalle', () => {
       expect(elemento.querySelector('#detalle-dosis')).not.toBeNull();
       expect(elemento.querySelector('app-selector-horario')).toBeNull();
       expect(elemento.querySelector('#detalle-hasta')).toBeNull();
-      expect(elemento.querySelector('#detalle-responsable')).toBeNull();
+      // El responsable también está en simple; sin sugerencia posible, "Sin responsable".
+      expect(textoElegido(porId(elemento, 'detalle-responsable'))).toBe('Sin responsable');
       expect(boton(elemento, 'Configurar con opciones avanzadas').className).toContain(
         'mv-boton--texto',
       );
@@ -634,6 +702,20 @@ describe('FormularioDetalle', () => {
         idResponsablePredeterminado: null,
       });
       expect(guardados.map((d) => d.idDetallePlan)).toEqual([99]);
+    });
+
+    it('enSimpleEnviaElResponsableElegido', async () => {
+      const { fixture, elemento, servicioPlanes } = await configurar();
+      await llenarMedicamento(fixture, elemento);
+      elegirOpcion(porId(elemento, 'detalle-responsable'), 'Luis Rojas');
+
+      await enviar(fixture, elemento);
+
+      expect(servicioPlanes.agregarDetalle).toHaveBeenCalledWith(
+        1,
+        7,
+        expect.objectContaining({ idResponsablePredeterminado: 301 }),
+      );
     });
 
     it('validaLosCamposSimples', async () => {

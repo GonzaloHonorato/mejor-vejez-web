@@ -1,17 +1,35 @@
 # mejor-vejez-web
 
-Front de **Mejor Vejez** — Angular 22 servido por nginx. Producción:
+Front de **Mejor Vejez** (marca de la app: **Cuida+**) — Angular 22 servido por nginx. Producción:
 `https://mejor-vejez-app.adndigital.cl`.
 
 Diseño: `../mejor-vejez-design` (tokens en `src/estilos/`).
 
 ## Rutas
 
-| Ruta | Acceso | Página |
+Públicas:
+
+| Ruta | Página |
+| --- | --- |
+| `/ingreso` | inicio de sesión con Google o correo y contraseña (Firebase Auth), y "¿Olvidaste tu contraseña?"; `?volver=` vuelve a la ruta pedida |
+| `/restablecer-clave` | fijar una contraseña nueva desde el enlace del correo de recuperación (el código viaja en el fragmento `#codigo=`) |
+| `/estado` | estado del servicio: API y base de datos (`GET /api/salud`, cada 30 s) |
+
+Con sesión (`guardAutenticado` → `/ingreso` si no hay), dentro del marco de la app (barra lateral en escritorio, pestañas + "Más" en móvil):
+
+| Ruta | Página | Historia |
 | --- | --- | --- |
-| `/ingreso` | pública | inicio de sesión con Google o correo y contraseña (Firebase Auth); `?volver=` vuelve a la ruta pedida |
-| `/estado` | pública | estado del servicio: API y base de datos (`GET /api/salud`, cada 30 s) |
-| `/` | con sesión (`guardAutenticado` → `/ingreso` si no hay) | **Inicio** (panel familiar) dentro del marco de la app; saluda con `GET /api/yo` |
+| `/` | Panel familiar: 5 secciones independientes, filtro por adulto, refresco cada 2 min con la pestaña visible | HU-10 |
+| `/perfil` | Mi perfil y mis canales de notificación | HU-01, HU-08 |
+| `/grupos` · `/grupos/:idGrupo` | Grupos e integrantes (incorporar, crear cuenta, cambiar rol, desactivar, salir, sucesión) | HU-02, HU-13 |
+| `/grupos/:idGrupo/auditoria` | Auditoría del grupo (coordinador o administrador) | HU-12 |
+| `/adultos` · `/adultos/:idAdulto` | Adultos mayores y su ficha con contactos de emergencia | HU-03 |
+| `/planes` · `/planes/:idPlan` | Planes de medicamentos (modo simple y avanzado, responsable por medicamento) | HU-04 |
+| `/tareas` · `/tareas/nueva` · `/tareas/:idTarea` | Agenda, tarea manual (compra/retiro, cita médica), detalle: confirmar, reasignar e historial | HU-05, HU-06, HU-07 |
+| `/alertas` · `/alertas/:idAlerta` | Bandeja de alertas y cierre con observación | HU-08, HU-09 |
+| `/relevos` · `/relevos/:idRelevo` | Registrar y consultar relevos, reasignar desde el relevo | HU-11, HU-06 |
+| `/administracion/usuarios` | Gestión global de cuentas: crear, reenviar acceso, activar o desactivar (`guardAdministrador`) | HU-01 |
+| `/administracion/auditoria` | Auditoría global (`guardAdministrador`) | HU-12 |
 
 Cualquier otra ruta redirige a `/`.
 
@@ -19,17 +37,17 @@ Cualquier otra ruta redirige a `/`.
 
 ```
 src/app/
-  nucleo/configuracion/configuracion-ejecucion.ts   lee window.__env (env.js)
-  nucleo/autenticacion/servicio-autenticacion.ts     Firebase Auth (Google y correo); señales usuario/listo
-  nucleo/autenticacion/interceptor-autenticacion.ts  agrega Bearer <ID token> SÓLO a llamadas al origen de la API
-  nucleo/autenticacion/guard-autenticado.ts          exige sesión; si no, redirige a /ingreso?volver=…
-  nucleo/salud/servicio-salud.ts                     GET /api/salud
-  nucleo/usuarios/servicio-yo.ts                     GET /api/yo (usuario de la sesión según la API)
-  compartido/marco-app/                              marco autenticado: barra lateral (escritorio) / pestañas (móvil), cerrar sesión
-  paginas/ingreso/                                   /ingreso
-  paginas/inicio/                                    / (panel familiar)
-  paginas/estado-servicio/                           /estado
-src/estilos/                                         capas de estilo (ver "Estilos y temas")
+  app.routes.ts                 rutas (todas con carga diferida)
+  nucleo/                       servicios y modelos por dominio, sin UI
+    configuracion/              lee window.__env (env.js)
+    autenticacion/              Firebase Auth, interceptor (Bearer SOLO al origen de la API), guards
+    http/                       mensajes de error en español a partir del ProblemDetail de la API
+    usuarios/ grupos/ adultos/ planificacion/ tareas/ alertas/
+    panel/ relevos/ auditoria/ sucesion/ catalogos/ salud/
+    fechas.ts, telefono.ts …    utilidades (hora de Santiago, teléfono chileno)
+  compartido/                   marco de la app, marca, íconos y componentes reutilizables
+  paginas/                      una carpeta por página (ver "Rutas")
+src/estilos/                    capas de estilo (ver "Estilos y temas")
 ```
 
 ## Configuración en runtime
