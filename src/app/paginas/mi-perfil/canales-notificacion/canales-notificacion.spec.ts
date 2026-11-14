@@ -45,7 +45,7 @@ describe('CanalesNotificacion', () => {
   });
 
   it('guardaConjuntoCompleto', async () => {
-    const { fixture, elemento, servicioCanales } = await configurar();
+    const { fixture, elemento, servicioCanales } = await configurar(respuesta({ whatsappDisponible: true }));
     servicioCanales.actualizar.mockReturnValue(
       of(
         respuesta({
@@ -71,7 +71,7 @@ describe('CanalesNotificacion', () => {
   });
 
   it('whatsappNoChilenoMuestraLaReglaYNoGuarda', async () => {
-    const { fixture, elemento, servicioCanales } = await configurar();
+    const { fixture, elemento, servicioCanales } = await configurar(respuesta({ whatsappDisponible: true }));
     const campo = elemento.querySelector<HTMLInputElement>('#canales-whatsapp')!;
 
     escribir(campo, '+5491123456789');
@@ -123,6 +123,7 @@ describe('CanalesNotificacion', () => {
           { canal: 'CORREO', destino: 'ana@correo.cl', habilitado: true, predeterminado: true },
           { canal: 'WHATSAPP', destino: '+56912345678', habilitado: false, predeterminado: false },
         ],
+        whatsappDisponible: true,
       }),
     );
     servicioCanales.actualizar.mockReturnValue(of(respuesta()));
@@ -149,6 +150,40 @@ describe('CanalesNotificacion', () => {
     expect(servicioCanales.actualizar).toHaveBeenCalledWith([
       { canal: 'CORREO', destino: 'ana@correo.cl', habilitado: true },
     ]);
+  });
+
+  it('whatsappNoDisponibleQuedaDeshabilitadoYConservaLoGuardado', async () => {
+    const { fixture, elemento, servicioCanales } = await configurar(
+      respuesta({
+        canales: [
+          { canal: 'CORREO', destino: 'ana@correo.cl', habilitado: true, predeterminado: true },
+          { canal: 'WHATSAPP', destino: '+56912345678', habilitado: true, predeterminado: false },
+        ],
+        whatsappDisponible: false,
+      }),
+    );
+    servicioCanales.actualizar.mockReturnValue(of(respuesta()));
+
+    expect(elemento.querySelector<HTMLInputElement>('#canales-whatsapp')!.disabled).toBe(true);
+    expect(
+      elemento.querySelector<HTMLInputElement>('#canales-whatsapp-habilitado')!.disabled,
+    ).toBe(true);
+    expect(elemento.querySelector('legend .mv-chip')?.textContent).toContain('Próximamente');
+
+    elemento.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+
+    expect(servicioCanales.actualizar).toHaveBeenCalledWith([
+      { canal: 'CORREO', destino: 'ana@correo.cl', habilitado: true },
+      { canal: 'WHATSAPP', destino: '+56912345678', habilitado: true },
+    ]);
+  });
+
+  it('whatsappDisponibleQuedaEditableSinProximamente', async () => {
+    const { elemento } = await configurar(respuesta({ whatsappDisponible: true }));
+
+    expect(elemento.querySelector<HTMLInputElement>('#canales-whatsapp')!.disabled).toBe(false);
+    expect(elemento.querySelector('legend .mv-chip')).toBeNull();
   });
 
   it('avisoWhatsappNoDisponible', async () => {

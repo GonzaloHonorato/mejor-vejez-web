@@ -57,7 +57,12 @@
         </fieldset>
 
         <fieldset class="canal">
-          <legend class="canal__nombre">WhatsApp</legend>
+          <legend class="canal__nombre">
+            WhatsApp
+            @if (!whatsappDisponible()) {
+              <span class="mv-chip">Próximamente</span>
+            }
+          </legend>
           <div class="mv-campo">
             <label class="mv-campo__etiqueta" for="canales-whatsapp">Número de WhatsApp</label>
             <input

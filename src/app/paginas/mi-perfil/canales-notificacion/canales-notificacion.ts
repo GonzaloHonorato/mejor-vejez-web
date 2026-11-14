@@ -24,8 +24,10 @@ import { dentroDe, enfocarPrimerCampoInvalido, mostrarAviso, porId } from '../..
 
 /**
  * "Canales de notificación" en Mi perfil: correo (siempre aparece, con el
- * predeterminado de la cuenta si no hay fila propia) y WhatsApp (aún no envía
- * mensajes, pero se guarda igual su configuración). `guardar()` reemplaza el
+ * predeterminado de la cuenta si no hay fila propia) y WhatsApp. Mientras la
+ * API diga que WhatsApp no está disponible (`whatsappDisponible: false`, el
+ * caso del MVP), sus campos quedan deshabilitados con "Próximamente" y se
+ * reenvía tal cual lo que ya estuviera guardado. `guardar()` reemplaza el
  * conjunto completo con `PUT /api/yo/canales`; si el número de WhatsApp
  * queda vacío, no se envía ese canal; si viene, debe ser un teléfono
  * chileno (`nucleo/telefono`) y se envía normalizado.
@@ -167,5 +169,12 @@ export class CanalesNotificacion implements OnInit {
       whatsappDestino: formatearTelefono(whatsapp?.destino),
       whatsappHabilitado: whatsapp?.habilitado ?? false,
     });
+    // Deshabilitados no se validan, pero getRawValue() los incluye: el PUT
+    // conserva la configuración de WhatsApp que ya existía.
+    const { whatsappDestino, whatsappHabilitado } = this.formulario.controls;
+    for (const control of [whatsappDestino, whatsappHabilitado]) {
+      if (respuesta.whatsappDisponible) control.enable();
+      else control.disable();
+    }
   }
 }
