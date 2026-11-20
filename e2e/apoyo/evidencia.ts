@@ -24,6 +24,8 @@ export class Evidencia {
     this.numero += 1;
     const nombre = `${this.cp}_${String(this.numero).padStart(2, '0')}_${descripcion}.png`;
     const ruta = join(this.carpeta, nombre);
+    // Arriba antes de la captura completa: si no, la barra lateral fija sale corrida.
+    await pagina.evaluate(() => window.scrollTo(0, 0));
     await pagina.screenshot({ path: ruta, fullPage: true, mask: tapar, maskColor: '#0B2545' });
     await this.info.attach(nombre, { path: ruta, contentType: 'image/png' });
   }
