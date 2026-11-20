@@ -45,3 +45,8 @@ Thumbs.db
 
 # Entorno
 .env
+
+# Pruebas de navegador (Playwright): capturas y resultados de cada corrida
+/e2e/resultados/
+/playwright-report/
+/test-results/
