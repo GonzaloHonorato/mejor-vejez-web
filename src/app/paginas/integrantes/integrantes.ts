@@ -122,7 +122,7 @@ export class Integrantes implements OnInit {
   protected readonly idUsuario = signal<number | null>(null);
   protected readonly error = signal<string | null>(null);
   protected readonly agregando = signal(false);
-  /** "Agregar integrante" por correo: plegado tras su acción del encabezado. */
+  /** "Agregar por correo": plegado tras su acción del encabezado. */
   protected readonly agregarAbierto = signal(false);
   /** Integrante cuyo rol se está editando (selector en la celda Rol); null si ninguno. */
   protected readonly editandoRol = signal<number | null>(null);
@@ -180,7 +180,7 @@ export class Integrantes implements OnInit {
     idRol: this.fb.control<number | null>(null, Validators.required),
   });
 
-  /** "Crear integrante nuevo": abierto/cerrado, envío en curso y error. */
+  /** "Crear cuenta nueva": abierto/cerrado, envío en curso y error. */
   protected readonly creandoIntegrante = signal(false);
   protected readonly guardandoCrearIntegrante = signal(false);
   protected readonly errorCrearIntegrante = signal<string | null>(null);
@@ -194,7 +194,7 @@ export class Integrantes implements OnInit {
    */
   protected readonly claveAMostrar = signal<ClaveAMostrar | null>(null);
   /**
-   * Botón "Crear integrante nuevo" del encabezado: se consulta de nuevo en
+   * Botón "Crear cuenta nueva" del encabezado: se consulta de nuevo en
    * cada lectura (signal de `viewChild`), así que siempre apunta a la
    * instancia vigente aunque un `@if` la haya recreado.
    */

@@ -157,7 +157,7 @@ describe('Integrantes', () => {
       ],
     });
 
-    expect(elemento.textContent).toContain('Agregar integrante');
+    expect(elemento.textContent).toContain('Agregar por correo');
     await abrirAgregar(fixture);
     expect(elemento.querySelector('#integrante-email')).toBeTruthy();
 
@@ -411,7 +411,7 @@ describe('Integrantes', () => {
     );
     expect(elemento.querySelector('#integrante-email')).toBeFalsy();
     expect(elemento.querySelector('#integrantes-abrir-agregar')).toBeFalsy();
-    expect(botonConTexto(elemento, 'Crear integrante nuevo')).toBeFalsy();
+    expect(botonConTexto(elemento, 'Crear cuenta nueva')).toBeFalsy();
     expect(botonConTexto(elemento, 'Salir del grupo')).toBeFalsy();
   });
 
@@ -433,11 +433,11 @@ describe('Integrantes', () => {
 
   it('crearIntegranteSoloVisibleParaCoordinador', async () => {
     const { elemento: elementoCoordinador } = await configurar({ miRol: 'COORDINADOR' });
-    expect(botonConTexto(elementoCoordinador, 'Crear integrante nuevo')).toBeTruthy();
+    expect(botonConTexto(elementoCoordinador, 'Crear cuenta nueva')).toBeTruthy();
 
     TestBed.resetTestingModule();
     const { elemento: elementoColaborador } = await configurar({ miRol: 'COLABORADOR' });
-    expect(botonConTexto(elementoColaborador, 'Crear integrante nuevo')).toBeFalsy();
+    expect(botonConTexto(elementoColaborador, 'Crear cuenta nueva')).toBeFalsy();
   });
 
   it('crearIntegranteMuestraClaveUnaVez', async () => {
@@ -450,7 +450,7 @@ describe('Integrantes', () => {
       }),
     );
 
-    botonConTexto(elemento, 'Crear integrante nuevo')!.click();
+    botonConTexto(elemento, 'Crear cuenta nueva')!.click();
     await fixture.whenStable();
 
     const campoNombre = elemento.querySelector<HTMLInputElement>('#integrante-crear-nombre')!;
@@ -483,7 +483,7 @@ describe('Integrantes', () => {
       ),
     );
 
-    botonConTexto(elemento, 'Crear integrante nuevo')!.click();
+    botonConTexto(elemento, 'Crear cuenta nueva')!.click();
     await fixture.whenStable();
 
     const campoNombre = elemento.querySelector<HTMLInputElement>('#integrante-crear-nombre')!;
@@ -523,7 +523,7 @@ describe('Integrantes', () => {
       ),
     );
 
-    botonConTexto(elemento, 'Crear integrante nuevo')!.click();
+    botonConTexto(elemento, 'Crear cuenta nueva')!.click();
     await fixture.whenStable();
 
     const campoNombre = elemento.querySelector<HTMLInputElement>('#integrante-crear-nombre')!;
@@ -550,7 +550,7 @@ describe('Integrantes', () => {
       }),
     );
 
-    botonConTexto(elemento, 'Crear integrante nuevo')!.click();
+    botonConTexto(elemento, 'Crear cuenta nueva')!.click();
     await fixture.whenStable();
     const campoNombre = elemento.querySelector<HTMLInputElement>('#integrante-crear-nombre')!;
     campoNombre.value = 'Carla';
@@ -564,13 +564,13 @@ describe('Integrantes', () => {
     botonConTexto(elemento.querySelector('[role="dialog"]')!, 'Cerrar')!.click();
     await fixture.whenStable();
 
-    expect(document.activeElement).toBe(botonConTexto(elemento, 'Crear integrante nuevo'));
+    expect(document.activeElement).toBe(botonConTexto(elemento, 'Crear cuenta nueva'));
   });
 
   it('nombreDemasiadoLargoMuestraMensajeAlCrearIntegrante', async () => {
     const { fixture, elemento, servicioGrupos } = await configurar({ miRol: 'COORDINADOR' });
 
-    botonConTexto(elemento, 'Crear integrante nuevo')!.click();
+    botonConTexto(elemento, 'Crear cuenta nueva')!.click();
     await fixture.whenStable();
     const campoNombre = elemento.querySelector<HTMLInputElement>('#integrante-crear-nombre')!;
     campoNombre.value = 'A'.repeat(161);
@@ -599,7 +599,7 @@ describe('Integrantes', () => {
       ),
     );
 
-    botonConTexto(elemento, 'Crear integrante nuevo')!.click();
+    botonConTexto(elemento, 'Crear cuenta nueva')!.click();
     await fixture.whenStable();
     const campoNombre = elemento.querySelector<HTMLInputElement>('#integrante-crear-nombre')!;
     campoNombre.value = 'Carla';
@@ -943,7 +943,7 @@ describe('Integrantes: desplazamiento y foco', () => {
   it('crearIntegranteNuevoTraeElFormularioALaVista', async () => {
     const { fixture, elemento } = await configurar({ miRol: 'COORDINADOR' });
 
-    botonConTexto(elemento, 'Crear integrante nuevo')!.click();
+    botonConTexto(elemento, 'Crear cuenta nueva')!.click();
     await fixture.whenStable();
 
     expect(bloqueDe(elemento.querySelector('#integrantes-crear'))).toBe('start');

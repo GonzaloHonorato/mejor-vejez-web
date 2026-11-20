@@ -26,7 +26,7 @@
         [attr.aria-expanded]="agregarAbierto()"
         (click)="alternarAgregar()"
       >
-        Agregar integrante
+        Agregar por correo
       </button>
       <button
         #botonCrearIntegranteNuevo
@@ -37,7 +37,7 @@
         [attr.aria-expanded]="creandoIntegrante()"
         (click)="alternarCrearIntegrante()"
       >
-        Crear integrante nuevo
+        Crear cuenta nueva
       </button>
     </div>
   }
@@ -52,10 +52,10 @@
     @if (puedeAdministrar() && agregarAbierto()) {
       <section class="mv-tarjeta" aria-labelledby="integrantes-agregar-titulo">
         <div class="mv-tarjeta__cabecera">
-          <h2 id="integrantes-agregar-titulo" class="mv-tarjeta__titulo">Agregar integrante</h2>
+          <h2 id="integrantes-agregar-titulo" class="mv-tarjeta__titulo">Agregar a alguien con cuenta</h2>
         </div>
         <form class="mv-tarjeta__cuerpo formulario" [formGroup]="formulario" (ngSubmit)="agregar()" novalidate>
-          <p class="ayuda">La persona debe tener una cuenta en Cuida+.</p>
+          <p class="ayuda">Para quien ya usa Cuida+: escribe el correo con que ingresa y elige su rol en el grupo.</p>
 
           <div class="mv-campo">
             <label class="mv-campo__etiqueta" for="integrante-email">Correo</label>
@@ -94,7 +94,7 @@
               class="mv-boton mv-boton--primario"
               [disabled]="formulario.invalid || agregando()"
             >
-              {{ agregando() ? 'Agregando…' : 'Agregar integrante' }}
+              {{ agregando() ? 'Agregando…' : 'Agregar al grupo' }}
             </button>
           </div>
         </form>
@@ -106,7 +106,7 @@
     @if (puedeAdministrar() && creandoIntegrante()) {
       <section class="mv-tarjeta crear-integrante" aria-labelledby="integrantes-crear-titulo">
         <div class="mv-tarjeta__cabecera">
-          <h2 id="integrantes-crear-titulo" class="mv-tarjeta__titulo">Crear integrante nuevo</h2>
+          <h2 id="integrantes-crear-titulo" class="mv-tarjeta__titulo">Crear cuenta nueva</h2>
         </div>
         <form
           class="mv-tarjeta__cuerpo formulario"
@@ -114,6 +114,11 @@
           (ngSubmit)="crearIntegrante()"
           novalidate
         >
+          <p class="ayuda">
+            Para quien aún no usa Cuida+: creamos su cuenta, le enviamos una contraseña temporal por
+            correo y queda en el grupo con el rol que elijas.
+          </p>
+
           @if (errorCrearIntegrante(); as mensaje) {
             <div id="integrantes-crear-error" class="mv-aviso mv-aviso--error" role="alert">
               <p>{{ mensaje }}</p>
@@ -190,7 +195,7 @@
               class="mv-boton mv-boton--primario"
               [disabled]="formularioCrearIntegrante.invalid || guardandoCrearIntegrante()"
             >
-              {{ guardandoCrearIntegrante() ? 'Creando…' : 'Crear integrante nuevo' }}
+              {{ guardandoCrearIntegrante() ? 'Creando…' : 'Crear cuenta' }}
             </button>
           </div>
         </form>
